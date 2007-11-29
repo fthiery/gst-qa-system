@@ -1,0 +1,26 @@
+GStreamer QA system
+-------------------
+
+Split-up
+--------
+
+  Most of the code will be in the qagst python module (and
+  sub-modules), along with the default implementations of monitors and
+  tests.
+
+  The executables (clients, master, etc...) will be as lightweight as
+  possible.
+
+  Apart from the default implementation of tests,monitors,... ALL
+  other tests should not be in the qagst python module.
+
+Modules
+-------
+
+* monitor.py
+* test.py
+* environment.py
+* storage.py
+* generator.py
+* type.py ???
+

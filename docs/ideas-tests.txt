@@ -1,0 +1,40 @@
+Ideas for tests and monitors
+----------------------------
+
+Here will be a list of ideas for new tests and monitors that could be
+written for the QA system.
+
+TESTS
+-----
+
+Encoder/Muxer testing
+ Goal : Test the various combinations of encoders and muxers
+ 3 step : * Encode Xs of data
+          * Typefind resulting file
+          * compare results to see if the decoded file is identical
+
+Seeking tests
+ Goal : Test various seeking types
+   How long does it take for the seek to happen
+   How much data is needed
+
+Various tests on broken/incomplete files
+ Goal : test how solid we are
+   This is interesting in the case where you're partly through
+ downloading a file, either with http/ftp or with p2p-like systems
+ (edonkey, bt,...)
+   Something interesting would be the ability to skip over
+ non-downloaded parts for example.
+
+Tagging tests
+  Goal : Check we can read all tags present in a file
+    We could check the results using some external tag-reading software
+
+  Goal : Make sure what tags the various muxers can accept
+
+MONITORS
+--------
+ monitor bitrate usage at each pad
+ monitor queue levels
+ monitor QOS
+ monitor latency in live pipelines
