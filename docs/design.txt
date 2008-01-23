@@ -1,26 +1,218 @@
 GStreamer QA system
 -------------------
 
-Split-up
+Goals of new QA system
+----------------------
+
+  * Provide a modular QA/Testing system.
+  * Be able to run tests locally or remotely
+  * Be able to separate the various testing, monitoring scheduling and
+    reporting steps.
+  * Be able to run ANY kind of tests, including non-gstreamer tests
+  * and non-python tests.
+
+Glossary
 --------
 
-  Most of the code will be in the qagst python module (and
-  sub-modules), along with the default implementations of monitors and
-  tests.
+* Test :
+  Standalone process validating its execution against a given
+  checklist.
 
-  The executables (clients, master, etc...) will be as lightweight as
-  possible.
+* Scenario :
+  A Test that runs several other tests, optionnaly with programmatic
+  choices and processing of sub-test results.
 
-  Apart from the default implementation of tests,monitors,... ALL
-  other tests should not be in the qagst python module.
+* TestRun :
+  A run of several tests/scenarios with various arguments.
+  This will also collect the state of the environment.
+  The smallest testrun is a single test with a single argument.
+  It will instantiate each of the tests with the proper arguments and
+  monitors. It also provides each test instance access to the
+  DataStorage instance.
 
-Modules
--------
+* Arguments :
+  Parameters for one test
 
-* monitor.py
-* test.py
-* environment.py
-* storage.py
-* generator.py
-* type.py ???
+* Generators :
+  Creates a list of arguments.
 
+* Monitor :
+  Script or application that retrieves extra information about a
+  running test.
+
+Modular system
+--------------
+
+  The full-fledged QA system consists of 4 parts:
+
+  * A testing client (client.py:Client), this is the only requirement
+  to be able to run tests. This client can either be standalone, a
+  daemon, a network-controlled client, a GUI, ...
+
+  * A Storage system, most likely an object-oriented database
+
+  * A reporting system, allowing the production of html/text/pdf/XXX
+  reports based on the test results.
+
+  * A Central Scheduler, providing control over the remote clients,
+  aggregation of the testrun results, a search interface to the
+  database. This part contains the Storage and reporting system
+  mentionned above and provides control over it with a HTML interface.
+
+  Most of the logic will be contained in a python module. Currently
+  called gstqa, it might switch to a better name since it is no longer
+  GStreamer specific ('insanity' is one naming proposition).
+
+  The goal is to make the creation of the various parts of the full QA
+  system as lightweight as possible, putting most of the logic in base
+  classes contained in that python module.
+
+Client
+------
+
+  The client is a python event-based application, which is meant to be
+  executed on the host environment (embedded device, testing server,
+  ...). It is therefore meant to be as lightweight as possible while
+  still providing the basic requirements for proper test execution.
+
+  The majority of the logic is contained in the client.py:Client base
+  class, which can be subclassed with minimum code to provide:
+  * a CLI client
+  * a daemon for remote control
+  * UI client for end-user testing
+  * ....
+
+Client -- TestRun
+-----------------
+
+  A TestRun is a batch of tests, arguments and (optional) monitors.
+
+  For each TestRun, the environment will be captured and associated
+  with all the test results.
+
+  A TestRun creates an instance of each Test with the different
+  argument(s) and (optional) monitors.
+
+  The TestRun will by default run one instance at a time, unless
+  otherwise specified (to make best use of multi-core/cpu machines).
+
+Client -- Test
+--------------
+
+  A Test is the smallest unit of testing.
+
+  Each test will be spawned in a separate process for safety reason
+  and also in order to be able to capture a completely new
+  environment.
+
+  Each test provides a check-list, or steps, which will be validated
+  during the test execution.
+  The steps are not sequential, so tests can validates some steps even
+  if the previous step was not validated.
+
+  Each test can also store information based on the analysis. That
+  information doesn't (in)validate the test. For example, a
+  typefinding test can store the information it detects from the file
+  being analyzed.
+
+  Python base classes will be provided to quickly create tests. Two
+  main subclasses are available:
+  * GstreamerTest : For all tests that use GStreamer.
+  * CmdLineTest : For spawning any command-line application.
+
+Client -- Monitor
+-----------------
+
+  Monitors allows retrieval of extra information during each test
+  execution.
+
+  Examples of information it can retrieve :
+  * GST_DEBUG
+  * cpu/mem usage over time
+  * valgrind report
+  * remote process
+  * ...
+
+  Monitors can modify the test instance properties. For example, a
+  monitor that will knowingly make the test run slower can modify the
+  timeout duration of a test.
+
+  Monitors will offer the possibility to post-process the information
+  they retrieve. This allows retrieving vast quantities of information
+  without hindering the performance of the underlying test, as well as
+  being able to offer information which is easier and faster to
+  process in the reporting system (Ex : number of leaks when running a
+  valgrind monitor).
+
+Storage System
+--------------
+
+  Depending on the usage scenario, the result data can be stored in
+  various ways.
+
+  Either to a standalone file, for single-run end-user reporting. That
+  file can then be used to either do standalone reporting, or send
+  later on to a central database.
+  We can also have a locally accessible database in which everything
+  is stored, for a local complete system.
+  We might also need, in the case of the fully distributed system, to
+  send the data via network to a central database.
+
+  This requires an abstraction of the storage system for :
+  * Reading/Writing test results and progress
+  * Storing/Accessing monitor data
+
+  The minimal required two subclasses are:
+  * LocalFileSystemStorage : Stores everything on the local file system
+  * DatabaseStorage : Stores everything on a SGBD (local or remote).
+
+Reporting System
+----------------
+
+  Reporting is the process of taking the test results/information
+  stored and producing a task-centric report.
+
+  The basic functionnality of the reporting system should be a 1-to-1
+  html (or other) representation of each of the following classes:
+  * TestRun
+  * Tests (and subclasses)
+  * Monitors
+
+  In addition to those classes, some templates will allow showing the
+  differences between one or more TestRuns/Tests (Therefore enabling
+  easy visualisation of regression).
+
+  The reporting system can work in a standalone fashion, allowing it
+  to be fed some testresults from the database and producing the
+  graphical/html reports.
+
+  The modules in the reporting system can also be used in order to
+  provide dynamically generated html content based on search results
+  in the Storage System. This feature will be used in the full-fledged
+  central QA system.
+
+Central Scheduler
+-----------------
+
+  Based on buildbot (http://buildbot.net/), which offers a
+  widely-used system for remote execution of processes, the central
+  scheduler will allow executing/scheduling TestRuns on remote
+  machines. Apart from the use of buildbot, this involves the creation
+  of a special Client sub-class for the remote machines.
+
+TODO
+----
+
+* Milestone 1:
+  Best-Effort to reproduce the same behaviour as existing
+  gst-media-test CLI client using the new classes.
+
+* Milestone 2:
+  Database implementation for storing information both locally and
+  remotely.
+
+* Milestone 3:
+  Centralized scheduling/control system
+
+* Milestone 4:
+  Search/Query/Reporting centralized system

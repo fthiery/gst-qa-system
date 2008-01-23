@@ -59,6 +59,12 @@ class FileBasedMonitorInterface:
         pass
     pass
 
+
+##
+## TODO : maybe the two classes below don't make sense and should
+## just be an option in the base Monitor class.
+##
+
 class AsyncMonitor(Monitor):
     """
     Monitors that will record data and THEN process it
@@ -69,4 +75,16 @@ class DirectMonitor(Monitor):
     """
     Monitors that will record and process data at the same time
     """
+    pass
+
+class BasicMonitor(Monitor):
+    """
+    The BasicMonitor is the only compulsory monitor
+
+    It will:
+    * spawn the test in a separate process
+    * detect segmentation faults
+    * handle higher-level timeouts (?)
+    """
+
     pass

@@ -1,0 +1,9 @@
+2008-01-23  Edward Hervey  <edward.hervey@collabora.co.uk>
+
+	* docs/design.txt:
+	* gstqa/generator.py:
+	* gstqa/monitor.py:
+	* gstqa/scenario.py:
+	* gstqa/test.py:
+	Commiting work from past week.
+	

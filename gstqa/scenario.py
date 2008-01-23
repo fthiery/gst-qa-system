@@ -23,7 +23,22 @@ from test import Test
 
 class Scenario(Test):
     """
-    Test that runs other tests
+    Test that runs other tests with optional programmatic decisions
+    and result processing.
+    """
+    # TODO : auto-aggregation of arguments and checklists
+
+    pass
+
+class ListScenario(Test):
+    """
+    Scenario that will run each test one after the other on the same
+    arguments.
+
+    Parameters:
+    * fatal-failures : boolean (default:False)
+    If set to True, the tests will only be run if each previous test
+    has completed successfully (all steps validated).
     """
 
     pass
