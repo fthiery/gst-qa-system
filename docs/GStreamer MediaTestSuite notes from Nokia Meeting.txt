@@ -1,0 +1,164 @@
+== MediaTestSuite2 ==
+=== problems ===
+* testing failure
+* testing against reference data
+* testing with errors (decoder ! encoder)
+* need to continue test runs
+=== nokia specific problem ===
+* can we have several connections (usb + wifi)
+* can we grab other logs too (dsp logs to syslog)
+  -> talk to rené
+
+
+=== design ===
+* master
+  control, automation, storage, reporting/querying
+  profiles
+* client
+  generators (test driver), tests
+  aspects/monitors/decorator/shell
+    pre- and post-run hooks, that setup logging and filter and package results, provice backtraces
+    different implementations for gstreamer, valgrind-memcheck, ...
+  test profiles configure what monitors should be used (multiple are possible) for each run:
+    gstreamer + syslog
+    valgrind-memcheck
+    valgrind-massif
+    -> means to run test 3 times
+
+* metadata
+  add metadata to testresult, hw/sw-versions, certain env-vars (GMTS_EMAIL, GMTS_SW_REVISION)
+* aspects
+  pre and post hooks -> separate classes
+
+
+=== roadmap ===
+1.) switch gst-test to new design
+    - factor out reporting to standalone tool
+    - simple cli client
+2.) database
+3.) master (buildbot)
+    control, schdeule
+4.) extra reporting
+
+=== classes ===
+Client
+  - setup Profile, DataStorage
+  - write TestEnvironment to DataStorage
+  - return updates
+  > CliClient
+  > UIClient
+  > BuildbotClient
+
+DataStorage
+  > Stdout
+  > File
+  > Network
+  > Database
+
+Generator(Profile)
+  - Introspection(Test, Args)
+  > FileSystem -> List of URIs
+  > PlayList -> List of URIs
+  > CompatibleEncMux -> Tuple of Factories (Muxer, Encoders)
+
+Profile
+  - Generator(Args)
+  - Test, Test, Test ...
+  Example:
+    File(/media,*.avi)
+    TypeFindTest(GstMonitor(20ms), ValgrindMonitor(120ms))
+    fatal -> {
+      IdentifyCmdTest(GstMonitor(20ms), ValgrindMonitor(120ms))
+    }
+    sucess-> {
+      PlayTest(GstMonitor(40ms), ValgrindMonitor(180ms))
+      GnlTest(GstMonitor(40ms), ValgrindMonitor(180ms))
+    }
+
+Tests, UriTestIFace
+  - Introspection(Name, Desc, Args, ArgsTypes)
+    maybe dependency like init-system (gnltest requires succesful typefindtest
+  - ResultCodes (one per subtest)
+  - ResultData
+  - Setup, Teardown
+  > GstTest
+    - Timeout, BusErrors
+    - used GstElements
+    - Testing time
+    > TypefindTest
+    > PlayTest
+    > StreamTest
+    > GnlTest
+  > CmdTest
+    > IdentifyCmdTest (File, MPlayer : get media type)
+    > ConfirmIdentCmdTest (File, MPlayer : confirm media type)
+
+Monitor
+  - SetUp
+  - TearDown
+  > BasicMonitor
+    uses fork in setup and ipc to transfer results back
+    > GstDebugMonitor
+  > SysCmdMonitor
+    serializes the profile, launches new process, deserializes the profile
+    and uses ipc to transfer results back
+    > ValgrindMemcheckMonitor
+    > ValgrindMassifMonitor
+    > GstPerformanceMonitor
+
+=== new tests ===
+IdentifyCmdTest
+* run file, mplayer -i to figure out media type and details
+ConfirmIdentCmdTest
+* compare resulta of TypefindTest with the ones from file/mplayer
+MuxerTest
+* run tuples from the 'CompatibleEncMux' and generate files
+* should be followed by TypeFindTest and MuxerConfirmTest
+MuxerConfirmTest
+* 
+
+=== execution ===
+client.run
+  total_result = TRUE
+  datastorage.new
+  profile.new(datastorage)
+    profile.generator.new
+    foreach item in profile.generator
+      profile.run(item)
+        foreach monitor in profile.monitors
+          profile.result[*]=undef
+          foreach test in profile.tests
+            >> print test
+            result=profile.result[test].new
+            monitor.setup(result)
+            test.run(result,item)
+            monitor.teardown(result)
+            datastorage.write(result)
+            total_result &= result
+            >> print result
+
+=== reporting ===
+* report for a testrun
+* comparission for two or more runs
+* report for a avi releated runs
+  * needs to skip old report of the same reporter
+* report test execution time for plain tests (not valgrind etc.)
+
+
+=== master ===
+* control can be used by buildbot slaves to trigger test runs
+** if a changelog contains Fixes: NB#17876 could we:
+*** check if we have bugdata/Bug17876 and run mediatestsuite for that file (those files)
+*** eventually run gst-typefind for the file (-> avi) and
+    then run the mediatestsuite for testdata/avi and fuzzing/avi
+
+
+=== open items ===
+* tests are forked, how do we get results back?
+  - right now it writes to filesystem and parent just reads it from there
+  - what about pipes
+* what about making profiles, python snippets
+* expected failures
+* submitting result for end-users
+  * can we figure out the byte-position in the input-stream,
+    so that if its a local file we can upload a cut version of the file

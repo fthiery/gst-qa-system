@@ -1,0 +1,258 @@
+#!/bin/env python
+
+# GStreamer QA system
+#
+#       gst-media-test
+#
+# Copyright (c) 2007, Edward Hervey <bilboed@bilboed.com>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this program; if not, write to the
+# Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+# Boston, MA 02111-1307, USA.
+
+"""
+Attempts to simulate the behaviour of the (now deprecated) gst-media-test
+"""
+
+# TODO
+#
+# Create a scenario from the given inputs
+#
+# Find similarities with other CLI client and move those up in a
+# CLI base class.
+
+import sys
+import string
+from optparse import OptionParser
+from gstqa.client import TesterClient
+from gstqa.scenario import Scenario
+from gstqa.generator import FileSystemGenerator, URIFileSystemGenerator
+from gstqa.test import PythonDBusTest
+from gstqa.testrun import ListTestRun
+from tests.playbin import PlaybinTest
+from tests.ismedia import IsMediaTest
+
+class GstMediaTestScenario(Scenario):
+    """
+    This is a scenario that will attempt to run the given test.
+    If it doesn't reach 100% succes, it will be re-run with more aggressive
+    monitoring.
+
+    It automatically adds the correct monitors to the underlying tests, or
+    sets the right parameter for tests that have default monitor.
+
+    This reproduces the re-try behaviour of gst-media-test
+    """
+    pass
+
+class FakeFileTest(PythonDBusTest):
+    """
+    Fake file test for testing purposes only
+    """
+    __test_arguments__ = {
+        "filename" : "An absolute path location"
+        }
+    __test_checklist__ = {
+        "DONE" : "This works :)"
+        }
+
+    def remoteTest(self):
+        self.validateStep("DONE")
+        self.stop()
+
+    @classmethod
+    def get_file(self):
+        import os.path
+        return os.path.abspath(__file__)
+
+
+class GstMediaTestClient(TesterClient):
+
+    # simulate the behaviour of the previous gst-media-test
+    #
+    # Here we only run for one TestRun and then exit
+    #
+    # Some options might be difficult to reproduce with the new system.
+
+    def __init__(self, testrun):
+        TesterClient.__init__(self, singlerun=True)
+        self.addTestRun(testrun)
+
+    def test_run_start(self, testrun):
+        print "Starting", testrun
+        testrun.connect("single-test-done", self._singleTestDoneCb)
+
+    def test_run_stop(self, testrun):
+        print "Stopping", testrun
+
+    def test_run_aborted(self, testrun):
+        print "Aborted", testrun
+
+    def _singleTestDoneCb(self, testrun, test):
+        print "Test %r is done (Success:%0.1f%%)" % (test, test.getSuccessPercentage())
+        # print out all details from test
+        ta = test.arguments
+        fa = test.getFullArgumentList()
+        for arg in fa:
+            print "%s:%s\t\t%s" % (arg, fa[arg], ta[arg])
+        # print results from test
+        tc = test.getCheckList()
+        fc = test.getFullCheckList()
+        for c in fc:
+            print "%50s:%10s\t\t%s" % (c, tc[c], fc[c])
+        infos = test.getExtraInfo()
+        for extra in infos:
+            print extra , infos[extra]
+
+def create_testrun(files, testscripts, recursive=True, topdir=None,
+                   extreme=False, valgrinding=False,
+                   debuglevel=2, debuglevel2=5,
+                   acceptlist=[], rejectlist=[],
+                   compressed=True, subdirectory=None, weboutput=True):
+    """
+    Takes the parameters of gst-media-test and creates a TestRun object
+    """
+    # the testrun will just be a normal list
+    # Each test will be a Scenario that will rerun the test with more
+    # aggressive settings
+    # Use generator for the arguments
+    # TODO : port existing gst-media-test tests to new classes
+
+    # FileSystemGenerator from the following arguments:
+    # * files
+    # * recursive
+    # * acceptlist
+    # * rejectlist
+    generator1 = URIFileSystemGenerator(paths=files, recursive=recursive,
+                                        matching=acceptlist,
+                                        reject=rejectlist)
+
+    generator2 = FileSystemGenerator(paths=files, recursive=recursive,
+                                        matching=acceptlist,
+                                        reject=rejectlist)
+
+    # our test
+    # FIXME : replace this by the actual tests !
+    # FIXME : Use the above Scenario instead
+    test = IsMediaTest
+    test1 = PlaybinTest
+    test2 = FakeFileTest
+
+    # our monitors
+    # FIXME : actually implement them !
+
+    testrun = ListTestRun([test], {"uri" : generator1})
+    #testrun.addTest(test2, {"filename" : generator2})
+
+    return testrun
+
+def fileparse_callback(option, opt, value, parser):
+    assert value is None
+    value = []
+    rargs = parser.rargs
+    while rargs:
+        arg = rargs[0]
+        if ((arg[:2] == "--" and len(arg) > 2) or
+            (arg[:1] == "-" and len(arg) > 1 and arg[1] != "-")):
+            break
+        else:
+            value.append(arg)
+            del rargs[0]
+
+    setattr(parser.values, option.dest, value)
+
+if __name__ == "__main__":
+    """ Run the given files with the given testscript """
+    # We should have arguments for choosing
+    # _ A top output directory (topdir)
+    # _ The list of tests to run
+    parser = OptionParser()
+    parser.add_option("-t", "--tests", dest="tests",
+                      action="callback", callback=fileparse_callback,
+                      help="test(s) to run on the given files",
+                      default=[])
+    parser.add_option("-f", "--files", dest="files",
+                      help="list of file and/or directories to test",
+                      action="callback", callback=fileparse_callback,
+                      default=[])
+    parser.add_option("-o", "--output", dest="output",
+                      help="top-level output directory (default: current)", metavar="DIRECTORY",
+                      default=None)
+    parser.add_option("-v", "--valgrind", dest="valgrind",
+                     help="Run within valgrind",
+                     action="store_true",
+                     default=False)
+    parser.add_option("-n", "--nonrecursive", dest="recursive",
+                      help="Don't go recursively in directories",
+                      action="store_false",
+                      default=True)
+    parser.add_option("-x", "--extreme", dest="extreme",
+                      help="Valgrind failed test (even without -v)",
+                      action="store_true",
+                      default=False)
+    parser.add_option("-d", "--debuglevel", dest="debuglevel", type="int",
+                      default=2, help="GStreamer debug level (default: 2)")
+    parser.add_option("-D", "--debuglevel2", dest="debuglevel2", type="int",
+                      default=5, help="GStreamer debug level for 2nd run (default: 5)")
+    parser.add_option("-a", "--accept", dest="accept",
+                      help="Coma-separated list of file extensions to limit the tests to.",
+                      default=None, metavar="EXTENSIONS")
+    parser.add_option("-e", "--exclude", dest="exclude",
+                      help="Coma-separated list of file extensions to exclude.",
+                      default=None, metavar="EXTENSIONS")
+    parser.add_option("-u", "--uncompressed-logs", dest="compressed",
+                      action="store_false", default=True,
+                      help="Don't compress debug logs")
+    parser.add_option("-s", "--subdirectory-name", dest="subdirectory",
+                      help="name of output sub-directory (default date)",
+                      default=None)
+    parser.add_option("-w", "--no-output", dest="weboutput",
+                      action="store_false", default=True,
+                      help="Do not automatically generate html outputs")
+    (options, args) = parser.parse_args(sys.argv[1:])
+    files = options.files
+    tests = options.tests
+    if options.accept:
+        acceptlist = options.accept.split(",")
+    else:
+        acceptlist = []
+    if options.exclude:
+        rejectlist = options.exclude.split(",")
+    else:
+        rejectlist = []
+    if not len(files) and not len(tests):
+        parser.print_help()
+        #print "\nAvailable tests are :", string.join(get_all_tests(), ", ")
+        sys.exit()
+    if not len(files):
+        print "No files/directories to test were given"
+    elif not len(tests):
+        print "No test was given"
+    elif not options.output == None and not os.path.isdir(options.output):
+        print "%s is not a valid directory" % options.output
+    else:
+        testrun = create_testrun(files, tests,
+                                 topdir=options.output,
+                                 recursive=options.recursive,
+                                 extreme=options.extreme,
+                                 valgrinding=options.valgrind,
+                                 debuglevel=options.debuglevel,
+                                 debuglevel2=options.debuglevel2,
+                                 acceptlist=acceptlist,
+                                 rejectlist=rejectlist,
+                                 compressed=options.compressed,
+                                 subdirectory=options.subdirectory,
+                                 weboutput=options.weboutput)
+        tester = GstMediaTestClient(testrun)
+        tester.run()
