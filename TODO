@@ -1,0 +1,36 @@
+GStreamer QA system
+
+TODO
+
+Milestone 1
+-----------
+Goal : Compatible behaviour as gst-media-test, but using the new API.
+
+* Monitor support
+ * GST_DEBUG monitor
+ * gdb/backtrace monitor
+
+* Scenario support
+ * If first test fails, redo it with higher debugging monitoring
+
+* Result storage support
+ * Pickle DB support
+
+* Reporting support
+
+
+Milestone 2
+-----------
+Goal : Database support
+
+* DB storage support
+* Remote DB storage support
+
+Milestone 3
+-----------
+Goal : Centralized scheduling/control system
+
+Milestone 4
+-----------
+Goal : Search/Query/Reporting centralized system
+
