@@ -45,10 +45,6 @@ import dbus.gobject_service
 ##
 ## TODO/FIXME
 ##
-## Add the possibility of being able to run several tests simultaneously
-## in order to speed up the testing process and make better use of
-## multi-core/cpu machines.
-##
 
 class TestRun(gobject.GObject):
     __gsignals__ = {
@@ -80,7 +76,10 @@ class TestRun(gobject.GObject):
                                  (gobject.TYPE_STRING, ))
         }
 
-    def __init__(self):
+    def __init__(self, maxnbtests=1):
+        """
+        maxnbtests : Maximum number of tests to run simultaneously in each batch.
+        """
         gobject.GObject.__init__(self)
         self._setupPrivateBus()
         self._tests = [] # list of (test, arguments, monitors)
@@ -88,7 +87,8 @@ class TestRun(gobject.GObject):
         self._currenttest = None
         self._currentmonitors = None
         self._currentarguments = None
-
+        self._runninginstances = []
+        self._maxnbtests = maxnbtests
 
     ## PUBLIC API
 
@@ -105,6 +105,8 @@ class TestRun(gobject.GObject):
         Abort the tests execution.
         """
         # TODO : fill
+        for test in self._runninginstances:
+            test.stop()
         self.emit("aborted")
 
     def setStorage(self, storage):
@@ -168,6 +170,8 @@ class TestRun(gobject.GObject):
              test, test.getSuccessPercentage())
         self.emit("single-test-done", test)
         # FIXME : Improvement : disconnect all signals from that test
+        if test in self._runninginstances:
+            self._runninginstances.remove(test)
         gobject.idle_add(self._runNext)
 
     def _singleTestCheck(self, test, check):
@@ -180,6 +184,9 @@ class TestRun(gobject.GObject):
         try:
             kwargs = self._currentarguments.next()
         except StopIteration:
+            if len(self._runninginstances):
+                info("No more arguments, but still a test running")
+                return False
             info("No more arguments, we're finished with this batch")
             self._runNextBatch()
             return False
@@ -198,10 +205,16 @@ class TestRun(gobject.GObject):
         test.connect("done", self._singleTestDone)
         test.connect("check", self._singleTestCheck)
 
+        # add instance to running tests
+        self._runninginstances.append(test)
+
         # apply monitors
         # start test
         test.run()
 
+        # if we can still create a new test, call ourself again
+        if len(self._runninginstances) < self._maxnbtests:
+            gobject.idle_add(self._runNext)
         return False
 
     def _runNextBatch(self):
@@ -242,8 +255,8 @@ class ListTestRun(TestRun):
     the same argument has completed successfully.
     """
 
-    def __init__(self, tests, arguments, monitors=[]):
-        TestRun.__init__(self)
+    def __init__(self, tests, arguments, monitors=[], *args, **kwargs):
+        TestRun.__init__(self, *args, **kwargs)
         for test in tests:
             self.addTest(test, arguments, monitors)
 

@@ -40,6 +40,3 @@ Goal : Search/Query/Reporting centralized system
 
 Non-milestone-specific / Bonus features
 ---------------------------------------
-* Simultaneous tests
- * Add a feature to TestRun in order to be able to run several tests
-   simultaneously.

@@ -120,6 +120,7 @@ class GstMediaTestClient(TesterClient):
         if isinstance(test, Scenario):
             for sub in test.tests:
                 self.printSingleTestResult(sub)
+            print "\n\n"
 
 def create_testrun(files, testscripts, recursive=True, topdir=None,
                    extreme=False, valgrinding=False,
@@ -162,7 +163,8 @@ def create_testrun(files, testscripts, recursive=True, topdir=None,
     testrun = ListTestRun([ListScenario],
                           {"uri" : generator1,
                            "subtest-list" : (IsMediaTest, PlaybinTest),
-                           "fatal-subtest-failure" : True})
+                           "fatal-subtest-failure" : True},
+                          maxnbtests=2)
     #testrun.addTest(test2, {"filename" : generator2})
 
     return testrun

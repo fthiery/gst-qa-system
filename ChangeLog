@@ -1,5 +1,16 @@
 2008-01-24  Edward Hervey  <edward.hervey@collabora.co.uk>
 
+	* gstqa/testrun.py:
+	Add option to run several tests simultaneously, helpful even to reduce
+	overall testrun duration when some tests timeout or when being on
+	multi-core/multi-cpu systems.
+	* TODO:
+	Remove item
+	* bin/gst-media-test:
+	Run 2 tests simultaneously
+
+2008-01-24  Edward Hervey  <edward.hervey@collabora.co.uk>
+
 	* gstqa/test.py:
 	Add timing extra-info to Test.
 
