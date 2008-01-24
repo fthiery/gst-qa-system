@@ -6,6 +6,10 @@ Milestone 1
 -----------
 Goal : Compatible behaviour as gst-media-test, but using the new API.
 
+* bin/gst-media-test
+ * document the usage
+ * make sure it can introspect the test names
+
 * Monitor support
  * GST_DEBUG monitor
  * gdb/backtrace monitor
@@ -17,7 +21,6 @@ Goal : Compatible behaviour as gst-media-test, but using the new API.
  * Pickle DB support
 
 * Reporting support
-
 
 Milestone 2
 -----------
@@ -34,3 +37,9 @@ Milestone 4
 -----------
 Goal : Search/Query/Reporting centralized system
 
+
+Non-milestone-specific / Bonus features
+---------------------------------------
+* Simultaneous tests
+ * Add a feature to TestRun in order to be able to run several tests
+   simultaneously.
