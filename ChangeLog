@@ -1,5 +1,11 @@
 2008-01-24  Edward Hervey  <edward.hervey@collabora.co.uk>
 
+	* gstqa/scenario.py:
+	Implement getSuccessPercentage() for Scenario, which is
+	the average of all sub-tests percentage.
+
+2008-01-24  Edward Hervey  <edward.hervey@collabora.co.uk>
+
 	* bin/gst-media-test:
 	Support for printing out results of scenarios.
 	* gstqa/scenario.py:

@@ -62,6 +62,14 @@ class Scenario(Test):
         # get the first test to run
         self._startNextSubTest()
 
+    def getSuccessPercentage(self):
+        if not self.tests:
+            return 0.0
+        res = reduce(lambda x, y: x+y, [z.getSuccessPercentage() for z in self.tests]) / len(self.tests)
+        return res
+
+    # private methods
+
     def _startNextSubTest(self):
         try:
             testclass, args, monitors = self._tests.pop(0)
