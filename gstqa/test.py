@@ -25,6 +25,7 @@ import gst
 import os
 import subprocess
 import signal
+import time
 import dbus
 import dbus.gobject_service
 
@@ -68,7 +69,10 @@ class Test(gobject.GObject):
     __test_arguments__ = { }
     __test_checklist__ = { "test-started":"The test started"}
     __test_timeout__ = 15
-    __test_extra_infos__ = {}
+    __test_extra_infos__ = {
+        "test-setup-duration" : "How long it took to setup the test (in seconds) for asynchronous tests",
+        "test-total-duration" : "How long it took to run the entire test (in seconds)"
+        }
 
     # Set to True if your setUp doesn't happen synchronously
     __async_setup__ = False
@@ -118,6 +122,8 @@ class Test(gobject.GObject):
         self.arguments["uuid"] = self.uuid
         self._asynctimeoutid = 0
         self._testtimeoutid = 0
+        self._asyncstarttime = 0
+        self._teststarttime = 0
 
     @classmethod
     def get_file(cls):
@@ -155,6 +161,7 @@ class Test(gobject.GObject):
 
     def run(self):
         # 1. setUp the test
+        self._teststarttime = time.time()
         if not self.setUp():
             error("Something went wrong during setup !")
             self.stop()
@@ -216,7 +223,9 @@ class Test(gobject.GObject):
             return
         info("STOPPING %r" % self)
         self._stopping = True
+        stoptime = time.time()
         self.tearDown()
+        self.extraInfo("test-total-duration", stoptime - self._teststarttime)
         self.emit("done")
 
     def start(self):
@@ -228,6 +237,8 @@ class Test(gobject.GObject):
         # if we were doing async setup, remove asyncsetup timeout
         if self.__async_setup__:
             gobject.source_remove(self._asynctimeoutid)
+            curtime = time.time()
+            self.extraInfo("test-setup-duration", curtime - self._teststarttime)
         self.emit("start")
         self.validateStep("test-started")
         # start timeout for test !

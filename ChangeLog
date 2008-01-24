@@ -1,5 +1,10 @@
 2008-01-24  Edward Hervey  <edward.hervey@collabora.co.uk>
 
+	* gstqa/test.py:
+	Add timing extra-info to Test.
+
+2008-01-24  Edward Hervey  <edward.hervey@collabora.co.uk>
+
 	* gstqa/scenario.py:
 	Implement getSuccessPercentage() for Scenario, which is
 	the average of all sub-tests percentage.
