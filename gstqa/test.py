@@ -52,14 +52,8 @@ Base Test Classes
 
 # TODO
 #
-# Allow aggregation of checklists and arguments definitions
-
-#
-# From a client point of view we need to know:
-# * what command to run (python-test-runner or something else)
-# * The checklist/name/descriptions/.... of the test
-# * The dbus session we're using to talk with the spawned process
-#
+# Make sure Scenarios can properly be a subclass of Test,
+#  if not ==> Create an intermediary class, generalize.
 
 class Test(gobject.GObject):
     """
@@ -368,6 +362,9 @@ class DBusTest(Test, dbus.service.Object):
     "dbus-process-spawned":"The DBus child process spawned itself",
     "dbus-process-connected":"The DBus child process connected properly to the private Bus",
     "remote-instance-created":"The remote version of this test was created properly"
+    }
+    __test_arguments__ = {
+    "bus_address":"The private DBUS address used for connections"
     }
     __async_setup__ = True
     ## Needed for dbus

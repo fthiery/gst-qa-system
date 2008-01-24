@@ -1,3 +1,15 @@
+2008-01-24  Edward Hervey  <edward.hervey@collabora.co.uk>
+
+	* bin/gst-media-test:
+	Support for printing out results of scenarios.
+	* gstqa/scenario.py:
+	Implement Scenario and ListScenario
+	* gstqa/test.py:
+	Add "bus_address" as valid DBusTest argument.
+	Updated local TODO.
+	* gstqa/testrun.py:
+	Comment.
+
 2008-01-24  Edward Hervey  <bilboed@gmail.com>
 
 	* TODO:

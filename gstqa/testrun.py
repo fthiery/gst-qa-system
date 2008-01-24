@@ -61,6 +61,8 @@ class TestRun(gobject.GObject):
         "aborted" : (gobject.SIGNAL_RUN_LAST,
                    gobject.TYPE_NONE,
                    ( )),
+        # a test started/ended
+        # Warning, it is not automatically a SingleTest
         "single-test-done" : (gobject.SIGNAL_RUN_LAST,
                               gobject.TYPE_NONE,
                               (gobject.TYPE_PYOBJECT, )),
