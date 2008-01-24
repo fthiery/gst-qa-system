@@ -1,3 +1,8 @@
+2008-01-24  Edward Hervey  <edward.hervey@collabora.co.uk>
+
+	* tests/ismedia.py:
+	Forgot header.
+
 2008-01-23  Edward Hervey  <edward.hervey@collabora.co.uk>
 
 	* docs/design.txt:

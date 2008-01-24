@@ -1,4 +1,9 @@
+# GStreamer QA system
 #
+#       tests/ismedia.py
+#
+# Copyright (c) 2008, Edward Hervey <bilboed@bilboed.com>
+##
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
 # License as published by the Free Software Foundation; either
