@@ -102,7 +102,7 @@ class Scenario(Test):
 
     # overridable methods
 
-    def setNextSubTest(self, testclass, arguments, monitors):
+    def addSubTest(self, testclass, arguments, monitors, position=-1):
         """
         testclass : a testclass to run next, can be a Scenario
         arguments : dictionnary of arguments
@@ -114,7 +114,10 @@ class Scenario(Test):
         args = {}
         for validkey in testclass.getFullArgumentList():
             args[validkey] = arguments[validkey]
-        self._tests.append((testclass, args, monitors))
+        if position == -1:
+            self._tests.append((testclass, args, monitors))
+        else:
+            self._tests.insert(position, (testclass, args, monitors))
 
     def subTestDone(self, subtest):
         """
@@ -151,9 +154,9 @@ class ListScenario(Scenario):
             return False
         # add the tests
         for subtest in self.arguments["subtest-list"]:
-            self.setNextSubTest(subtest,
-                                self.arguments,
-                                [])
+            self.addSubTest(subtest,
+                            self.arguments,
+                            [])
         return True
 
     def subTestDone(self, test):
