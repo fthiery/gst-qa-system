@@ -1,6 +1,7 @@
 2008-01-25  Edward Hervey  <bilboed@gmail.com>
 
 	* bin/gst-media-test:
+	Added "--verbose/-V" option to reduce output by default.
 	(GstMediaTestClient.printSingleTestResult): 
 	Beautify printout
 

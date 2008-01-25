@@ -85,9 +85,10 @@ class GstMediaTestClient(TesterClient):
     #
     # Some options might be difficult to reproduce with the new system.
 
-    def __init__(self, testrun):
+    def __init__(self, testrun, verbose=False):
         TesterClient.__init__(self, singlerun=True)
         self.addTestRun(testrun)
+        self._verbose = verbose
 
     def test_run_start(self, testrun):
         print "Starting", testrun
@@ -105,29 +106,29 @@ class GstMediaTestClient(TesterClient):
     def printSingleTestResult(self, test, offset=0):
         stub = " " * offset
         print stub, "Test %r is done (Success:%0.1f%%)" % (test, test.getSuccessPercentage())
-        # print out all details from test
-        print stub, "Arguments:"
-        ta = test.arguments
-        fa = test.getFullArgumentList()
-        for arg in fa:
-            print stub, "  %s : %s\t\t%s" % (arg, fa[arg], ta[arg])
-        # print results from test
-        print stub, "Results"
-        tc = test.getCheckList()
-        fc = test.getFullCheckList()
-        for c in fc:
-            print stub, "  %30s:%10s\t\t%s" % (c, tc[c], fc[c])
+        if self._verbose:
+            # print out all details from test
+            print stub, "Arguments:"
+            ta = test.arguments
+            fa = test.getFullArgumentList()
+            for arg in fa:
+                print stub, "  %s : %s\t\t%s" % (arg, fa[arg], ta[arg])
+            # print results from test
+            print stub, "Results"
+            tc = test.getCheckList()
+            fc = test.getFullCheckList()
+            for c in fc:
+                print stub, "  %30s:%10s\t\t%s" % (c, tc[c], fc[c])
 
-        infos = test.getExtraInfo()
-        if infos:
-            print stub, "Extra information:"
-        for extra in infos:
-            print stub, "  ", extra ," : ",  infos[extra]
+            infos = test.getExtraInfo()
+            if infos:
+                print stub, "Extra information:"
+            for extra in infos:
+                print stub, "  ", extra ," : ",  infos[extra]
         if isinstance(test, Scenario):
             for sub in test.tests:
                 print stub, "Sub Test"
                 self.printSingleTestResult(sub, offset=offset+4)
-                print "\n"
             print "\n"
 
 def create_testrun(files, testscripts, recursive=True, topdir=None,
@@ -213,6 +214,10 @@ if __name__ == "__main__":
                      help="Run within valgrind",
                      action="store_true",
                      default=False)
+    parser.add_option("-V", "--verbose", dest="verbose",
+                     help="Verbose output",
+                     action="store_true",
+                     default=False)
     parser.add_option("-n", "--nonrecursive", dest="recursive",
                       help="Don't go recursively in directories",
                       action="store_false",
@@ -274,5 +279,5 @@ if __name__ == "__main__":
                                  compressed=options.compressed,
                                  subdirectory=options.subdirectory,
                                  weboutput=options.weboutput)
-        tester = GstMediaTestClient(testrun)
+        tester = GstMediaTestClient(testrun, verbose=options.verbose)
         tester.run()
