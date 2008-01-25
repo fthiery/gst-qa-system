@@ -751,7 +751,7 @@ class GStreamerTest(PythonDBusTest):
         else:
             self.remoteExtraInfoSignal("errors", self._errors)
         if not self._tags == {}:
-            self.remoteExtraInfoSignal("tags", self._tags)
+            self.remoteExtraInfoSignal("tags", dbus.Dictionary(self._tags, signature="sv"))
 
     def remoteTest(self):
         # kickstart pipeline to initial state
