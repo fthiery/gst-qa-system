@@ -48,3 +48,14 @@ Non-milestone-specific / Bonus features
 * Namespace changing
  * Switch to instanity (Insanity / net.gstreamer.Insanity)
 
+* Smarter introspection
+ * Make __test_arguments__ have more information :
+  * name
+  * small description
+  * default value
+  * full documentation on that argument
+ * Make __test_checklist__ have more information :
+  * name
+  * small description
+  * full documentation , especially explaining what could have caused
+    that step to not be validated, to make debugging/fixing easier.
