@@ -1,5 +1,3 @@
-#!/bin/env python
-
 # GStreamer QA system
 #
 #       tests/scenario/mediascenario.py
