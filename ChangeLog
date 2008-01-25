@@ -1,5 +1,9 @@
 2008-01-25  Edward Hervey  <bilboed@gmail.com>
 
+	* bin/gst-media-test:
+	(GstMediaTestClient.printSingleTestResult): 
+	Beautify printout
+
 	* gstqa/test.py: (GStreamerTest.remoteTearDown): 
 	Specify dictionnary type to avoid serialization issues.
 

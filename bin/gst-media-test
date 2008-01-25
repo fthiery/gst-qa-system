@@ -102,25 +102,33 @@ class GstMediaTestClient(TesterClient):
     def _singleTestDoneCb(self, testrun, test):
         self.printSingleTestResult(test)
 
-    def printSingleTestResult(self, test):
-        print "Test %r is done (Success:%0.1f%%)" % (test, test.getSuccessPercentage())
+    def printSingleTestResult(self, test, offset=0):
+        stub = " " * offset
+        print stub, "Test %r is done (Success:%0.1f%%)" % (test, test.getSuccessPercentage())
         # print out all details from test
+        print stub, "Arguments:"
         ta = test.arguments
         fa = test.getFullArgumentList()
         for arg in fa:
-            print "%s:%s\t\t%s" % (arg, fa[arg], ta[arg])
+            print stub, "  %s : %s\t\t%s" % (arg, fa[arg], ta[arg])
         # print results from test
+        print stub, "Results"
         tc = test.getCheckList()
         fc = test.getFullCheckList()
         for c in fc:
-            print "%50s:%10s\t\t%s" % (c, tc[c], fc[c])
+            print stub, "  %30s:%10s\t\t%s" % (c, tc[c], fc[c])
+
         infos = test.getExtraInfo()
+        if infos:
+            print stub, "Extra information:"
         for extra in infos:
-            print extra , infos[extra]
+            print stub, "  ", extra ," : ",  infos[extra]
         if isinstance(test, Scenario):
             for sub in test.tests:
-                self.printSingleTestResult(sub)
-            print "\n\n"
+                print stub, "Sub Test"
+                self.printSingleTestResult(sub, offset=offset+4)
+                print "\n"
+            print "\n"
 
 def create_testrun(files, testscripts, recursive=True, topdir=None,
                    extreme=False, valgrinding=False,
