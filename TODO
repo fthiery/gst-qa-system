@@ -40,3 +40,11 @@ Goal : Search/Query/Reporting centralized system
 
 Non-milestone-specific / Bonus features
 ---------------------------------------
+* Speed optimizations
+ * DBusRemoteTest : Add features so that, for some tests, we don't spawn a new
+   remote process for every instance, but instead reuse existing ones (and
+   re-spawning new instances if that one crashes).
+
+* Namespace changing
+ * Switch to instanity (Insanity / net.gstreamer.Insanity)
+

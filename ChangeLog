@@ -1,3 +1,10 @@
+2008-01-25  Edward Hervey  <bilboed@gmail.com>
+
+	* TODO:
+	Add more items.
+	* docs/TODO:
+	move information from docs/TODO to TODO
+
 2008-01-24  Edward Hervey  <edward.hervey@collabora.co.uk>
 
 	* gstqa/testrun.py:
