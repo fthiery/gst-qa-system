@@ -1,3 +1,8 @@
+2008-01-30  Edward Hervey  <bilboed@gmail.com>
+
+	* docs/database-scheme:
+	Added basic database scheme, still incomplete.
+
 2008-01-25  Edward Hervey  <bilboed@gmail.com>
 
 	* bin/gst-media-test:
