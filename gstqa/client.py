@@ -58,8 +58,10 @@ class TesterClient(dbus.service.Object):
     """
     Base class for Tester clients
     """
+    __software_name__ = """USER FORGOT TO PUT CLIENT NAME"""
 
-    def __init__(self, singlerun=False, *args, **kwargs):
+    def __init__(self, singlerun=False, storage=None,
+                 *args, **kwargs):
         dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
         info("starting")
         self._ml = gobject.MainLoop()
@@ -69,6 +71,7 @@ class TesterClient(dbus.service.Object):
         dbus.service.Object.__init__(self, self._bus, "/here")
         self._testruns = []
         self._storage = None
+        self.setStorage(storage)
         # _current is the current TestRun being executed
         self._current = None
         # _running is True if the mainloop is running
@@ -109,7 +112,16 @@ class TesterClient(dbus.service.Object):
         """
         Specify the DataStorage to use with this client
         """
+        if self._storage:
+            # disconnect gracefully
+            pass
+        if storage == None:
+            # Yes, default is sqlitestorage !
+            from storage.sqlite import SQLiteStorage
+            storage = SQLiteStorage(path="testrun.db")
         self._storage = storage
+        # give client info, this can always be modified later on
+        self._storage.setClientInfo(self.__software_name__, "", "")
 
     def _runNext(self):
         """
@@ -182,9 +194,3 @@ class TesterClient(dbus.service.Object):
     def test_run_aborted(self, testrun):
         pass
 
-    # DEBUG : REMOVE ME !
-    # DEBUG : REMOVE ME !
-    @dbus.service.method(dbus_interface='net.gstreamer.Insanity',
-                         in_signature='', out_signature='')
-    def nothing(self):
-        print "Nothing !!!"

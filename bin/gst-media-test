@@ -42,6 +42,7 @@ from gstqa.test import PythonDBusTest
 from gstqa.testrun import ListTestRun
 from tests.playbin import PlaybinTest
 from tests.ismedia import IsMediaTest
+from tests.scenarios.mediascenario import MediaBarrierScenario
 
 class GstMediaTestScenario(Scenario):
     """
@@ -79,6 +80,7 @@ class FakeFileTest(PythonDBusTest):
 
 class GstMediaTestClient(TesterClient):
 
+    __software_name__ = """gst-media-test"""
     # simulate the behaviour of the previous gst-media-test
     #
     # Here we only run for one TestRun and then exit
@@ -94,8 +96,9 @@ class GstMediaTestClient(TesterClient):
         print "Starting", testrun
         testrun.connect("single-test-done", self._singleTestDoneCb)
 
-    def test_run_stop(self, testrun):
-        print "Stopping", testrun
+    def test_run_done(self, testrun):
+        print "Done with", testrun
+        print self._storage.listTestRuns()
 
     def test_run_aborted(self, testrun):
         print "Aborted", testrun
@@ -169,9 +172,9 @@ def create_testrun(files, testscripts, recursive=True, topdir=None,
     # FIXME : actually implement them !
 
     #testrun = ListTestRun([test], {"uri" : generator1})
-    testrun = ListTestRun([ListScenario],
+    testrun = ListTestRun([MediaBarrierScenario],
                           {"uri" : generator1,
-                           "subtest-list" : (IsMediaTest, PlaybinTest),
+                           "subtest-list" : [PlaybinTest],
                            "fatal-subtest-failure" : True},
                           maxnbtests=2)
     #testrun.addTest(test2, {"filename" : generator2})

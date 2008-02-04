@@ -16,13 +16,14 @@ Description of tables
 ---------------------
 
 * Environment
- * testrun-id : 'id' of TestRun this entry is related to
+ * testrunid : 'id' of TestRun this entry is related to
  * data : dictionnary of information
 
 
 * TestRun
  * id : Primary unique key
- * client-id : 'id' of the Client on which this TestRun was executed.
+ * clientid : 'id' of the Client on which this TestRun was executed.
+ * starttime : Start time of the testrun in seconds since epoch
 
 
 * Client
@@ -32,11 +33,11 @@ Description of tables
 
 * Test
  * id : Primary unique key
- * testrun-id : 'id' of TestRun in which this test was executed.
+ * testrunid : 'id' of TestRun in which this test was executed.
  * type : string of the type of the test (related to TestClassInfo).
  * arguments : dictionnary of the arguments used
  * results : dictionnary of the checklist
- * result-percentage : float value of success of the above results
+ * resultpercentage : float value of success of the above results
  * extra-info : dictionnary of extra information
 
 * Scenario
@@ -49,7 +50,7 @@ Description of tables
  * description : description of the test
  * arguments : arguments
  * checklist : 
- * extra-info : 
+ * extrainfo : 
 
 
 TODO :

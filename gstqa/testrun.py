@@ -36,6 +36,7 @@ Access to the TestRun from test instances will be possible via DBus IPC.
 """
 
 import gobject
+import time
 from log import critical, error, warning, debug, info
 from test import Test
 from arguments import Arguments
@@ -89,6 +90,8 @@ class TestRun(gobject.GObject):
         self._currentarguments = None
         self._runninginstances = []
         self._maxnbtests = maxnbtests
+        self._starttime = None
+        self._stoptime = None
 
     ## PUBLIC API
 
@@ -97,7 +100,9 @@ class TestRun(gobject.GObject):
         Start executing the tests.
         """
         self.emit("start")
+        self._starttime = int(time.time())
         self._collectEnvironment()
+        self._storage.startNewTestRun(self)
         gobject.idle_add(self._runNextBatch)
 
     def abort(self):
@@ -222,6 +227,8 @@ class TestRun(gobject.GObject):
         if len(self._tests) == 0:
             # if nothing left, stop
             info("No more tests batch to run, we're done")
+            self._stoptime = int(time.time())
+            self._storage.endTestRun(self)
             self.emit("done")
             return False
 

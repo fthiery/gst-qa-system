@@ -2,7 +2,7 @@
 #
 #       storage.py
 #
-# Copyright (c) 2007, Edward Hervey <bilboed@bilboed.com>
+# Copyright (c) 2008, Edward Hervey <bilboed@bilboed.com>
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -27,7 +27,47 @@ class DataStorage:
     """
     Base class for storing data
     """
-    pass
+    def __init__(self):
+        self.setUp()
+
+    def setUp(self):
+        raise NotImplementedError
+
+    # public storage API
+
+    def setClientInfo(self, softwarename, clientname, user):
+        pass
+
+    def startNewTestRun(self, testrun):
+        # create new entry in testrun table
+        pass
+
+    def endTestRun(self, testrun):
+        # mark the testrun as closed and done
+        pass
+
+    def newTestStarted(self, testrun, test):
+        # create new entry in tests table
+        pass
+
+    def newTestFinished(self, testrun, test):
+        pass
+
+    # public retrieval API
+    def listTestRuns(self):
+        """
+        Returns the list of testruns ID currently available
+        """
+        pass
+
+    def getTestRun(self, testrunid):
+        pass
+
+    def getClientInfoForTestRun(self, testrunid):
+        pass
+
+    # methods to implement in subclasses
+
 
 class FileStorage(DataStorage):
     """
@@ -35,15 +75,10 @@ class FileStorage(DataStorage):
 
     Don't use this class directly, but one of its subclasses
     """
-    # properties:
-    # * file
-    pass
 
-class PickleFileStorage(FileStorage):
-    """
-    Stores data to a file in python pickle format
-    """
-    pass
+    def __init__(self, path, *args, **kwargs):
+        self.path=path
+        DataStorage.__init__(self, *args, **kwargs)
 
 class NetworkStorage(DataStorage):
     """
@@ -56,10 +91,22 @@ class NetworkStorage(DataStorage):
     # * port
     pass
 
-class DBStorage(DataStorage):
+class DBStorage(FileStorage):
     """
     Stores data in a database
 
     Don't use this class directly, but one of its subclasses
     """
-    pass
+
+    def setUp(self):
+        # open database
+        self.openDatabase()
+
+        # createTables if needed
+        self.createTables()
+
+    def openDatabase(self):
+        raise NotImplementedError
+
+    def createTables(self):
+        raise NotImplementedError
