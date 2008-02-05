@@ -169,6 +169,7 @@ class TestRun(gobject.GObject):
     def _singleTestStart(self, test):
         info("test %r started", test)
         self.emit("single-test-start", test)
+        self._storage.newTestStarted(self, test)
 
     def _singleTestDone(self, test):
         info("Done with test %r , success rate %02f%%",
@@ -177,6 +178,7 @@ class TestRun(gobject.GObject):
         # FIXME : Improvement : disconnect all signals from that test
         if test in self._runninginstances:
             self._runninginstances.remove(test)
+        self._storage.newTestFinished(self, test)
         gobject.idle_add(self._runNext)
 
     def _singleTestCheck(self, test, check):

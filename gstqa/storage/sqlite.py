@@ -23,6 +23,7 @@
 SQLite based DataStorage
 """
 
+from weakref import WeakKeyDictionary
 from gstqa.log import critical, error, warning, debug, info
 from gstqa.storage.storage import DBStorage
 from pysqlite2 import dbapi2 as sqlite
@@ -78,6 +79,11 @@ CREATE TABLE testclassinfo (
 );
 """
 
+#
+# FIXME / WARNING
+# The current implementation only supports handling of one testrun at a time !
+#
+
 class SQLiteStorage(DBStorage):
     """
     Stores data in a sqlite db
@@ -88,6 +94,7 @@ class SQLiteStorage(DBStorage):
         self.__clientid = None
         self.__testrunid = None
         self.__testrun = None
+        self.__tests = WeakKeyDictionary()
 
     def openDatabase(self):
         debug("opening sqlite db for path '%s'", self.path)
@@ -158,6 +165,7 @@ class SQLiteStorage(DBStorage):
 
     def startNewTestRun(self, testrun):
         # create new testrun entry with client entry
+        debug("testrun:%r", testrun)
         if not self.__clientid:
             raise Exception("Please specify client information before starting the testruns")
         if self.__testrun:
@@ -175,6 +183,32 @@ class SQLiteStorage(DBStorage):
         updatestr = "UPDATE testrun SET stoptime=? WHERE id=?"
         self._ExecuteCommit(updatestr, (testrun._stoptime, self.__testrunid))
         debug("updated")
+
+    def newTestStarted(self, testrun, test):
+        if not self.__testrun == testrun:
+            self.startNewTestRun(testrun)
+        debug("test:%r", test)
+        insertstr = "INSERT INTO test (id, testrunid, type) VALUES (NULL, ?, ?)"
+        testid = self._ExecuteCommit(insertstr, (self.__testrunid, test.__test_name__))
+        debug("got testid %d", testid)
+        self.__tests[test] = testid
+
+    def newTestFinished(self, testrun, test):
+        if not self.__testrun == testrun:
+            self.startNewTestRun(testrun)
+        if not self.__tests[test]:
+            self.newTestStarted(testrun, test)
+        debug("test:%r", test)
+        updatestr = "UPDATE test SET arguments=?,results=?,resultpercentage=?,extrainfo=? WHERE id=?"
+        # FIXME : TEMPORARY SERIALIZATION !!!
+        # Put a proper serialization method
+        args = repr(test.arguments)
+        results = repr(test.getCheckList())
+        resultpercentage = test.getSuccessPercentage()
+        extrainfo = repr(test.getExtraInfo())
+        self._ExecuteCommit(updatestr, (args, results,
+                                        resultpercentage, extrainfo,
+                                        self.__tests[test]))
 
     # public retrieval API
 
@@ -195,3 +229,9 @@ class SQLiteStorage(DBStorage):
             warning("More than one testrun with the same id ! Fix DB !!")
             return (None, None, None)
         return res[0]
+
+    def getTestsForTestRun(self, testrunid):
+        debug("testrunid:%d", testrunid)
+        liststr = "SELECT id FROM test WHERE testrunid=?"
+        res = self._FetchAll(liststr, (testrunid, ))
+        return list(zip(*res)[0])

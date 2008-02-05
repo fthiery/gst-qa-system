@@ -70,6 +70,12 @@ class DataStorage:
         """
         pass
 
+    def getTestsForTestRun(self, testrunid):
+        """
+        Returns the list of testid for the given testrunid
+        """
+        pass
+
     def getClientInfoForTestRun(self, testrunid):
         pass
 

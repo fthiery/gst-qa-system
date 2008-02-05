@@ -105,6 +105,7 @@ class GstMediaTestClient(TesterClient):
             print "TestRun #%d from client %d" % (key, clientid)
             print "\tStart:", time.ctime(starttime)
             print "\tStop:", time.ctime(stoptime)
+            print "\tNb tests:", len(self._storage.getTestsForTestRun(key))
             print "\n"
 
     def test_run_aborted(self, testrun):
