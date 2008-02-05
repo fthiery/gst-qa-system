@@ -173,13 +173,25 @@ class SQLiteStorage(DBStorage):
             # add the testrun since it wasn't done before
             self.startNewTestRun(testrun)
         updatestr = "UPDATE testrun SET stoptime=? WHERE id=?"
-        self._ExecuteCommit(updatestr, (self.__testrunid, testrun._stoptime))
+        self._ExecuteCommit(updatestr, (testrun._stoptime, self.__testrunid))
         debug("updated")
 
     # public retrieval API
 
     def listTestRuns(self):
-        liststr = "SELECT id from testrun"
+        liststr = "SELECT id FROM testrun"
         res = self._FetchAll(liststr)
         debug("Got %d testruns", len(res))
         return list(zip(*res)[0])
+
+    def getTestRun(self, testrunid):
+        debug("testrunid:%d", testrunid)
+        liststr = "SELECT clientid,starttime,stoptime FROM testrun WHERE id=?"
+        res = self._FetchAll(liststr, (testrunid, ))
+        if len(res) == 0:
+            debug("Testrun not available in DB")
+            return (None, None, None)
+        if len(res) > 1:
+            warning("More than one testrun with the same id ! Fix DB !!")
+            return (None, None, None)
+        return res[0]

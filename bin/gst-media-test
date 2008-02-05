@@ -34,6 +34,7 @@ Attempts to simulate the behaviour of the (now deprecated) gst-media-test
 
 import sys
 import string
+import time
 from optparse import OptionParser
 from gstqa.client import TesterClient
 from gstqa.scenario import Scenario, ListScenario
@@ -98,7 +99,13 @@ class GstMediaTestClient(TesterClient):
 
     def test_run_done(self, testrun):
         print "Done with", testrun
-        print self._storage.listTestRuns()
+        ids = self._storage.listTestRuns()
+        for key in ids:
+            clientid, starttime, stoptime = self._storage.getTestRun(key)
+            print "TestRun #%d from client %d" % (key, clientid)
+            print "\tStart:", time.ctime(starttime)
+            print "\tStop:", time.ctime(stoptime)
+            print "\n"
 
     def test_run_aborted(self, testrun):
         print "Aborted", testrun

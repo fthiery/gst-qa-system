@@ -61,6 +61,13 @@ class DataStorage:
         pass
 
     def getTestRun(self, testrunid):
+        """
+        Returns a tuple containing the information about the given testrun.
+        (clientid, starttime, stoptime)
+
+        If the testrun doesn't exist, it will return the following tuple:
+        (None, None, None)
+        """
         pass
 
     def getClientInfoForTestRun(self, testrunid):
