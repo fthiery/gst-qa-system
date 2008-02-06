@@ -103,6 +103,8 @@ class GstMediaTestClient(TesterClient):
         for key in ids:
             clientid, starttime, stoptime = self._storage.getTestRun(key)
             print "TestRun #%d from client %d" % (key, clientid)
+            softw,name,user = self._storage.getClientInfoForTestRun(key)
+            print "\t\tsoftware:%s,name:%s,user:%s" % (softw,name,user)
             print "\tStart:", time.ctime(starttime)
             print "\tStop:", time.ctime(stoptime)
             print "\tNb tests:", len(self._storage.getTestsForTestRun(key))

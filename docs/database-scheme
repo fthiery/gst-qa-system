@@ -10,7 +10,7 @@ List of tables
  * Test
  * Scenario
  * TestClassInfo
-
+ * version
 
 Description of tables
 ---------------------
@@ -23,12 +23,15 @@ Description of tables
 * TestRun
  * id : Primary unique key
  * clientid : 'id' of the Client on which this TestRun was executed.
- * starttime : Start time of the testrun in seconds since epoch
-
+ * starttime : Start time of the testrun in seconds since Epoch.
+ * stoptime : Stop time of the testrun in seconds since Epoch.
 
 * Client
  * id : Primary unique key
- * ....  FIXME : Figure out what the needed information is.
+ * software : Name of the client software used
+ * name : Name of the client machine (ex: collabora-amd64-gentoo, ...)
+ * user : Identification of the user (most likely email)
+ * ....  FIXME : Figure out what more information is needed.
 
 
 * Test
@@ -38,7 +41,7 @@ Description of tables
  * arguments : dictionnary of the arguments used
  * results : dictionnary of the checklist
  * resultpercentage : float value of success of the above results
- * extra-info : dictionnary of extra information
+ * extrainfo : dictionnary of extra information
 
 * Scenario
  (Same columns as above +)
@@ -52,6 +55,10 @@ Description of tables
  * checklist : 
  * extrainfo : 
 
+* version
+ * version : version of the database scheme
+ * modificationtime : modification time of the database to the current
+	scheme in seconds since Epoch.
 
 TODO :
 ------

@@ -23,12 +23,18 @@
 SQLite based DataStorage
 """
 
+import time
 from weakref import WeakKeyDictionary
 from gstqa.log import critical, error, warning, debug, info
 from gstqa.storage.storage import DBStorage
 from pysqlite2 import dbapi2 as sqlite
 
 TABLECREATION = """
+CREATE TABLE version (
+   version INTEGER,
+   modificationtime INTEGER
+);
+
 CREATE TABLE testrun (
    id INTEGER PRIMARY KEY,
    clientid INTEGER,
@@ -52,10 +58,10 @@ CREATE TABLE test (
    id INTEGER PRIMARY KEY,
    testrunid INTEGER,
    type TEXT,
-   arguments BLOB,
-   results BLOB,
+   arguments INTEGER,
+   results INTEGER,
    resultpercentage FLOAT,
-   extrainfo BLOB
+   extrainfo INTEGER
 );
 
 CREATE TABLE scenario (
@@ -77,7 +83,59 @@ CREATE TABLE testclassinfo (
    checklist BLOB,
    extrainfo BLOB
 );
+
+CREATE TABLE dicts (
+   id INTEGER PRIMARY KEY
+);
+
+CREATE TABLE argumentsdicts (
+   dictid INTEGER,
+   keyid INTEGER,
+   type INTEGER
+);
+
+CREATE TABLE extrainfodicts (
+   dictid INTEGER,
+   keyid INTEGER,
+   type INTEGER
+);
+
+CREATE TABLE environdicts (
+   dictid INTEGER,
+   keyid INTEGER,
+   type INTEGER
+);
+
+CREATE TABLE checklistdicts (
+   dictid INTEGER,
+   keyid INTEGER,
+   type INTEGER
+);
+
+CREATE TABLE dictstr (
+   id INTEGER PRIMARY KEY,
+   name STRING,
+   value STRING
+);
+
+CREATE TABLE dictint (
+   id INTEGER PRIMARY KEY,
+   name STRING,
+   value INTEGER
+);
+
+CREATE TABLE dictblob (
+   id INTEGER PRIMARY KEY,
+   name STRING,
+   value BLOB
+);
 """
+
+DATABASE_VERSION = 1
+
+DATA_TYPE_INT = 0
+DATA_TYPE_STR = 1
+DATA_TYPE_BLOB = 2
 
 #
 # FIXME / WARNING
@@ -109,6 +167,9 @@ class SQLiteStorage(DBStorage):
         self.con.commit()
         if self._checkForTables() == False:
             error("Tables were not created properly !!")
+        # add database version
+        self._ExecuteCommit("INSERT INTO version (version, modificationtime) VALUES (?, ?)",
+                            (DATABASE_VERSION, int(time.time())))
         debug("Tables properly created")
 
     def _checkForTables(self):
@@ -141,6 +202,63 @@ class SQLiteStorage(DBStorage):
         cur = self.con.cursor()
         cur.execute(instruction, *args, **kwargs)
         return cur.fetchall()
+
+    # dictionnary storage methods
+    def _conformDict(self, dict):
+        # transforms the dictionnary values to types compatible with
+        # the DB storage format
+        res = {}
+        for key,value in dict.iteritems():
+            if isinstance(value, int):
+                res[key] = long(value)
+            else:
+                res[key] = value
+        return res
+
+    def _storeDict(self, dicttable, dict):
+        # get a unique dict key id
+        insertstr = "INSERT INTO dicts VALUES (NULL)"
+        dictid = self._ExecuteCommit(insertstr)
+        debug("Got key id %d to insert in table %s", dictid, dicttable)
+
+        dict = self._conformDict(dict)
+
+        # figure out which values to add to which tables
+        strs = []
+        ints = []
+        blobs = []
+        insertstr = "INSERT INTO %s (id, name, value) VALUES (NULL, ?, ?)"
+        for key,value in dict.iteritems():
+            debug("Adding key:%s , value:%r", key, value)
+            if isinstance(value, int):
+                comstr = insertstr % "dictint"
+                lst = ints
+            elif isinstance(value, basestring):
+                comstr = insertstr % "dictstr"
+                lst = strs
+            else:
+                comstr = insertstr % "dictblob"
+                lst = blobs
+            lst.append(self._ExecuteCommit(comstr, (key, value)))
+
+        # Now add the various values to the dicttable
+        insertstr = "INSERT INTO %s (dictid, keyid, type) VALUES (? , ?, ?)" % dicttable
+        for keyid in ints:
+            self._ExecuteCommit(insertstr, (dictid, keyid, DATA_TYPE_INT))
+        for keyid in strs:
+            self._ExecuteCommit(insertstr, (dictid, keyid, DATA_TYPE_STR))
+        for keyid in blobs:
+            self._ExecuteCommit(insertstr, (dictid, keyid, DATA_TYPE_BLOB))
+        return dictid
+
+    def _storeArgumentsDict(self, dict):
+        return self._storeDict("argumentsdicts", dict)
+
+    def _storeCheckListDict(self, dict):
+        return self._storeDict("checklistdicts", dict)
+
+    def _storeExtraInfoDict(self, dict):
+        return self._storeDict("extrainfodicts", dict)
 
     # public storage API
 
@@ -202,15 +320,22 @@ class SQLiteStorage(DBStorage):
         updatestr = "UPDATE test SET arguments=?,results=?,resultpercentage=?,extrainfo=? WHERE id=?"
         # FIXME : TEMPORARY SERIALIZATION !!!
         # Put a proper serialization method
-        args = repr(test.arguments)
-        results = repr(test.getCheckList())
         resultpercentage = test.getSuccessPercentage()
-        extrainfo = repr(test.getExtraInfo())
-        self._ExecuteCommit(updatestr, (args, results,
-                                        resultpercentage, extrainfo,
+        resultsid = self._storeCheckListDict(test.getCheckList())
+        argsid = self._storeArgumentsDict(test.getArguments())
+        extrainfoid = self._storeExtraInfoDict(test.getExtraInfo())
+        self._ExecuteCommit(updatestr, (argsid, resultsid,
+                                        resultpercentage,
+                                        extrainfoid,
                                         self.__tests[test]))
 
     # public retrieval API
+
+    def getClientInfoForTestRun(self, testrunid):
+        debug("testrunid:%d", testrunid)
+        liststr = "SELECT client.software,client.name,client.user FROM client,testrun WHERE client.id=testrun.clientid AND testrun.id=?"
+        res = self._FetchAll(liststr, (testrunid,))
+        return res[0]
 
     def listTestRuns(self):
         liststr = "SELECT id FROM testrun"
