@@ -28,6 +28,7 @@ import signal
 import time
 import dbus
 import dbus.gobject_service
+from dbustools import unwrap
 
 from log import critical, error, warning, debug, info
 import utils
@@ -588,11 +589,11 @@ class DBusTest(Test, dbus.service.Object):
 
     def _remoteValidateStepCb(self, step):
         info("%s step:%s", self.uuid, step)
-        self.validateStep(step)
+        self.validateStep(unwrap(step))
 
     def _remoteExtraInfoCb(self, key, value):
         info("%s key:%s value:%r", self.uuid, key, value)
-        self.extraInfo(key, value)
+        self.extraInfo(unwrap(key), unwrap(value))
 
     ## Remote DBUS calls
     @dbus.service.method(dbus_interface="net.gstreamer.Insanity.Test",
