@@ -27,7 +27,10 @@ import time
 from weakref import WeakKeyDictionary
 from gstqa.log import critical, error, warning, debug, info
 from gstqa.storage.storage import DBStorage
+from gstqa.scenario import Scenario
+from gstqa.test import Test
 from pysqlite2 import dbapi2 as sqlite
+from cPickle import dumps
 
 TABLECREATION = """
 CREATE TABLE version (
@@ -64,15 +67,9 @@ CREATE TABLE test (
    extrainfo INTEGER
 );
 
-CREATE TABLE scenario (
-   id INTEGER PRIMARY KEY,
-   testrunid INTEGER,
-   type TEXT,
-   arguments BLOB,
-   results BLOB,
-   resultpercentage FLOAT,
-   extrainfo BLOB,
-   subtests BLOB
+CREATE TABLE subtests (
+   testid INTEGER PRIMARY KEY,
+   scenarioid INTEGER
 );
 
 CREATE TABLE testclassinfo (
@@ -131,6 +128,7 @@ CREATE TABLE dictblob (
 );
 """
 
+# Current database version
 DATABASE_VERSION = 1
 
 DATA_TYPE_INT = 0
@@ -183,8 +181,11 @@ class SQLiteStorage(DBStorage):
         if len(tables) == 0:
             return False
         # FIXME : Really check if all tables are present
-        for tblname in ["testrun", "environment", "client", "test",
-                        "scenario", "testclassinfo"]:
+        for tblname in ["version", "testrun", "environment", "client",
+                        "test", "subtests", "testclassinfo", "dicts",
+                        "argumentsdicts", "extrainfodicts",
+                        "environdicts", "checklistdicts",
+                        "dictstr", "dictint", "dictblob"]:
             if not tblname in tables:
                 return False
         return True
@@ -209,10 +210,7 @@ class SQLiteStorage(DBStorage):
         # the DB storage format
         res = {}
         for key,value in dict.iteritems():
-            if isinstance(value, int):
-                res[key] = long(value)
-            else:
-                res[key] = value
+            res[key] = value
         return res
 
     def _storeDict(self, dicttable, dict):
@@ -239,7 +237,7 @@ class SQLiteStorage(DBStorage):
             else:
                 comstr = insertstr % "dictblob"
                 lst = blobs
-            lst.append(self._ExecuteCommit(comstr, (key, value)))
+            lst.append(self._ExecuteCommit(comstr, (key, dumps(value))))
 
         # Now add the various values to the dicttable
         insertstr = "INSERT INTO %s (dictid, keyid, type) VALUES (? , ?, ?)" % dicttable
@@ -259,6 +257,8 @@ class SQLiteStorage(DBStorage):
 
     def _storeExtraInfoDict(self, dict):
         return self._storeDict("extrainfodicts", dict)
+
+
 
     # public storage API
 
@@ -303,6 +303,8 @@ class SQLiteStorage(DBStorage):
         debug("updated")
 
     def newTestStarted(self, testrun, test):
+        if not isinstance(test, Test):
+            raise TypeError("test isn't a Test instance !")
         if not self.__testrun == testrun:
             self.startNewTestRun(testrun)
         debug("test:%r", test)
@@ -311,16 +313,25 @@ class SQLiteStorage(DBStorage):
         debug("got testid %d", testid)
         self.__tests[test] = testid
 
+
     def newTestFinished(self, testrun, test):
         if not self.__testrun == testrun:
             self.startNewTestRun(testrun)
-        if not self.__tests[test]:
+        if not self.__tests.has_key(test):
             self.newTestStarted(testrun, test)
         debug("test:%r", test)
+        # if it's a scenario, fill up the subtests
+        if isinstance(test, Scenario):
+            sublist = []
+            for sub in test.tests:
+                self.newTestFinished(testrun, sub)
+            # now add those to the subtests table
+            insertstr = "INSERT INTO subtests (testid, scenarioid) VALUES (?,?)"
+            for sub in test.tests:
+                self._ExecuteCommit(insertstr, (self.__tests[sub],
+                                                self.__tests[test]))
         updatestr = "UPDATE test SET arguments=?,results=?,resultpercentage=?,extrainfo=? WHERE id=?"
-        # FIXME : TEMPORARY SERIALIZATION !!!
-        # Put a proper serialization method
-        resultpercentage = test.getSuccessPercentage()
+        resultpercentage = int(test.getSuccessPercentage())
         resultsid = self._storeCheckListDict(test.getCheckList())
         argsid = self._storeArgumentsDict(test.getArguments())
         extrainfoid = self._storeExtraInfoDict(test.getExtraInfo())
@@ -328,6 +339,8 @@ class SQLiteStorage(DBStorage):
                                         resultpercentage,
                                         extrainfoid,
                                         self.__tests[test]))
+
+
 
     # public retrieval API
 
