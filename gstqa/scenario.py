@@ -131,6 +131,12 @@ class Scenario(Test):
 
     # implement Test methods
 
+    def getArguments(self):
+        d = {}
+        for sub in self.tests:
+            d.update(sub.getArguments())
+        return d
+
     # setUp
     # tearDown
     # stop

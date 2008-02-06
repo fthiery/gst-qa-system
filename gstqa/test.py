@@ -328,6 +328,17 @@ class Test(gobject.GObject):
         """
         return self._checklist
 
+    def getArguments(self):
+        """
+        Returns the list of arguments for the given test
+        """
+        validkeys = self.getFullArgumentList().keys()
+        res = {}
+        for key in self.arguments.iterkeys():
+            if key in validkeys:
+                res[key] = self.arguments[key]
+        return res
+
     def getSuccessPercentage(self):
         """
         Returns the success rate of this instance as a float
