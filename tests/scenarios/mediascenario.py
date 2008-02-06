@@ -28,6 +28,12 @@ from tests.ismedia import IsMediaTest
 
 class MediaBarrierScenario(ListScenario):
 
+    __test_name__ = """media-barrier-scenario"""
+    __test_description__ = """
+    This scenario will first check the mime-type of the given uri/file
+    and if it is not a useable media type, will return without executing
+    the given tests.
+    """
     __non_media_types__ = [
         "application/x-rar",
         "application/zip",

@@ -132,7 +132,7 @@ class Scenario(Test):
     # implement Test methods
 
     def getArguments(self):
-        d = {}
+        d = Test.getArguments(self)
         for sub in self.tests:
             d.update(sub.getArguments())
         return d
@@ -150,10 +150,16 @@ class ListScenario(Scenario):
     arguments.
     """
 
+    __test_name__ = """list-scenario"""
     __test_arguments__ = {
         "subtest-list" : "List of Testclass to run sequentially",
         "fatal-subtest-failure" : "Do not carry on with next subtest if previous failed"
         }
+    __test_description__ = """
+    This scenario will execute the given tests one after the other.
+    If fata-subtest-failure is set to True, then it will stop whenever
+    one test hasn't succeeded fully (all steps validated).
+    """
 
     def setUp(self):
         if not Scenario.setUp(self):
