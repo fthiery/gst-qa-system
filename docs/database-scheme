@@ -4,16 +4,22 @@ Database Scheme for storage
 List of tables
 --------------
 
+ * version
  * Environment
  * TestRun
  * Client
  * Test
- * Scenario
+ * subtests
  * TestClassInfo
- * version
+ * dicts
 
 Description of tables
 ---------------------
+
+* version
+ * version : version of the database scheme
+ * modificationtime : modification time of the database to the current
+	scheme in seconds since Epoch.
 
 * Environment
  * testrunid : 'id' of TestRun this entry is related to
@@ -43,9 +49,9 @@ Description of tables
  * resultpercentage : float value of success of the above results
  * extrainfo : dictionnary of extra information
 
-* Scenario
- (Same columns as above +)
- * subtests : list of 'id' of subtests
+* Subtests
+ * testid : 'id' of the subtest
+ * scenarioid : 'id' of the scenario containing that subtest
 
 * TestClassInfo
  * type : Primary unique key
@@ -55,10 +61,8 @@ Description of tables
  * checklist : 
  * extrainfo : 
 
-* version
- * version : version of the database scheme
- * modificationtime : modification time of the database to the current
-	scheme in seconds since Epoch.
+* dicts
+ * id : Primary unique key for all dictionnaries in the db
 
 TODO :
 ------
