@@ -115,3 +115,21 @@ def get_private_bus_address():
         private_bus = BusConnection(private_bus_address, mainloop=gml)
     return private_bus_address
 
+def unwrap(x):
+    """Hack to unwrap D-Bus values, so that they're easier to read when
+    printed."""
+
+    if isinstance(x, list):
+        return map(unwrap, x)
+
+    if isinstance(x, tuple):
+        return tuple(map(unwrap, x))
+
+    if isinstance(x, dict):
+        return dict([(unwrap(k), unwrap(v)) for k, v in x.iteritems()])
+
+    for t in [unicode, str, long, int, float, bool]:
+        if isinstance(x, t):
+            return t(x)
+
+    return x
