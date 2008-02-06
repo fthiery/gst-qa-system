@@ -228,6 +228,7 @@ class SQLiteStorage(DBStorage):
         insertstr = "INSERT INTO %s (id, name, value) VALUES (NULL, ?, ?)"
         for key,value in dict.iteritems():
             debug("Adding key:%s , value:%r", key, value)
+            val = value
             if isinstance(value, int):
                 comstr = insertstr % "dictint"
                 lst = ints
@@ -237,7 +238,8 @@ class SQLiteStorage(DBStorage):
             else:
                 comstr = insertstr % "dictblob"
                 lst = blobs
-            lst.append(self._ExecuteCommit(comstr, (key, dumps(value))))
+                val = dumps(value)
+            lst.append(self._ExecuteCommit(comstr, (key, val)))
 
         # Now add the various values to the dicttable
         insertstr = "INSERT INTO %s (dictid, keyid, type) VALUES (? , ?, ?)" % dicttable
