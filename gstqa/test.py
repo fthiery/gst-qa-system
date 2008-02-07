@@ -68,7 +68,10 @@ class Test(gobject.GObject):
     __test_name__ = "test-base-class"
     __test_description__ = """Base class for tests"""
     __test_arguments__ = { }
-    __test_checklist__ = { "test-started":"The test started"}
+    __test_checklist__ = {
+        "test-started":"The test started",
+        "no-timeout":"The test didn't timeout",
+        }
     __test_timeout__ = 15
     __test_extra_infos__ = {
         "test-setup-duration" : "How long it took to setup the test (in seconds) for asynchronous tests",
@@ -225,6 +228,9 @@ class Test(gobject.GObject):
         info("STOPPING %r" % self)
         self._stopping = True
         stoptime = time.time()
+        # if we still have the timeoutid, we didn't timeout
+        if self._testtimeoutid:
+            self.validateStep("no-timeout")
         self.tearDown()
         self.extraInfo("test-total-duration", stoptime - self._teststarttime)
         self.emit("done")
