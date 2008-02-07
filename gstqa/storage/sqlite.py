@@ -30,7 +30,7 @@ from gstqa.storage.storage import DBStorage
 from gstqa.scenario import Scenario
 from gstqa.test import Test
 from pysqlite2 import dbapi2 as sqlite
-from cPickle import dumps
+from cPickle import dumps, loads
 
 TABLECREATION = """
 CREATE TABLE version (
@@ -209,6 +209,12 @@ class SQLiteStorage(DBStorage):
         cur = self.con.cursor()
         cur.execute(instruction, *args, **kwargs)
         return cur.fetchall()
+
+    def _FetchOne(self, instruction, *args, **kwargs):
+        # Convenience function to fetch all results
+        cur = self.con.cursor()
+        cur.execute(instruction, *args, **kwargs)
+        return cur.fetchone()
 
     # dictionnary storage methods
     def _conformDict(self, pdict):
@@ -428,4 +434,71 @@ class SQLiteStorage(DBStorage):
         debug("testrunid:%d", testrunid)
         liststr = "SELECT id FROM test WHERE testrunid=?"
         res = self._FetchAll(liststr, (testrunid, ))
+        if not res:
+            return []
         return list(zip(*res)[0])
+
+    def getFailedTestsForTestRun(self, testrunid):
+        debug("testrunid:%d", testrunid)
+        liststr = "SELECT id FROM test WHERE testrunid=? and resultpercentage<>100.0"
+        res = self._FetchAll(liststr, (testrunid, ))
+        if not res:
+            return []
+        return list(zip(*res)[0])
+
+    def getSucceededTestsForTestRun(self, testrunid):
+        debug("testrunid:%d", testrunid)
+        liststr = "SELECT id FROM test WHERE testrunid=? and resultpercentage=100.0"
+        res = self._FetchAll(liststr, (testrunid, ))
+        if not res:
+            return []
+        return list(zip(*res)[0])
+
+    def _getIntVal(self, keyid):
+        res = self._FetchOne("SELECT name,value FROM dictint WHERE id=?",
+                             (keyid, ))
+        return res
+
+    def _getStrVal(self, keyid):
+        res = self._FetchOne("SELECT name,value FROM dictstr WHERE id=?",
+                             (keyid, ))
+        return res
+
+    def _getBlobVal(self, keyid):
+        res = self._FetchOne("SELECT name,value FROM dictblob WHERE id=?",
+                             (keyid, ))
+        name,val = res
+        return (name, loads(str(val)))
+
+    def _getDict(self, tableid, dictid):
+        # returns a dict object
+        # get all the key/type for that dictid
+        searchstr = "SELECT keyid,type FROM %s WHERE dictid=?" % tableid
+        res = self._FetchAll(searchstr, (dictid, ))
+        d = {}
+        for keyid, ktype in res:
+            if ktype == DATA_TYPE_INT:
+                keyname, keyval = self._getIntVal(keyid)
+            elif ktype == DATA_TYPE_STR:
+                keyname, keyval = self._getStrVal(keyid)
+            elif ktype == DATA_TYPE_BLOB:
+                keyname, keyval = self._getBlobVal(keyid)
+            d[keyname] = keyval
+        return d
+
+    def getFullTestInfo(self, testid):
+        """
+        Returns a tuple with the following info:
+        * the testrun id in which it was executed
+        * the type of the test
+        * the arguments (dictionnary)
+        * the results (checklist dictionnary)
+        * the result percentage
+        * the extra information (dictionnary)
+        """
+        searchstr = "SELECT testrunid,type,arguments,results,resultpercentage,extrainfo FROM test WHERE id=?"
+        testrunid,ttype,argid,resid,resperc,extraid = self._FetchOne(searchstr, (testid, ))
+        args = self._getDict("argumentsdicts", argid)
+        results = self._getDict("checklistdicts", resid)
+        extras = self._getDict("extrainfodicts", extraid)
+        return (testrunid, ttype, args, results, resperc, extras)
