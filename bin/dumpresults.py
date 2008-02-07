@@ -35,12 +35,42 @@ def printTestRunInfo(db, testrunid, verbose=False):
     cid, starttime, stoptime = db.getTestRun(testrunid)
     softname, clientname, clientuser = db.getClientInfoForTestRun(testrunid)
     tests = db.getTestsForTestRun(testrunid)
-    print "[% 3d]\tDate:%s\tnbtests:% 5d\tClient : %s/%s/%s" % (testrunid,
-                                                                time.ctime(starttime),
-                                                                len(tests),
-                                                                softname,
-                                                                clientname,
-                                                                clientuser)
+    failed = db.getFailedTestsForTestRun(testrunid)
+    print "[% 3d]\tDate:%s\tnbtests:% 5dFailed:% 5d\tClient : %s/%s/%s" % (testrunid,
+                                                                           time.ctime(starttime),
+                                                                           len(tests),
+                                                                           len(failed),
+                                                                           softname,
+                                                                           clientname,
+                                                                           clientuser)
+
+def printTestInfo(db, testid):
+    trid, ttype, args, checks, resperc, extras = db.getFullTestInfo(testid)
+    # test number + name
+    print "Test #% 3d (%s)" % (testid, ttype)
+    # arguments
+    print "Arguments :"
+    for key,val in args.iteritems():
+        print "\t% -30s:\t%s" % (key, val)
+    # results
+    print "Results :"
+    for key,val in checks.iteritems():
+        print "\t% -30s:\t%d" % (key, val)
+    print "Extra Information:"
+    for key,val in extras.iteritems():
+        print "\t% -30s:\t%s" % (key, val)
+    # extrainfo
+
+def printTestRun(db, testrunid):
+    # let's output everything !
+    cid, starttime, stoptime = db.getTestRun(testrunid)
+    softname, clientname, clientuser = db.getClientInfoForTestRun(testrunid)
+    tests = db.getTestsForTestRun(testrunid)
+    print "TestRun #% 3d:" % testrunid
+    print "Started:%s\nStopped:%s" % (time.ctime(starttime), time.ctime(stoptime))
+    print "Number of tests:", len(tests)
+    for testid in tests:
+        printTestInfo(db, testid)
 
 if __name__ == "__main__":
     parser = OptionParser()
@@ -58,11 +88,20 @@ if __name__ == "__main__":
         parser.print_help()
         sys.exit()
     db = SQLiteStorage(path=args[0])
-    print db
     if options.list:
         # list all available test rus
         testruns = db.listTestRuns()
         for runid in testruns:
             printTestRunInfo(db, runid)
     else:
-        pass
+        testruns = db.listTestRuns()
+        if options.testrun:
+            if not options.testrun in testruns:
+                print "Specified testrunid not available !"
+                parser.print_help()
+                sys.exit()
+            printTestRun(db, options.testrun)
+        else:
+            for runid in testruns:
+                printTestRun(db,runid)
+
