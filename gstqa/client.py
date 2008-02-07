@@ -33,6 +33,7 @@ Many subclasses can be created, including but not limited to:
 * Daemon to be accessed via network
 """
 
+import os
 import gobject
 gobject.threads_init()
 import dbus
@@ -71,7 +72,8 @@ class TesterClient(dbus.service.Object):
         dbus.service.Object.__init__(self, self._bus, "/here")
         self._testruns = []
         self._storage = None
-        self.setStorage(storage)
+        if storage:
+            self.setStorage(storage)
         # _current is the current TestRun being executed
         self._current = None
         # _running is True if the mainloop is running
@@ -87,6 +89,7 @@ class TesterClient(dbus.service.Object):
         if self._running:
             return
         self._running = True
+        self._ensureStorageAvailable()
         gobject.idle_add(self._runNext)
         try:
             self._ml.run()
@@ -121,7 +124,33 @@ class TesterClient(dbus.service.Object):
             storage = SQLiteStorage(path="testrun.db")
         self._storage = storage
         # give client info, this can always be modified later on
-        self._storage.setClientInfo(self.__software_name__, "", "")
+        self._storage.setClientInfo(*self.getClientInfo())
+
+    def getClientInfo(self):
+        """
+        Returns a tuple with:
+        * The name of the software,
+        * The identifier of the machine running this client
+        * The identifier of the user running this client (most likely email)
+
+        Sub-classes can override this to return more specific information, this
+        information will be stored in the results.
+        """
+        softname = self.__software_name__
+        # FQDN of the machine
+        import socket
+        clientname = socket.getfqdn()
+        # user, email address or username
+        for i in ["MAIL_ADDRESS", "USERNAME"]:
+            username = os.getenv(i)
+            if username:
+                break
+        return (softname, clientname, username)
+
+    def _ensureStorageAvailable(self):
+        if self._storage:
+            return
+        self.setStorage(None)
 
     def _runNext(self):
         """
