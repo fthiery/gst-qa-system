@@ -55,3 +55,42 @@ def release_uuid(uuid):
     if not uuid in __uuids:
         return
     __uuids.remove(uuid)
+
+def list_available_tests():
+    """
+    Returns the list of available tests containing for each:
+    * the test name
+    * the test description
+    * the test class
+    """
+    from gstqa.test import Test,DBusTest,PythonDBusTest,GStreamerTest,CmdLineTest
+    from gstqa.scenario import Scenario
+    def get_valid_subclasses(cls):
+        res = []
+        if cls == Scenario:
+            return res
+        if not cls in [Test,DBusTest,PythonDBusTest,GStreamerTest,CmdLineTest]:
+            res.append((cls.__test_name__, cls.__test_description__, cls))
+        for i in cls.__subclasses__():
+            res.extend(get_valid_subclasses(i))
+        return res
+    return get_valid_subclasses(Test)
+
+def list_available_scenarios():
+    """
+    Returns the list of available scenarios containing for each:
+    * the scenario name
+    * the scenario description
+    * the scenario class
+    """
+    from gstqa.test import Test,DBusTest,PythonDBusTest,GStreamerTest,CmdLineTest
+    from gstqa.scenario import Scenario
+    def get_valid_subclasses(cls):
+        res = []
+        if not cls == Scenario:
+            res.append((cls.__test_name__, cls.__test_description__, cls))
+        for i in cls.__subclasses__():
+            res.extend(get_valid_subclasses(i))
+        return res
+    return get_valid_subclasses(Scenario)
+

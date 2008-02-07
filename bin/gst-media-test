@@ -41,6 +41,7 @@ from gstqa.scenario import Scenario, ListScenario
 from gstqa.generator import FileSystemGenerator, URIFileSystemGenerator
 from gstqa.test import PythonDBusTest
 from gstqa.testrun import ListTestRun
+import gstqa.utils as utils
 from tests.playbin import PlaybinTest
 from tests.ismedia import IsMediaTest
 from tests.scenarios.mediascenario import MediaBarrierScenario
@@ -62,6 +63,8 @@ class FakeFileTest(PythonDBusTest):
     """
     Fake file test for testing purposes only
     """
+    __test_name__ = """fake-file-test"""
+    __test_description__ = """Fake file test for testing purposes only"""
     __test_arguments__ = {
         "filename" : "An absolute path location"
         }
@@ -271,7 +274,10 @@ if __name__ == "__main__":
         rejectlist = []
     if not len(files) and not len(tests):
         parser.print_help()
-        #print "\nAvailable tests are :", string.join(get_all_tests(), ", ")
+        tests = utils.list_available_tests()
+        print "Available tests:"
+        for name, desc, cls in tests:
+            print "\t% -20s : %s" % (name, desc)
         sys.exit()
     if not len(files):
         print "No files/directories to test were given"
