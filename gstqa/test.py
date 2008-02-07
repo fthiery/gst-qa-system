@@ -620,6 +620,8 @@ class DBusTest(Test, dbus.service.Object):
                          in_signature='', out_signature='')
     def remoteStop(self):
         info("%s", self.uuid)
+        # because of being asynchronous, we call remoteTearDown first
+        self.tearDown()
         self.stop()
 
     @dbus.service.method(dbus_interface="net.gstreamer.Insanity.Test",
