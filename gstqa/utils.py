@@ -94,3 +94,13 @@ def list_available_scenarios():
         return res
     return get_valid_subclasses(Scenario)
 
+def get_test_class(testname):
+    """
+    Returns the Test class corresponding to the given testname
+    """
+    tests = list_available_tests()
+
+    for name, desc, cls in tests:
+        if testname == name:
+            return cls
+    raise ValueError("No Test class available for %s" % testname)

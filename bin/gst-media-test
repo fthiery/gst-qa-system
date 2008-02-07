@@ -174,21 +174,15 @@ def create_testrun(files, testscripts, recursive=True, topdir=None,
                                         matching=acceptlist,
                                         reject=rejectlist)
 
-    # our test
-    # FIXME : replace this by the actual tests !
-    # FIXME : Use the above Scenario instead
-    test = IsMediaTest
-    test1 = PlaybinTest
-    test2 = FakeFileTest
+    # get the classes corresponding to the given tests
+    tests = [utils.get_test_class(name) for name in testscripts]
 
     # our monitors
     # FIXME : actually implement them !
 
     #testrun = ListTestRun([test], {"uri" : generator1})
-    testrun = ListTestRun([MediaBarrierScenario],
-                          {"uri" : generator1,
-                           "subtest-list" : [PlaybinTest],
-                           "fatal-subtest-failure" : True},
+    testrun = ListTestRun(tests,
+                          arguments = { "uri" : generator1 },
                           maxnbtests=2)
     #testrun.addTest(test2, {"filename" : generator2})
 
