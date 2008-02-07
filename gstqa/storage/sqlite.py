@@ -76,13 +76,19 @@ CREATE TABLE testclassinfo (
    type TEXT PRIMARY KEY,
    parent TEXT,
    description TEXT,
-   arguments BLOB,
-   checklist BLOB,
-   extrainfo BLOB
+   arguments INTEGER,
+   checklist INTEGER,
+   extrainfo INTEGER
 );
 
 CREATE TABLE dicts (
    id INTEGER PRIMARY KEY
+);
+
+CREATE TABLE testclassdicts (
+   dictid INTEGER,
+   keyid INTEGER,
+   type INTEGER
 );
 
 CREATE TABLE argumentsdicts (
@@ -205,28 +211,34 @@ class SQLiteStorage(DBStorage):
         return cur.fetchall()
 
     # dictionnary storage methods
-    def _conformDict(self, dict):
+    def _conformDict(self, pdict):
         # transforms the dictionnary values to types compatible with
         # the DB storage format
+        if pdict == None:
+            return None
         res = {}
-        for key,value in dict.iteritems():
+        for key,value in pdict.iteritems():
             res[key] = value
         return res
 
-    def _storeDict(self, dicttable, dict):
+    def _storeDict(self, dicttable, pdict):
         # get a unique dict key id
         insertstr = "INSERT INTO dicts VALUES (NULL)"
         dictid = self._ExecuteCommit(insertstr)
         debug("Got key id %d to insert in table %s", dictid, dicttable)
 
-        dict = self._conformDict(dict)
+        pdict = self._conformDict(pdict)
+
+        if not pdict:
+            # empty dictionnary
+            return dictid
 
         # figure out which values to add to which tables
         strs = []
         ints = []
         blobs = []
         insertstr = "INSERT INTO %s (id, name, value) VALUES (NULL, ?, ?)"
-        for key,value in dict.iteritems():
+        for key,value in pdict.iteritems():
             debug("Adding key:%s , value:%r", key, value)
             val = value
             if isinstance(value, int):
@@ -260,6 +272,47 @@ class SQLiteStorage(DBStorage):
     def _storeExtraInfoDict(self, dict):
         return self._storeDict("extrainfodicts", dict)
 
+    def _storeTestClassDict(self, dict):
+        return self._storeDict("testclassdicts", dict)
+
+    def _insertClassInfo(self, tclass):
+        ctype = tclass.__dict__.get("__test_name__")
+        if len(self._FetchAll("SELECT * FROM testclassinfo WHERE type=?",
+                              (ctype, ))) >= 1:
+            return False
+        # get info
+        desc = tclass.__dict__.get("__test_description__")
+        args = tclass.__dict__.get("__test_arguments__")
+        checklist = tclass.__dict__.get("__test_checklist__")
+        extrainfo = tclass.__dict__.get("__test_extra_infos__")
+        if tclass == Test:
+            parent = None
+        else:
+            parent = tclass.__base__.__dict__.get("__test_name__")
+
+        # insert into db
+        # dicts
+        argsid = self._storeTestClassDict(args)
+        checklistid = self._storeTestClassDict(checklist)
+        extrainfoid = self._storeTestClassDict(extrainfo)
+        # final line
+        insertstr = "INSERT INTO testclassinfo (type, parent, description, arguments, checklist, extrainfo) VALUES (?, ?, ?, ?, ?, ?)"
+        self._ExecuteCommit(insertstr, (ctype, parent, desc, argsid, checklistid, extrainfoid))
+        return True
+
+    def _storeTestClassInfo(self, testinstance):
+        # check if we don't already have info for this class
+        existstr = "SELECT * FROM testclassinfo WHERE type=?"
+        res = self._FetchAll(existstr, (testinstance.__test_name__, ))
+        if len(res) >= 1:
+            # type already exists, returning
+            return
+        # we need an inverted mro (so we can now the parent class)
+        for cl in testinstance.__class__.mro():
+            if not self._insertClassInfo(cl):
+                break
+            if cl == Test:
+                break
 
 
     # public storage API
@@ -333,7 +386,7 @@ class SQLiteStorage(DBStorage):
                 self._ExecuteCommit(insertstr, (self.__tests[sub],
                                                 self.__tests[test]))
         updatestr = "UPDATE test SET arguments=?,results=?,resultpercentage=?,extrainfo=? WHERE id=?"
-        resultpercentage = int(test.getSuccessPercentage())
+        resultpercentage = test.getSuccessPercentage()
         resultsid = self._storeCheckListDict(test.getCheckList())
         argsid = self._storeArgumentsDict(test.getArguments())
         extrainfoid = self._storeExtraInfoDict(test.getExtraInfo())
@@ -341,6 +394,7 @@ class SQLiteStorage(DBStorage):
                                         resultpercentage,
                                         extrainfoid,
                                         self.__tests[test]))
+        self._storeTestClassInfo(test)
 
 
 

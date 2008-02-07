@@ -381,6 +381,8 @@ class DBusTest(Test, dbus.service.Object):
     DBus is the ONLY IPC system used for getting results from remote
     tests.
     """
+    __test_name__ = """dbus-test"""
+    __test_description__ = """Base class for distributed tests using DBUS"""
     __test_checklist__ = {
     "dbus-process-spawned":"The DBus child process spawned itself",
     "dbus-process-connected":"The DBus child process connected properly to the private Bus",
@@ -708,6 +710,8 @@ class PythonDBusTest(DBusTest):
     """
     Convenience class for python-based tests being run in a separate process
     """
+    __test_name__ = """python-dbus-test"""
+    __test_description__ = """Base Class for Python DBUS tests"""
 
     def get_remote_launcher_args(self):
         import os
@@ -721,6 +725,8 @@ class GStreamerTest(PythonDBusTest):
     """
     Tests that specifically run a GStreamer pipeline
     """
+    __test_name__ = """gstreamer-test"""
+    __test_description__ = """Base class for GStreamer tests"""
     __test_checklist__ = {
         "valid-pipeline" : "The test pipeline was properly created",
         "reached-initial-state" : "The pipeline reached the initial GstElementState",
