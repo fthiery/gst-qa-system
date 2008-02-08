@@ -249,7 +249,7 @@ class Test(gobject.GObject):
         self.emit("start")
         self.validateStep("test-started")
         # start timeout for test !
-        self._testtimeoutid = gobject.timeout_add(self.__test_timeout__ * 1000,
+        self._testtimeoutid = gobject.timeout_add(self._timeout * 1000,
                                                   self._testTimeoutCb)
         self.test()
 
@@ -395,7 +395,6 @@ class DBusTest(Test, dbus.service.Object):
     "remote-instance-created":"The remote version of this test was created properly"
     }
     __test_arguments__ = {
-    "bus_address":"The private DBUS address used for connections"
     }
     __async_setup__ = True
     ## Needed for dbus
@@ -430,6 +429,8 @@ class DBusTest(Test, dbus.service.Object):
             self._processPollId = 0
             self._remoteInstance = None
         else:
+            self._remoteTimeoutId = 0
+            self._remoteTimedOut = False
             # connect to bus
             self.objectpath = "/net/gstreamer/Insanity/Test/Test%s" % self.uuid
             dbus.service.Object.__init__(self, conn=self._bus,
@@ -520,6 +521,14 @@ class DBusTest(Test, dbus.service.Object):
             self.remoteTearDown()
         Test.tearDown(self)
 
+    def stop(self):
+        info("uuid:%s proxy:%r", self.uuid, self._isProxy)
+        if self._isProxy:
+            Test.stop(self)
+        else:
+            self.tearDown()
+            self.remoteStopSignal()
+
     def get_remote_launcher_args(self):
         """
         Subclasses should return the name and arguments of the remote
@@ -589,6 +598,8 @@ class DBusTest(Test, dbus.service.Object):
     ## callbacks from remote signals
     def _remoteReadyCb(self):
         info("%s", self.uuid)
+        # increment proxy timeout by 5s
+        self._timeout += 5
         self.start()
 
     def _remoteStopCb(self):
@@ -604,14 +615,35 @@ class DBusTest(Test, dbus.service.Object):
         self.extraInfo(unwrap(key), unwrap(value))
 
     ## Remote DBUS calls
+    def _remoteTestTimeoutCb(self):
+        debug("%s", self.uuid)
+        self.remoteTearDown()
+        self._remoteTimeoutId = 0
+        return False
+
     @dbus.service.method(dbus_interface="net.gstreamer.Insanity.Test",
                          in_signature='', out_signature='')
     def remoteTest(self):
-        raise NotImplementedError
+        """
+        Remote-side test() method.
+
+        Subclasses should implement this method and chain up to the parent
+        remoteTest() method at the *beginning* of their implementation.
+        """
+        info("%s", self.uuid)
+        # add a timeout
+        self._remoteTimeoutId = gobject.timeout_add(self._timeout * 1000,
+                                                    self._remoteTestTimeoutCb)
 
     @dbus.service.method(dbus_interface="net.gstreamer.Insanity.Test",
                          in_signature='', out_signature='')
     def remoteSetUp(self):
+        """
+        Remote-side setUp() method.
+
+        Subclasses can override this if they need to do some local setUp and
+        call self.remoteReadySignal() when they are done with the setup.
+        """
         info("%s", self.uuid)
         # if not overriden, we just emit the "ready" signal
         self.remoteReadySignal()
@@ -627,7 +659,22 @@ class DBusTest(Test, dbus.service.Object):
     @dbus.service.method(dbus_interface="net.gstreamer.Insanity.Test",
                          in_signature='', out_signature='')
     def remoteTearDown(self):
+        """
+        Remote-side tearDown() method.
+
+        Subclasses wishing to clean up their tests or collect information to
+        send at the end, should implement this in their subclass and chain up
+        to the parent remoteTearDown() at the *beginning of their
+        implementation.
+        """
         info("%s", self.uuid)
+        # remote the timeout
+        if self._remoteTimeoutId:
+            gobject.source_remove(self._remoteTimeoutId)
+            self._remoteTimedOut = True
+            self._remoteTimeoutId = 0
+        if not self._remoteTimedOut:
+            self.validateStep("no-timeout")
 
     ## Remote DBUS signals
     @dbus.service.signal(dbus_interface="net.gstreamer.Insanity.Test",
@@ -676,6 +723,8 @@ class DBusTest(Test, dbus.service.Object):
         remoteRunner = dbus.Interface(remoteRunnerObject,
                                       "net.gstreamer.Insanity.RemotePythonRunner")
         debug("Got remote iface %r" % remoteRunner)
+        args = self.arguments
+        args["bus_address"] = self._bus_address
         remoteRunner.createTestInstance(self.get_file(),
                                         self.__module__,
                                         self.__class__.__name__,
@@ -769,6 +818,7 @@ class GStreamerTest(PythonDBusTest):
         self.remoteReadySignal()
 
     def remoteTearDown(self):
+        PythonDBusTest.remoteTearDown(self)
         # unref pipeline and so forth
         if self.pipeline:
             self.pipeline.set_state(gst.STATE_NULL)
@@ -781,6 +831,7 @@ class GStreamerTest(PythonDBusTest):
 
     def remoteTest(self):
         # kickstart pipeline to initial state
+        PythonDBusTest.remoteTest(self)
         debug("Setting pipeline to initial state %r", self.__pipeline_initial_state__)
         res = self.pipeline.set_state(self.__pipeline_initial_state__)
 
