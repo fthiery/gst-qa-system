@@ -243,7 +243,9 @@ class Test(gobject.GObject):
         """
         # if we were doing async setup, remove asyncsetup timeout
         if self.__async_setup__:
-            gobject.source_remove(self._asynctimeoutid)
+            if self._asynctimeoutid:
+                gobject.source_remove(self._asynctimeoutid)
+                self._asynctimeoutid = 0
             curtime = time.time()
             self.extraInfo("test-setup-duration", curtime - self._teststarttime)
         self.emit("start")
@@ -641,8 +643,8 @@ class DBusTest(Test, dbus.service.Object):
         """
         Remote-side setUp() method.
 
-        Subclasses can override this if they need to do some local setUp and
-        call self.remoteReadySignal() when they are done with the setup.
+        Subclasses should implement this method and chain up to the parent
+        remoteSetUp() method at the *end* of their implementation.
         """
         info("%s", self.uuid)
         # if not overriden, we just emit the "ready" signal
@@ -815,7 +817,7 @@ class GStreamerTest(PythonDBusTest):
         self.bus = self.pipeline.get_bus()
         self.bus.add_signal_watch()
         self.bus.connect("message", self._busMessageHandlerCb)
-        self.remoteReadySignal()
+        PythonDBusTest.remoteSetUp(self)
 
     def remoteTearDown(self):
         PythonDBusTest.remoteTearDown(self)
@@ -825,9 +827,9 @@ class GStreamerTest(PythonDBusTest):
         if self._errors == []:
             self.validateStep("no-errors-seen")
         else:
-            self.remoteExtraInfoSignal("errors", self._errors)
+            self.extraInfo("errors", self._errors)
         if not self._tags == {}:
-            self.remoteExtraInfoSignal("tags", dbus.Dictionary(self._tags, signature="sv"))
+            self.extraInfo("tags", dbus.Dictionary(self._tags, signature="sv"))
 
     def remoteTest(self):
         # kickstart pipeline to initial state
