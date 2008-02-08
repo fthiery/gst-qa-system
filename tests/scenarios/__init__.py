@@ -22,3 +22,5 @@
 """
 Collection of standard scenarios
 """
+
+__all__ = ['mediascenario']
