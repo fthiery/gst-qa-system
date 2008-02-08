@@ -65,12 +65,13 @@ def list_available_tests():
     """
     from gstqa.test import Test,DBusTest,PythonDBusTest,GStreamerTest,CmdLineTest
     from gstqa.scenario import Scenario
+
     def get_valid_subclasses(cls):
         res = []
         if cls == Scenario:
             return res
         if not cls in [Test,DBusTest,PythonDBusTest,GStreamerTest,CmdLineTest]:
-            res.append((cls.__test_name__, cls.__test_description__, cls))
+            res.append((cls.__test_name__.strip(), cls.__test_description__.strip(), cls))
         for i in cls.__subclasses__():
             res.extend(get_valid_subclasses(i))
         return res
@@ -85,21 +86,26 @@ def list_available_scenarios():
     """
     from gstqa.test import Test,DBusTest,PythonDBusTest,GStreamerTest,CmdLineTest
     from gstqa.scenario import Scenario
+
     def get_valid_subclasses(cls):
         res = []
         if not cls == Scenario:
-            res.append((cls.__test_name__, cls.__test_description__, cls))
+            res.append((cls.__test_name__.strip(), cls.__test_description__.strip(), cls))
         for i in cls.__subclasses__():
             res.extend(get_valid_subclasses(i))
         return res
     return get_valid_subclasses(Scenario)
+
+def scan_for_tests():
+    from tests import *
+    from tests.scenarios import *
 
 def get_test_class(testname):
     """
     Returns the Test class corresponding to the given testname
     """
     tests = list_available_tests()
-
+    testname = testname.strip()
     for name, desc, cls in tests:
         if testname == name:
             return cls

@@ -41,6 +41,10 @@ import dbus.service
 import dbus.mainloop.glib
 import dbustools
 
+# import all tests and scenarios
+import utils
+utils.scan_for_tests()
+
 from testrun import TestRun
 from log import critical, error, warning, debug, info, initLogging
 
