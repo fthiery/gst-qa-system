@@ -127,7 +127,7 @@ class GstMediaTestClient(TesterClient):
             print stub, "Arguments:"
             ta = test.arguments
             fa = test.getFullArgumentList()
-            for arg in fa:
+            for arg in [x for x in fa if ta.has_key(x)]:
                 print stub, "  %s : %s\t\t%s" % (arg, fa[arg], ta[arg])
             # print results from test
             print stub, "Results"
