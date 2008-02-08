@@ -60,9 +60,14 @@ def initLogging():
         info("Logging was already setup, returning")
         return
 
-    debugformat = "%(asctime)s  0x%(thread)x  %(levelname)10s  %(filename)s:%(lineno)d:%(funcName)s: %(message)s"
+    maj,min,mic,nm,cvs = sys.version_info
+
+    if (maj,min) >= (2,5):
+        debugformat = "%(asctime)s  0x%(thread)x  %(levelname)10s  %(filename)s:%(lineno)d:%(funcName)s: %(message)s"
+    else:
+        debugformat = "%(asctime)s  0x%(thread)x  %(levelname)10s  %(filename)s:%(lineno)d:: %(message)s"
     debuglevel = ERROR
-    
+
     # get default level INSANITY_DEBUG
     if os.getenv("INSANITY_DEBUG"):
         insdeb = int(os.getenv("INSANITY_DEBUG"))
