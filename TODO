@@ -8,7 +8,9 @@ Goal : Compatible behaviour as gst-media-test, but using the new API.
 
 * bin/gst-media-test
  * document the usage
- * make sure it can introspect the test names
+
+* testrun
+ * get the environment + store in DB
 
 * Monitor support
  * GST_DEBUG monitor
@@ -16,9 +18,6 @@ Goal : Compatible behaviour as gst-media-test, but using the new API.
 
 * Scenario support
  * If first test fails, redo it with higher debugging monitoring
-
-* Result storage support
- * Pickle DB support
 
 * Reporting support
 
@@ -59,3 +58,15 @@ Non-milestone-specific / Bonus features
   * small description
   * full documentation , especially explaining what could have caused
     that step to not be validated, to make debugging/fixing easier.
+
+* Database
+ * Add convenience functions for merging two DB together (or one in another).
+ * Store the test class as an integer and not a name
+
+* Tests
+ * Add some form of versioning so we can track changes.
+  * Maybe upgrade version based on variations of arguments/checklist/extrainfo/behaviour
+
+* DBUS
+ * Fix issue in a 'asv' when one of the values is a list, we currently avoid this
+   by removing all values of type 'list'
