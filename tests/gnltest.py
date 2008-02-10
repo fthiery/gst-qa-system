@@ -45,7 +45,10 @@ class GnlFileSourceTest(GStreamerTest):
         }
 
     __test_checklist__ = {
-        "correct-newsegment" : "The new-segment event received was properly formatted",
+        "correct-newsegment-format" : "The new-segment was in the correct format (gst.FORMAT_TIME)",
+        "correct-newsegment-start" : "The new-segment had the correct 'start' value",
+        "correct-newsegment-stop" : "The new-segment had the correct 'stop' value",
+        "correct-newsegment-position" : "The new-segment had the correct 'position' value",
         "correct-initial-buffer" : "The first buffer received had the proper timestamp",
         "first-buffer-after-newsegment" : "The first buffer was seen after a newsegment"
         }
@@ -110,8 +113,14 @@ class GnlFileSourceTest(GStreamerTest):
                 self.extraInfo("newsegment-values", data.parse_new_segment())
                 # make sure the newsegment is valid
                 update, rate, format, start, stop, position = data.parse_new_segment()
-                if ((format == gst.FORMAT_TIME) and (start == self._mstart) and (stop == self._mstart + self._mduration) and (position == self._start)):
-                    self.validateStep("correct-newsegment")
+                if format == gst.FORMAT_TIME:
+                    self.validateStep("correct-newsegment-format")
+                if start == self._mstart:
+                    self.validateStep("correct-newsegment-start")
+                if stop == self._mstart + self._mduration:
+                    self.validateStep("correct-newsegment-stop")
+                if position == self._start:
+                    self.validateStep("correct-newsegment-position")
                 if self._gotFirstBuffer:
                     gobject.idle_add(self.stop)
                 self._gotNewSegment = True
