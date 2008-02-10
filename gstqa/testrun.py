@@ -186,7 +186,9 @@ class TestRun(gobject.GObject):
 
     def _runNext(self):
         """ Run the next test+arg+monitor combination """
-
+        if len(self._runninginstances) >= self._maxnbtests:
+            warning("We were already running the max number of tests")
+            return False
         info("Getting next test arguments for this batch")
         try:
             kwargs = self._currentarguments.next()
@@ -221,6 +223,8 @@ class TestRun(gobject.GObject):
 
         # if we can still create a new test, call ourself again
         if len(self._runninginstances) < self._maxnbtests:
+            warning("still more test to run (current:%d/max:%d)",
+                    len(self._runninginstances), self._maxnbtests)
             gobject.idle_add(self._runNext)
         return False
 
