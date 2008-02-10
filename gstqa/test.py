@@ -829,6 +829,16 @@ class GStreamerTest(PythonDBusTest):
         else:
             self.extraInfo("errors", self._errors)
         if not self._tags == {}:
+            debug("Got tags %r", self._tags)
+            # FIXME : if the value is a list, the dbus python bindings screw up
+            #
+            # For the time being we remove the values of type list, but this is REALLY
+            # bad.
+            listval = [x for x in self._tags.keys() if type(self._tags[x]) == list]
+            if listval:
+                warning("Removing the following items from the taglist since they're list:%r", listval)
+                for x in listval:
+                    del self._tags[x]
             self.extraInfo("tags", dbus.Dictionary(self._tags, signature="sv"))
 
     def remoteTest(self):
