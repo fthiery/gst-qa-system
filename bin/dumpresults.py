@@ -44,8 +44,10 @@ def printTestRunInfo(db, testrunid, verbose=False):
                                                                            clientname,
                                                                            clientuser)
 
-def printTestInfo(db, testid):
+def printTestInfo(db, testid, failedonly=False):
     trid, ttype, args, checks, resperc, extras = db.getFullTestInfo(testid)
+    if failedonly and resperc == 100.0:
+        return
     # test number + name
     print "Test #% 3d (%s)" % (testid, ttype)
     # arguments
@@ -61,7 +63,7 @@ def printTestInfo(db, testid):
         print "\t% -30s:\t%s" % (key, val)
     # extrainfo
 
-def printTestRun(db, testrunid):
+def printTestRun(db, testrunid, failedonly=False):
     # let's output everything !
     cid, starttime, stoptime = db.getTestRun(testrunid)
     softname, clientname, clientuser = db.getClientInfoForTestRun(testrunid)
@@ -70,7 +72,7 @@ def printTestRun(db, testrunid):
     print "Started:%s\nStopped:%s" % (time.ctime(starttime), time.ctime(stoptime))
     print "Number of tests:", len(tests)
     for testid in tests:
-        printTestInfo(db, testid)
+        printTestInfo(db, testid, failedonly)
 
 if __name__ == "__main__":
     parser = OptionParser()
@@ -82,6 +84,9 @@ if __name__ == "__main__":
                       help="Specify a testrun id",
                       type=int,
                       default=-1)
+    parser.add_option("-f", "--failed", dest="failed",
+                      help="Only show failed tests",
+                      action="store_true", default=False)
     (options, args) = parser.parse_args(sys.argv[1:])
     if len(args) != 1:
         print "You need to specify a database file !"
@@ -100,8 +105,8 @@ if __name__ == "__main__":
                 print "Specified testrunid not available !"
                 parser.print_help()
                 sys.exit()
-            printTestRun(db, options.testrun)
+            printTestRun(db, options.testrun, options.failed)
         else:
             for runid in testruns:
-                printTestRun(db,runid)
+                printTestRun(db,runid,options.failed)
 
