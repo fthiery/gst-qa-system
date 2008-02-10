@@ -562,11 +562,23 @@ class DBusTest(Test, dbus.service.Object):
     def voidRemoteCallBackHandler(self):
         pass
 
-    def voidRemoteErrBackHandler(self, exception):
-        warning(exception)
-        # an error happened, DIVE DIVE DIVE !
-        self.stop()
+    def voidRemoteErrBackHandler(self, exception, caller=None, fatal=True):
+        warning("%r : %s", caller, exception)
+        if fatal:
+            # a fatal error happened, DIVE DIVE DIVE !
+            self.stop()
 
+    def voidRemoteTestErrBackHandler(self, exception):
+        self.voidRemoteErrBackHandler(exception, "remoteTest")
+
+    def voidRemoteSetUpErrBackHandler(self, exception):
+        self.voidRemoteErrBackHandler(exception, "remoteSetUp")
+
+    def voidRemoteStopErrBackHandler(self, exception):
+        self.voidRemoteErrBackHandler(exception, "remoteStop", fatal=False)
+
+    def voidRemoteTearDownErrBackHandler(self, exception):
+        self.voidRemoteErrBackHandler(exception, "remoteTearDown", fatal=False)
 
     ## Proxies for remote DBUS calls
     def callRemoteTest(self):
@@ -574,28 +586,28 @@ class DBusTest(Test, dbus.service.Object):
         if not self._remoteInstance:
             return
         self._remoteInstance.remoteTest(reply_handler=self.voidRemoteCallBackHandler,
-                                        error_handler=self.voidRemoteErrBackHandler)
+                                        error_handler=self.voidRemoteTestErrBackHandler)
 
     def callRemoteSetUp(self):
         # call remote instance "remoteSetUp()"
         if not self._remoteInstance:
             return
         self._remoteInstance.remoteSetUp(reply_handler=self.voidRemoteCallBackHandler,
-                                         error_handler=self.voidRemoteErrBackHandler)
+                                         error_handler=self.voidRemoteSetUpErrBackHandler)
 
     def callRemoteStop(self):
         # call remote instance "remoteStop()"
         if not self._remoteInstance:
             return
         self._remoteInstance.remoteStop(reply_handler=self.voidRemoteCallBackHandler,
-                                        error_handler=self.voidRemoteErrBackHandler)
+                                        error_handler=self.voidRemoteStopErrBackHandler)
 
     def callRemoteTearDown(self):
         # call remote instance "remoteTearDown()"
         if not self._remoteInstance:
             return
         self._remoteInstance.remoteTearDown(reply_handler=self.voidRemoteCallBackHandler,
-                                            error_handler=self.voidRemoteErrBackHandler)
+                                            error_handler=self.voidRemoteTearDownErrBackHandler)
 
     ## callbacks from remote signals
     def _remoteReadyCb(self):
