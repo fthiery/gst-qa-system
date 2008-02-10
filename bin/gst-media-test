@@ -151,7 +151,8 @@ def create_testrun(files, testscripts, recursive=True, topdir=None,
                    extreme=False, valgrinding=False,
                    debuglevel=2, debuglevel2=5,
                    acceptlist=[], rejectlist=[],
-                   compressed=True, subdirectory=None, weboutput=True):
+                   compressed=True, subdirectory=None, weboutput=True,
+                   maxnbtests=2):
     """
     Takes the parameters of gst-media-test and creates a TestRun object
     """
@@ -183,7 +184,7 @@ def create_testrun(files, testscripts, recursive=True, topdir=None,
     #testrun = ListTestRun([test], {"uri" : generator1})
     testrun = ListTestRun(tests,
                           arguments = { "uri" : generator1 },
-                          maxnbtests=2)
+                          maxnbtests=maxnbtests)
     #testrun.addTest(test2, {"filename" : generator2})
 
     return testrun
@@ -252,6 +253,8 @@ if __name__ == "__main__":
     parser.add_option("-s", "--subdirectory-name", dest="subdirectory",
                       help="name of output sub-directory (default date)",
                       default=None)
+    parser.add_option("-S", "--simultaneous", dest="maxnbtests",
+                      type="int", default=1, help="Maximum number of simultaneous tests (default:1)")
     parser.add_option("-w", "--no-output", dest="weboutput",
                       action="store_false", default=True,
                       help="Do not automatically generate html outputs")
@@ -291,6 +294,7 @@ if __name__ == "__main__":
                                  rejectlist=rejectlist,
                                  compressed=options.compressed,
                                  subdirectory=options.subdirectory,
-                                 weboutput=options.weboutput)
+                                 weboutput=options.weboutput,
+                                 maxnbtests=options.maxnbtests)
         tester = GstMediaTestClient(testrun, verbose=options.verbose)
         tester.run()
