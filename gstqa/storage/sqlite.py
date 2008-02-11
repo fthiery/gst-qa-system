@@ -256,7 +256,7 @@ class SQLiteStorage(DBStorage):
             else:
                 comstr = insertstr % "dictblob"
                 lst = blobs
-                val = dumps(value)
+                val = sqlite.Binary(dumps(value))
             lst.append(self._ExecuteCommit(comstr, (key, val)))
 
         # Now add the various values to the dicttable
