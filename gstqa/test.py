@@ -806,7 +806,8 @@ class GStreamerTest(PythonDBusTest):
 
     __test_extra_infos__ = {
         "errors" : "List of errors emitted by the pipeline",
-        "tags" : "List of tags emitted by the pipeline"
+        "tags" : "List of tags emitted by the pipeline",
+        "elements-used" : "List of elements used as (name,factoryname,parentname)"
         }
     # Initial pipeline state, subclasses can override this
     __pipeline_initial_state__ = gst.STATE_PLAYING
@@ -824,6 +825,11 @@ class GStreamerTest(PythonDBusTest):
         else:
             self.stop()
             return
+
+        self._elements = [(self.pipeline.get_name(),
+                           self.pipeline.get_factory().get_name(),
+                           "")] #name,factoryname,parentname
+        self._watchContainer(self.pipeline)
 
         # connect to bus
         self.bus = self.pipeline.get_bus()
@@ -852,6 +858,7 @@ class GStreamerTest(PythonDBusTest):
                 for x in listval:
                     del self._tags[x]
             self.extraInfo("tags", dbus.Dictionary(self._tags, signature="sv"))
+        self.extraInfo("elements-used", self._elements)
 
     def remoteTest(self):
         # kickstart pipeline to initial state
@@ -891,6 +898,27 @@ class GStreamerTest(PythonDBusTest):
             elif isinstance(value, gst.MiniObject):
                 value = repr(value)
             self._tags[key] = value
+
+    def _watchContainer(self, container):
+        # add all elements currently preset
+        for elt in container:
+            self._elements.append((elt.get_name(),
+                                   elt.get_factory().get_name(),
+                                   container.get_name()))
+            if isinstance(elt,gst.Bin):
+                self._watchContainer(elt)
+        container.connect("element-added", self._elementAddedCb)
+        # connect to signal
+
+    def _elementAddedCb(self, container, element):
+        debug("New element %r in container %r", element, container)
+        # add himself
+        self._elements.append((element.get_name(),
+                               element.get_factory().get_name(),
+                               container.get_name()))
+        # if bin, add current and connect signal
+        if isinstance(element, gst.Bin):
+            self._watchContainer(element)
 
     ## Methods that can be overridden by subclasses
 
