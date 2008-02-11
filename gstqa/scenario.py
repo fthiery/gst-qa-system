@@ -54,6 +54,10 @@ class Scenario(Test):
         # FIXME : asynchronous starts ???
         return True
 
+    def _setUpMonitors(self):
+        # we don't need monitors, our subclass do
+        return True
+
     def tearDown(self):
         # FIXME : implement this for the case where we are aborted !
         pass
@@ -84,6 +88,8 @@ class Scenario(Test):
         # connect to signals
         self.tests.append(instance)
         instance.connect("done", self._subTestDoneCb)
+        for monitor in self._monitors:
+            instance.addMonitor(monitor)
         instance.run()
         # returning False so that idle_add() doesn't call us again
         return False

@@ -39,6 +39,7 @@ from optparse import OptionParser
 from gstqa.client import TesterClient
 from gstqa.scenario import Scenario, ListScenario
 from gstqa.generator import FileSystemGenerator, URIFileSystemGenerator
+from gstqa.monitor import GstDebugLogMonitor
 from gstqa.test import PythonDBusTest
 from gstqa.testrun import ListTestRun
 import gstqa.utils as utils
@@ -184,7 +185,8 @@ def create_testrun(files, testscripts, recursive=True, topdir=None,
     #testrun = ListTestRun([test], {"uri" : generator1})
     testrun = ListTestRun(tests,
                           arguments = { "uri" : generator1 },
-                          maxnbtests=maxnbtests)
+                          maxnbtests=maxnbtests,
+                          monitors = [GstDebugLogMonitor])
     #testrun.addTest(test2, {"filename" : generator2})
 
     return testrun

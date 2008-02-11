@@ -64,7 +64,8 @@ CREATE TABLE test (
    arguments INTEGER,
    results INTEGER,
    resultpercentage FLOAT,
-   extrainfo INTEGER
+   extrainfo INTEGER,
+   outputfiles INTEGER
 );
 
 CREATE TABLE subtests (
@@ -78,7 +79,8 @@ CREATE TABLE testclassinfo (
    description TEXT,
    arguments INTEGER,
    checklist INTEGER,
-   extrainfo INTEGER
+   extrainfo INTEGER,
+   outputfiles INTEGER
 );
 
 CREATE TABLE dicts (
@@ -98,6 +100,12 @@ CREATE TABLE argumentsdicts (
 );
 
 CREATE TABLE extrainfodicts (
+   dictid INTEGER,
+   keyid INTEGER,
+   type INTEGER
+);
+
+CREATE TABLE outputfiledicts (
    dictid INTEGER,
    keyid INTEGER,
    type INTEGER
@@ -190,6 +198,7 @@ class SQLiteStorage(DBStorage):
         for tblname in ["version", "testrun", "environment", "client",
                         "test", "subtests", "testclassinfo", "dicts",
                         "argumentsdicts", "extrainfodicts",
+                        "outputfiledicts",
                         "environdicts", "checklistdicts",
                         "dictstr", "dictint", "dictblob"]:
             if not tblname in tables:
@@ -281,6 +290,9 @@ class SQLiteStorage(DBStorage):
     def _storeTestClassDict(self, dict):
         return self._storeDict("testclassdicts", dict)
 
+    def _storeOutputFileDict(self, dict):
+        return self._storeDict("outputfiledicts", dict)
+
     def _insertClassInfo(self, tclass):
         ctype = tclass.__dict__.get("__test_name__")
         if len(self._FetchAll("SELECT * FROM testclassinfo WHERE type=?",
@@ -291,6 +303,7 @@ class SQLiteStorage(DBStorage):
         args = tclass.__dict__.get("__test_arguments__")
         checklist = tclass.__dict__.get("__test_checklist__")
         extrainfo = tclass.__dict__.get("__test_extra_infos__")
+        outputfiles = tclass.__dict__.get("__test_output_files__")
         if tclass == Test:
             parent = None
         else:
@@ -301,9 +314,10 @@ class SQLiteStorage(DBStorage):
         argsid = self._storeTestClassDict(args)
         checklistid = self._storeTestClassDict(checklist)
         extrainfoid = self._storeTestClassDict(extrainfo)
+        outputfilesid = self._storeTestClassDict(outputfiles)
         # final line
-        insertstr = "INSERT INTO testclassinfo (type, parent, description, arguments, checklist, extrainfo) VALUES (?, ?, ?, ?, ?, ?)"
-        self._ExecuteCommit(insertstr, (ctype, parent, desc, argsid, checklistid, extrainfoid))
+        insertstr = "INSERT INTO testclassinfo (type, parent, description, arguments, checklist, extrainfo, outputfiles) VALUES (?, ?, ?, ?, ?, ?, ?)"
+        self._ExecuteCommit(insertstr, (ctype, parent, desc, argsid, checklistid, extrainfoid, outputfilesid))
         return True
 
     def _storeTestClassInfo(self, testinstance):
@@ -391,14 +405,15 @@ class SQLiteStorage(DBStorage):
             for sub in test.tests:
                 self._ExecuteCommit(insertstr, (self.__tests[sub],
                                                 self.__tests[test]))
-        updatestr = "UPDATE test SET arguments=?,results=?,resultpercentage=?,extrainfo=? WHERE id=?"
+        updatestr = "UPDATE test SET arguments=?,results=?,resultpercentage=?,extrainfo=?,outputfiles=? WHERE id=?"
         resultpercentage = test.getSuccessPercentage()
         resultsid = self._storeCheckListDict(test.getCheckList())
         argsid = self._storeArgumentsDict(test.getArguments())
         extrainfoid = self._storeExtraInfoDict(test.getExtraInfo())
+        outputfilesid = self._storeOutputFileDict(test.getOutputFiles())
         self._ExecuteCommit(updatestr, (argsid, resultsid,
                                         resultpercentage,
-                                        extrainfoid,
+                                        extrainfoid, outputfilesid,
                                         self.__tests[test]))
         self._storeTestClassInfo(test)
 
@@ -495,10 +510,12 @@ class SQLiteStorage(DBStorage):
         * the results (checklist dictionnary)
         * the result percentage
         * the extra information (dictionnary)
+        * the output files (dictionnary)
         """
-        searchstr = "SELECT testrunid,type,arguments,results,resultpercentage,extrainfo FROM test WHERE id=?"
-        testrunid,ttype,argid,resid,resperc,extraid = self._FetchOne(searchstr, (testid, ))
+        searchstr = "SELECT testrunid,type,arguments,results,resultpercentage,extrainfo,outputfiles FROM test WHERE id=?"
+        testrunid,ttype,argid,resid,resperc,extraid,outputfilesid = self._FetchOne(searchstr, (testid, ))
         args = self._getDict("argumentsdicts", argid)
         results = self._getDict("checklistdicts", resid)
         extras = self._getDict("extrainfodicts", extraid)
-        return (testrunid, ttype, args, results, resperc, extras)
+        outputfiles = self._getDict("outputfiledicts", outputfilesid)
+        return (testrunid, ttype, args, results, resperc, extras, outputfiles)

@@ -66,6 +66,7 @@ def spawn_session_dbus():
 
     res = [x.strip().split('=', 1)[-1] for x in afile.readlines()]
     afile.close()
+    os.remove(logfilename)
     info("%r" % res)
     # return the tuple result
     return tuple(res)

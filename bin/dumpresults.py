@@ -45,7 +45,7 @@ def printTestRunInfo(db, testrunid, verbose=False):
                                                                            clientuser)
 
 def printTestInfo(db, testid, failedonly=False):
-    trid, ttype, args, checks, resperc, extras = db.getFullTestInfo(testid)
+    trid, ttype, args, checks, resperc, extras, outputfiles = db.getFullTestInfo(testid)
     if failedonly and resperc == 100.0:
         return
     # test number + name
@@ -58,10 +58,14 @@ def printTestInfo(db, testid, failedonly=False):
     print "Results :"
     for key,val in checks.iteritems():
         print "\t% -30s:\t%d" % (key, val)
-    print "Extra Information:"
-    for key,val in extras.iteritems():
-        print "\t% -30s:\t%s" % (key, val)
-    # extrainfo
+    if extras:
+        print "Extra Information:"
+        for key,val in extras.iteritems():
+            print "\t% -30s:\t%s" % (key, val)
+    if outputfiles:
+        print "Output files:"
+        for key,val in outputfiles.iteritems():
+            print "\t% -30s:\t%s" % (key,val)
 
 def printTestRun(db, testrunid, failedonly=False):
     # let's output everything !

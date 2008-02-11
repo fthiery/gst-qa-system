@@ -24,20 +24,221 @@
 # Add default monitor (spawn process, crash, timeout, IPC)
 #    maybe in a different file...
 
+# Design
+#
+# Monitors can do one or more of the following:
+# * set/add/change Environment variables
+# * wrap the test (ex : valgrind)
+#   Ex : sometool --with -some -option [regularlauncher args]...
+# * redirect Standard I/O to some files or functions
+#   => Requires being able to create temporary files
+# * postprocess output
+# * has a checklist like tests
+# * can modify timeout (i.e. with valgrind)
+
+from gstqa.test import Test, DBusTest, GStreamerTest
+from gstqa.log import critical, error, warning, debug, info
+
 class Monitor:
     """
     Monitors a test
     """
+    __monitor_name__ = "monitor"
+    __monitor_description__ = "Base Monitor class"
+    __monitor_arguments__ = {}
+    __monitor_output_files__ = {}
+    __monitor_checklist__ = {}
+    __monitor_extra_infos__ = {}
+    __applies_on__ = Test
+
+    def __init__(self, testrun, instance, *args, **kwargs):
+        self.testrun = testrun
+        self.test = instance
+        self.arguments = kwargs
+        self._checklist = {}
+        self._extraInfo = {}
+        self._outputfiles = {}
 
     def setUp(self):
-        pass
+        return True
 
     def tearDown(self):
         pass
 
     def processResults(self):
         pass
-    pass
+
+    def _populateChecklist(self):
+        """ fill the instance checklist with default values """
+        ckl = self.getFullCheckList()
+        for key in ckl.keys():
+            self._checklist[key] = False
+
+    ## Methods for tests to return information
+
+    def validateStep(self, checkitem):
+        """
+        Validate a step in the checklist.
+        checkitem is one of the keys of __test_checklist__
+
+        Called by the test itself
+        """
+        info("step %s for item %r" % (checkitem, self))
+        if not checkitem in self._checklist:
+            return
+        self._checklist[checkitem] = True
+
+    def extraInfo(self, key, value):
+        """
+        Give extra information obtained while running the tests.
+
+        If key was already given, the new value will override the value
+        previously given for the same key.
+
+        Called by the test itself
+        """
+        debug("%s : %r", key, value)
+        self._extraInfo[key] = value
+
+    def setOutputFile(self, key, value):
+        """
+        Report the location of an output file
+        """
+        debug("%s : %s", key, value)
+        self._outputfiles["key"] = value
+
+    # getters
+
+    def getCheckList(self):
+        """
+        Returns the instance checklist.
+        """
+        return self._checklist
+
+    def getArguments(self):
+        """
+        Returns the list of arguments for the given test
+        """
+        validkeys = self.getFullArgumentList().keys()
+        res = {}
+        for key in self.arguments.iterkeys():
+            if key in validkeys:
+                res[key] = self.arguments[key]
+        return res
+
+    ## Class methods
+
+    @classmethod
+    def getFullCheckList(cls):
+        """
+        Returns the full monitor checklist. This is used to know all the
+        possible check items for this instance, along with their description.
+        """
+        d = {}
+        for cl in cls.mro():
+            if "__monitor_checklist__" in cl.__dict__:
+                d.update(cl.__monitor_checklist__)
+            if cl == Test:
+                break
+        return d
+
+    @classmethod
+    def getFullArgumentList(cls):
+        """
+        Returns the full list of arguments with descriptions.
+        """
+        d = {}
+        for cl in cls.mro():
+            if "__monitor_arguments__" in cls.__dict__:
+                d.update(cl.__monitor_arguments__)
+            if cl == Test:
+                break
+        return d
+
+    @classmethod
+    def getFullExtraInfoList(cls):
+        """
+        Returns the full list of extra info with descriptions.
+        """
+        d = {}
+        for cl in cls.mro():
+            if "__monitor_extra_infos__" in cls.__dict__:
+                d.update(cl.__monitor_extra_infos__)
+            if cl == Test:
+                break
+        return d
+
+    @classmethod
+    def getFullOutputFilesList(cls):
+        """
+        Returns the full list of output files with descriptions.
+        """
+        d = {}
+        for cl in cls.mro():
+            if "__monitor_output_files__" in cls.__dict__:
+                d.update(cl.__monitor_output_files__)
+            if cl == Test:
+                break
+        return d
+
+
+class GstDebugLogMonitor(Monitor):
+    """
+    Activates GStreamer debug logging and stores it in a file
+    """
+    __monitor_name__ = "gst-debug-log-monitor"
+    __monitor_description__ = "Logs GStreamer debug activity"
+    __monitor_arguments__ = {
+        "debug-level" : "GST_DEBUG value (defaults to '*:2')"
+        }
+    __monitor_output_files__ = {
+        "gst-log-file" : "file containing the GST_DEBUG log"
+        }
+    __applies_on__ = GStreamerTest
+
+    # needs to redirect stderr to a file
+    def setUp(self):
+        Monitor.setUp(self)
+        # set gst_debug to 0
+        self.test._environ["GST_DEBUG"] = self.arguments.get("debug-level", "*:2")
+        # get file for redirection
+        self._logfile, self._logfilepath = self.testrun.get_temp_file()
+        debug("Got temporary file %s", self._logfilepath)
+        if self.test._stderr:
+            warning("stderr is already being used, can't setUp monitor")
+            return False
+        self.test._stderr = self._logfile
+        self.setOutputFile("gst-log-file", self._logfilepath)
+        return True
+
+    def tearDown(self):
+        if self._logfile:
+            self._logfile.close()
+
+class ValgrindMemCheckMonitor(Monitor):
+    """
+    Runs the test within a valgrind --tool=memcheck environment
+    """
+    __applies_on__ = DBusTest
+
+    # needs to use --log-file=<tmpfile> to store results
+    # needs to increase the timeout !
+
+class GDBMonitor(Monitor):
+    """
+    Sets up the environment in order to collect core dumps and
+    get backtraces.
+
+    This monitor will NOT run the test under gdb
+    """
+
+    __applies_on__ = DBusTest
+
+    # doesn't need to do any redirections
+    # setup 'ulimit -c unlimited'
+    # when the test is done, check whether it crashed, if so:
+    #  * run a gdb script to collect a backtrace
+    #  * remove core file
 
 class FileBasedMonitorInterface:
     """
@@ -57,34 +258,4 @@ class FileBasedMonitorInterface:
     def deleteAllFiles(self):
         # used to clean up failed tests or files no longer needed
         pass
-    pass
-
-
-##
-## TODO : maybe the two classes below don't make sense and should
-## just be an option in the base Monitor class.
-##
-
-class AsyncMonitor(Monitor):
-    """
-    Monitors that will record data and THEN process it
-    """
-    pass
-
-class DirectMonitor(Monitor):
-    """
-    Monitors that will record and process data at the same time
-    """
-    pass
-
-class BasicMonitor(Monitor):
-    """
-    The BasicMonitor is the only compulsory monitor
-
-    It will:
-    * spawn the test in a separate process
-    * detect segmentation faults
-    * handle higher-level timeouts (?)
-    """
-
     pass

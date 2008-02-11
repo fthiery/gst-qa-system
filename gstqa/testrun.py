@@ -42,6 +42,8 @@ from test import Test
 from arguments import Arguments
 import dbustools
 import dbus.gobject_service
+import tempfile
+import os
 
 ##
 ## TODO/FIXME
@@ -77,9 +79,10 @@ class TestRun(gobject.GObject):
                                  (gobject.TYPE_STRING, ))
         }
 
-    def __init__(self, maxnbtests=1):
+    def __init__(self, maxnbtests=1, workingdir=None):
         """
         maxnbtests : Maximum number of tests to run simultaneously in each batch.
+        workingdir : Working directory (default : getcwd() + /outputfiles/)
         """
         gobject.GObject.__init__(self)
         self._setupPrivateBus()
@@ -92,6 +95,7 @@ class TestRun(gobject.GObject):
         self._maxnbtests = maxnbtests
         self._starttime = None
         self._stoptime = None
+        self._workingdir = workingdir or os.path.join(os.getcwd(), "outputfiles")
 
     ## PUBLIC API
 
@@ -209,6 +213,8 @@ class TestRun(gobject.GObject):
         test = testclass(testrun=self, bus=self._bus,
                          bus_address=self._bus_address,
                          **kwargs)
+        for monitor in monitors:
+            test.addMonitor(monitor)
 
         test.connect("start", self._singleTestStart)
         test.connect("done", self._singleTestDone)
@@ -253,6 +259,13 @@ class TestRun(gobject.GObject):
         self._runNext()
         return False
 
+    def get_temp_file(self):
+        """ Return a temporary file object """
+        # we create temporary files in a specified directory
+        if not os.path.exists(self._workingdir):
+            os.makedirs(self._workingdir)
+        return tempfile.mkstemp(prefix="gstqa-output-",
+                                dir=self._workingdir)
 
 
 gobject.type_register(TestRun)
