@@ -70,11 +70,23 @@ class DataStorage:
         """
         pass
 
-    def getTestsForTestRun(self, testrunid):
+    def getTestsForTestRun(self, testrunid, withscenarios=True):
         """
         Returns the list of testid for the given testrunid
+
+        If withscenarios is True, scenarios will also be returned.
+        If withscenarios is False, only non-scenario tests will be returned.
         """
         pass
+
+    def getScenariosForTestRun(self, testrunid):
+        """
+        Returns the scenarios for the given testrunid
+
+        The dictionnary has:
+        * key : the testid of the scenario
+        * value : A list of testid of the subtests
+        """
 
     def getClientInfoForTestRun(self, testrunid):
         pass

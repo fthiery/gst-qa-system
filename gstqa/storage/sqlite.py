@@ -435,6 +435,38 @@ class SQLiteStorage(DBStorage):
 
     # public retrieval API
 
+    def _getIntVal(self, keyid):
+        res = self._FetchOne("SELECT name,value FROM dictint WHERE id=?",
+                             (keyid, ))
+        return res
+
+    def _getStrVal(self, keyid):
+        res = self._FetchOne("SELECT name,value FROM dictstr WHERE id=?",
+                             (keyid, ))
+        return res
+
+    def _getBlobVal(self, keyid):
+        res = self._FetchOne("SELECT name,value FROM dictblob WHERE id=?",
+                             (keyid, ))
+        name,val = res
+        return (name, loads(str(val)))
+
+    def _getDict(self, tableid, dictid):
+        # returns a dict object
+        # get all the key/type for that dictid
+        searchstr = "SELECT keyid,type FROM %s WHERE dictid=?" % tableid
+        res = self._FetchAll(searchstr, (dictid, ))
+        d = {}
+        for keyid, ktype in res:
+            if ktype == DATA_TYPE_INT:
+                keyname, keyval = self._getIntVal(keyid)
+            elif ktype == DATA_TYPE_STR:
+                keyname, keyval = self._getStrVal(keyid)
+            elif ktype == DATA_TYPE_BLOB:
+                keyname, keyval = self._getBlobVal(keyid)
+            d[keyname] = keyval
+        return d
+
     def getClientInfoForTestRun(self, testrunid):
         debug("testrunid:%d", testrunid)
         liststr = "SELECT client.software,client.name,client.user FROM client,testrun WHERE client.id=testrun.clientid AND testrun.id=?"
@@ -469,13 +501,35 @@ class SQLiteStorage(DBStorage):
         dic = self._getDict("environdicts", environid)
         return dic
 
-    def getTestsForTestRun(self, testrunid):
+    def getTestsForTestRun(self, testrunid, withscenarios=True):
         debug("testrunid:%d", testrunid)
         liststr = "SELECT id FROM test WHERE testrunid=?"
         res = self._FetchAll(liststr, (testrunid, ))
         if not res:
             return []
-        return list(zip(*res)[0])
+        tmp = list(zip(*res)[0])
+        if not withscenarios:
+            scenarios = self.getScenariosForTestRun(testrunid)
+            print tmp
+            print scenarios
+            for x in scenarios.keys():
+                tmp.remove(x)
+        return tmp
+
+    def getScenariosForTestRun(self, testrunid):
+        debug("testrunid:%d", testrunid)
+        liststr = "SELECT test.id,subtests.testid FROM test INNER JOIN subtests ON test.id=subtests.scenarioid WHERE test.testrunid=?"
+        res = self._FetchAll(liststr, (testrunid, ))
+        if not res:
+            return []
+        # make list unique
+        d = {}
+        for scenarioid, subtestid in res:
+            if not scenarioid in d.keys():
+                d[scenarioid] = [subtestid]
+            else:
+                d[scenarioid].append(subtestid)
+        return d
 
     def getFailedTestsForTestRun(self, testrunid):
         debug("testrunid:%d", testrunid)
@@ -492,38 +546,6 @@ class SQLiteStorage(DBStorage):
         if not res:
             return []
         return list(zip(*res)[0])
-
-    def _getIntVal(self, keyid):
-        res = self._FetchOne("SELECT name,value FROM dictint WHERE id=?",
-                             (keyid, ))
-        return res
-
-    def _getStrVal(self, keyid):
-        res = self._FetchOne("SELECT name,value FROM dictstr WHERE id=?",
-                             (keyid, ))
-        return res
-
-    def _getBlobVal(self, keyid):
-        res = self._FetchOne("SELECT name,value FROM dictblob WHERE id=?",
-                             (keyid, ))
-        name,val = res
-        return (name, loads(str(val)))
-
-    def _getDict(self, tableid, dictid):
-        # returns a dict object
-        # get all the key/type for that dictid
-        searchstr = "SELECT keyid,type FROM %s WHERE dictid=?" % tableid
-        res = self._FetchAll(searchstr, (dictid, ))
-        d = {}
-        for keyid, ktype in res:
-            if ktype == DATA_TYPE_INT:
-                keyname, keyval = self._getIntVal(keyid)
-            elif ktype == DATA_TYPE_STR:
-                keyname, keyval = self._getStrVal(keyid)
-            elif ktype == DATA_TYPE_BLOB:
-                keyname, keyval = self._getBlobVal(keyid)
-            d[keyname] = keyval
-        return d
 
     def getFullTestInfo(self, testid):
         """
