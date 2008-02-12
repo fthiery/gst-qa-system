@@ -11,6 +11,7 @@ Goal : Compatible behaviour as gst-media-test, but using the new API.
 
 * testrun
  * get the environment + store in DB
+ * Add possibility to modify the environment
 
 * Monitor support
  * GST_DEBUG monitor

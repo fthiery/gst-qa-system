@@ -40,6 +40,7 @@ import time
 from log import critical, error, warning, debug, info
 from test import Test
 from arguments import Arguments
+import gstqa.environment as environment
 import dbustools
 import dbus.gobject_service
 import tempfile
@@ -48,6 +49,9 @@ import os
 ##
 ## TODO/FIXME
 ##
+## Add possibility to add/modify/remove env variables
+##   This will be needed to run test with different environments
+##   WITHOUT having to restart the daemon.
 
 class TestRun(gobject.GObject):
     __gsignals__ = {
@@ -95,6 +99,7 @@ class TestRun(gobject.GObject):
         self._maxnbtests = maxnbtests
         self._starttime = None
         self._stoptime = None
+        self._environment = {}
         self._workingdir = workingdir or os.path.join(os.getcwd(), "outputfiles")
 
     ## PUBLIC API
@@ -103,11 +108,7 @@ class TestRun(gobject.GObject):
         """
         Start executing the tests.
         """
-        self.emit("start")
-        self._starttime = int(time.time())
         self._collectEnvironment()
-        self._storage.startNewTestRun(self)
-        gobject.idle_add(self._runNextBatch)
 
     def abort(self):
         """
@@ -137,6 +138,12 @@ class TestRun(gobject.GObject):
             raise TypeError("Test arguments need to be an Arguments object or a dictionnary")
         self._tests.append((test, arguments, monitors))
 
+    def getEnvironment(self):
+        """
+        Returns the environment information of this testrun as a
+        dictionnary.
+        """
+        return self._environment
 
     ## PRIVATE API
 
@@ -168,7 +175,15 @@ class TestRun(gobject.GObject):
         """
         Collect the environment settings, parameters, variables,...
         """
-        pass
+        environment.collectEnvironment(os.environ, self._gotEnvironment)
+
+    def _gotEnvironment(self, resdict):
+        info("Got environment %r", resdict)
+        self._environment = resdict
+        self.emit("start")
+        self._starttime = int(time.time())
+        self._storage.startNewTestRun(self)
+        gobject.idle_add(self._runNextBatch)
 
     def _singleTestStart(self, test):
         info("test %r started", test)

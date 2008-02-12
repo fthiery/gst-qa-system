@@ -100,6 +100,8 @@ class GstMediaTestClient(TesterClient):
     def test_run_start(self, testrun):
         print "Starting", testrun
         testrun.connect("single-test-done", self._singleTestDoneCb)
+        if self._verbose:
+            self._printTestRunEnvironment(testrun)
 
     def test_run_done(self, testrun):
         print "Done with", testrun
@@ -119,6 +121,18 @@ class GstMediaTestClient(TesterClient):
 
     def _singleTestDoneCb(self, testrun, test):
         self.printSingleTestResult(test)
+
+    def _printTestRunEnvironment(self, testrun):
+        d = testrun.getEnvironment()
+        if d:
+            print "Environment:"
+            for key,val in d.iteritems():
+                if isinstance(val, dict):
+                    print "\t% -30s:" % (key)
+                    for dk,dv in val.iteritems():
+                        print "\t\t% -30s:\t%s" % (dk,dv)
+                else:
+                    print "\t% -30s:\t%s" % (key,val)
 
     def printSingleTestResult(self, test, offset=0):
         stub = " " * offset

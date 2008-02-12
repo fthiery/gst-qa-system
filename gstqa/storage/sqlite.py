@@ -47,7 +47,7 @@ CREATE TABLE testrun (
 
 CREATE TABLE environment (
    testrunid INTEGER,
-   data BLOB
+   data INTEGER
 );
 
 CREATE TABLE client (
@@ -293,6 +293,9 @@ class SQLiteStorage(DBStorage):
     def _storeOutputFileDict(self, dict):
         return self._storeDict("outputfiledicts", dict)
 
+    def _storeEnvironmentDict(self, dict):
+        return self._storeDict("environdicts", dict)
+
     def _insertClassInfo(self, tclass):
         ctype = tclass.__dict__.get("__test_name__")
         if len(self._FetchAll("SELECT * FROM testclassinfo WHERE type=?",
@@ -365,6 +368,12 @@ class SQLiteStorage(DBStorage):
             warning("Apparently the previous testrun didn't exit successfully")
         insertstr = "INSERT INTO testrun (id, clientid, starttime, stoptime) VALUES (NULL, ?, ?, NULL)"
         self.__testrunid = self._ExecuteCommit(insertstr, (self.__clientid, testrun._starttime))
+        envdict = testrun.getEnvironment()
+        if envdict:
+            # store environement
+            envdictid = self._storeEnvironmentDict(envdict)
+            insertstr = "INSERT INTO environment (testrunid, data) VALUES (?, ?)"
+            self._ExecuteCommit(insertstr, (self.__testrunid, envdictid))
         self.__testrun = testrun
         debug("Got testrun id %d", self.__testrunid)
 
