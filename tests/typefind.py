@@ -84,7 +84,10 @@ class TypeFindTest(GStreamerTest):
 
     def createPipeline(self):
         self._src = gst.element_make_from_uri(gst.URI_SRC, self.arguments.get("uri"))
-        self._dbin = gst.element_factory_make("decodebin2")
+        try:
+            self._dbin = gst.element_factory_make("decodebin2")
+        except:
+            self._dbin = gst.element_factory_make("decodebin")
         self._typefind = self._dbin.get_by_name("typefind")
 
         p = gst.Pipeline()

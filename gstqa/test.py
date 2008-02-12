@@ -949,12 +949,16 @@ class GStreamerTest(PythonDBusTest):
         self._tags = {}
 
         # create the pipeline
-        self.pipeline = self.createPipeline()
-        if not self.pipeline == None:
-            self.validateStep("valid-pipeline")
-        else:
-            self.stop()
-            return
+        try:
+            self.pipeline = self.createPipeline()
+        except:
+            self.pipeline = None
+        finally:
+            if not self.pipeline == None:
+                self.validateStep("valid-pipeline")
+            else:
+                self.stop()
+                return
 
         self._elements = [(self.pipeline.get_name(),
                            self.pipeline.get_factory().get_name(),
