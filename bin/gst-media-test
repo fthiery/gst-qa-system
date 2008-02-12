@@ -41,7 +41,7 @@ from gstqa.scenario import Scenario, ListScenario
 from gstqa.generator import FileSystemGenerator, URIFileSystemGenerator
 from gstqa.monitor import GstDebugLogMonitor, ValgrindMemCheckMonitor
 from gstqa.test import PythonDBusTest
-from gstqa.testrun import ListTestRun
+from gstqa.testrun import TestRun, ListTestRun
 import gstqa.utils as utils
 from tests.playbin import PlaybinTest
 from tests.ismedia import IsMediaTest
@@ -58,29 +58,43 @@ class GstMediaTestScenario(Scenario):
 
     This reproduces the re-try behaviour of gst-media-test
     """
-    pass
-
-class FakeFileTest(PythonDBusTest):
-    """
-    Fake file test for testing purposes only
-    """
-    __test_name__ = """fake-file-test"""
-    __test_description__ = """Fake file test for testing purposes only"""
+    __test_name__ = "GstMediaTestScenario"
     __test_arguments__ = {
-        "filename" : "An absolute path location"
+        "subtest-class":"TestClass to run",
+        "debug-level-1":"GST_DEBUG level to use on first run (default:'*:2')",
+        "debug-level-2":"GST_DEBUG level to use on second run (default:'*:5')"
         }
     __test_checklist__ = {
-        "DONE" : "This works :)"
+        "similar-results":"were the results similar over the two runs"
         }
 
-    def remoteTest(self):
-        self.validateStep("DONE")
-        self.stop()
+    def setUp(self):
+        if not Scenario.setUp(self):
+            return False
+        # add the initial test
+        subtest = self.arguments.get("subtest-class")
+        debuglevel = self.arguments.get("debug-level-1", "*:2")
+        if not subtest:
+            return False
+        self.addSubTest(subtest, self.arguments,
+                        [(GstDebugLogMonitor, {"debug-level": debuglevel})
+                         ])
+        return True
 
-    @classmethod
-    def get_file(self):
-        import os.path
-        return os.path.abspath(__file__)
+    def subTestDone(self, test):
+        if len(self.tests) == 2:
+            if test.getSuccessPercentage() == self.tests[0].getSuccessPercentage():
+                self.validateStep("similar-results")
+            return True
+        if not test.getSuccessPercentage() == 100.0:
+            subtest = self.arguments.get("subtest-class")
+            debuglevel = self.arguments.get("debug-level-2", "*:5")
+            self.addSubTest(subtest, self.arguments,
+                            [(GstDebugLogMonitor, {"debug-level": debuglevel})
+                             ])
+        else:
+            self.validateStep("similar-results")
+        return True
 
 
 class GstMediaTestClient(TesterClient):
@@ -186,26 +200,28 @@ def create_testrun(files, testscripts, recursive=True, topdir=None,
                                         matching=acceptlist,
                                         reject=rejectlist)
 
-    generator2 = FileSystemGenerator(paths=files, recursive=recursive,
-                                        matching=acceptlist,
-                                        reject=rejectlist)
-
     # get the classes corresponding to the given tests
     tests = [utils.get_test_class(name) for name in testscripts]
 
     # our monitors
-    # FIXME : actually implement them !
-    monitors = [(GstDebugLogMonitor,{"debug-level":"*:3"})]
+    monitors = []
     if valgrinding:
         monitors.append((ValgrindMemCheckMonitor,
                          {"suppression-files":"gst.supp"}))
 
-    #testrun = ListTestRun([test], {"uri" : generator1})
-    testrun = ListTestRun(tests,
-                          arguments = { "uri" : generator1 },
-                          maxnbtests=maxnbtests,
-                          monitors = monitors)
-    #testrun.addTest(test2, {"filename" : generator2})
+    testrun = TestRun(maxnbtests=maxnbtests)
+    for test in tests:
+        testrun.addTest(GstMediaTestScenario,
+                        arguments = { "uri" : generator1,
+                                      "subtest-class": test,
+                                      "debug-level-1":str(debuglevel),
+                                      "debug-level-2":str(debuglevel2) },
+                        monitors = monitors)
+
+#     testrun = ListTestRun(tests,
+#                           arguments = { "uri" : generator1 },
+#                           maxnbtests=maxnbtests,
+#                           monitors = monitors)
 
     return testrun
 
