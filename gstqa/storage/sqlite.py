@@ -29,7 +29,12 @@ from gstqa.log import critical, error, warning, debug, info
 from gstqa.storage.storage import DBStorage
 from gstqa.scenario import Scenario
 from gstqa.test import Test
-from pysqlite2 import dbapi2 as sqlite
+try:
+    # In Python 2.5, this is part of the standard library:
+    from sqlite3 import dbapi2 as sqlite
+except ImportError:
+    # Previous versions have this as external dependency...
+    from pysqlite2 import dbapi2 as sqlite
 from cPickle import dumps, loads
 
 TABLECREATION = """
