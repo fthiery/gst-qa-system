@@ -36,6 +36,7 @@
 # * has a checklist like tests
 # * can modify timeout (i.e. with valgrind)
 
+import string
 from gstqa.test import Test, DBusTest, GStreamerTest
 from gstqa.log import critical, error, warning, debug, info
 
@@ -221,26 +222,33 @@ class ValgrindMemCheckMonitor(Monitor):
     """
     __monitor_name__ = "valgrind-memcheck-monitor"
     __monitor_description__ = "Checks for memory leaks using valgrind memcheck"
+    __monitor_arguments__ = {
+        "suppression-files":"coma separated list of suppresion files"
+        }
     __monitor_output_files__ = {
         "memcheck-log" : "Full log from valgrind memcheck"
         }
 
     __applies_on__ = DBusTest
 
-    # needs to use --log-file=<tmpfile> to store results
-    # needs to increase the timeout !
-
     def setUp(self):
         Monitor.setUp(self)
         self._logfile, self._logfilepath = self.testrun.get_temp_file(nameid="valgrind-memcheck")
         # prepend valgrind options
-        ourargs = ["valgrind", "-q", "--tool=memcheck",
+        ourargs = ["valgrind", "--tool=memcheck",
                    "--leak-check=full", "--trace-children=yes",
                    "--leak-resolution=med", "--num-callers=20",
                    "--log-file=%s" % self._logfilepath]
+        # add the suppression files
+        sups = self.arguments.get("suppression-files")
+        if sups:
+            for sup in string.split(sups, ','):
+                ourargs.append("--suppressions=%s" % sup)
         ourargs.extend(self.test._preargs)
         self.test._preargs = ourargs
         self.setOutputFile("memcheck-log", self._logfilepath)
+        # set some env variables
+        self.test._environ["G_SLICE"] = "always-malloc"
         # multiply timeout by 4
         if not self.test.setTimeout(self.test.getTimeout() * 4):
             warning("Couldn't change the timeout !")
