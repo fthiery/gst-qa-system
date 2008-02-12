@@ -67,13 +67,26 @@ def printTestInfo(db, testid, failedonly=False):
         for key,val in outputfiles.iteritems():
             print "\t% -30s:\t%s" % (key,val)
 
+def printEnvironment(d):
+    print "Environment"
+    for key,val in d.iteritems():
+        if isinstance(val, dict):
+            print "\t% -30s:" % (key)
+            for dk,dv in val.iteritems():
+                print "\t\t% -30s:\t%s" % (dk,dv)
+        else:
+            print "\t% -30s:\t%s" % (key,val)
+
 def printTestRun(db, testrunid, failedonly=False):
     # let's output everything !
     cid, starttime, stoptime = db.getTestRun(testrunid)
     softname, clientname, clientuser = db.getClientInfoForTestRun(testrunid)
+    environ = db.getEnvironmentForTestRun(testrunid)
     tests = db.getTestsForTestRun(testrunid)
     print "TestRun #% 3d:" % testrunid
     print "Started:%s\nStopped:%s" % (time.ctime(starttime), time.ctime(stoptime))
+    if environ:
+        printEnvironment(environ)
     print "Number of tests:", len(tests)
     for testid in tests:
         printTestInfo(db, testid, failedonly)

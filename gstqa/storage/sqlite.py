@@ -459,6 +459,16 @@ class SQLiteStorage(DBStorage):
             return (None, None, None)
         return res[0]
 
+    def getEnvironmentForTestRun(self, testrunid):
+        debug("testrunid", testrunid)
+        liststr = "SELECT data FROM environment WHERE testrunid=?"
+        res = self._FetchOne(liststr, (testrunid, ))
+        if len(res) == 0:
+            return {}
+        environid = res[0]
+        dic = self._getDict("environdicts", environid)
+        return dic
+
     def getTestsForTestRun(self, testrunid):
         debug("testrunid:%d", testrunid)
         liststr = "SELECT id FROM test WHERE testrunid=?"
