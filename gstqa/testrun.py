@@ -274,12 +274,25 @@ class TestRun(gobject.GObject):
         self._runNext()
         return False
 
-    def get_temp_file(self):
-        """ Return a temporary file object """
+    def get_temp_file(self, nameid='', suffix=''):
+        """
+        Creates a new temporary file in a secure fashion, guaranteeing
+        it will be unique and only accessible from this user.
+
+        If specified, the nameid will be inserted in the unique name.
+        If specified, the suffix will be used
+
+        The returned file will NEVER be removed or closed, the caller
+        should take care of that.
+
+        Return (filepath, fileobject) for the newly created file
+        """
         # we create temporary files in a specified directory
         if not os.path.exists(self._workingdir):
             os.makedirs(self._workingdir)
-        return tempfile.mkstemp(prefix="gstqa-output-",
+        prefix = "gstqa-output-" + nameid
+        return tempfile.mkstemp(prefix=prefix,
+                                suffix=suffix,
                                 dir=self._workingdir)
 
 
