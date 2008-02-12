@@ -89,7 +89,7 @@ class Scenario(Test):
         self.tests.append(instance)
         instance.connect("done", self._subTestDoneCb)
         for monitor in self._monitors:
-            instance.addMonitor(monitor)
+            instance.addMonitor(*monitor)
         instance.run()
         # returning False so that idle_add() doesn't call us again
         return False
@@ -112,7 +112,7 @@ class Scenario(Test):
         """
         testclass : a testclass to run next, can be a Scenario
         arguments : dictionnary of arguments
-        monitors : list of Monitor to run the test with
+        monitors : list of (Monitor, monitorargs) to run the test with
 
         This method can be called several times in a row at any moment.
         """

@@ -140,6 +140,7 @@ class Test(gobject.GObject):
         self._asynctimeouttime = 0
         self._testtimeouttime = 0
 
+        # list of (monitor, monitorargs)
         self._monitors = []
         self._monitorinstances = []
 
@@ -232,8 +233,8 @@ class Test(gobject.GObject):
         return True
 
     def _setUpMonitors(self):
-        for monitor in self._monitors:
-            instance = monitor(self._testrun, self)
+        for monitor, monitorarg in self._monitors:
+            instance = monitor(self._testrun, self, **monitorarg)
             if not instance.setUp():
                 return False
             self._monitorinstances.append(instance)
@@ -459,7 +460,7 @@ class Test(gobject.GObject):
         self._asynctimeout = timeout
         return True
 
-    def addMonitor(self, monitor):
+    def addMonitor(self, monitor, monitorargs={}):
         """
         Add a monitor to this test instance.
 
@@ -472,7 +473,7 @@ class Test(gobject.GObject):
         if not isinstance(self, monitor.__applies_on__):
             warning("The given monitor cannot be applied on this test")
             return False
-        self._monitors.append(monitor)
+        self._monitors.append((monitor, monitorargs))
 
 class DBusTest(Test, dbus.service.Object):
     """

@@ -126,6 +126,10 @@ class TestRun(gobject.GObject):
         """
         Adds test with the given arguments (or generator) and monitors
         to the list of tests to be run
+
+        monitors are a list of tuples containing:
+        * the monitor class
+        * (optional) the arguments to use on that monitor
         """
         if not isinstance(test, type) and not issubclass(test, Test):
             raise TypeError("Given test is not a Test object !")
@@ -229,7 +233,7 @@ class TestRun(gobject.GObject):
                          bus_address=self._bus_address,
                          **kwargs)
         for monitor in monitors:
-            test.addMonitor(monitor)
+            test.addMonitor(*monitor)
 
         test.connect("start", self._singleTestStart)
         test.connect("done", self._singleTestDone)
@@ -238,7 +242,6 @@ class TestRun(gobject.GObject):
         # add instance to running tests
         self._runninginstances.append(test)
 
-        # apply monitors
         # start test
         test.run()
 
@@ -314,7 +317,7 @@ class ListTestRun(TestRun):
         for test in tests:
             self.addTest(test, arguments, monitors)
 
-def single_test_run(test, arguments=[], monitor=None):
+def single_test_run(test, arguments=[], monitors=[]):
     """
     Convenience function to create a TestRun for a single test
     """

@@ -39,7 +39,7 @@ from optparse import OptionParser
 from gstqa.client import TesterClient
 from gstqa.scenario import Scenario, ListScenario
 from gstqa.generator import FileSystemGenerator, URIFileSystemGenerator
-from gstqa.monitor import GstDebugLogMonitor
+from gstqa.monitor import GstDebugLogMonitor, ValgrindMemCheckMonitor
 from gstqa.test import PythonDBusTest
 from gstqa.testrun import ListTestRun
 import gstqa.utils as utils
@@ -195,12 +195,16 @@ def create_testrun(files, testscripts, recursive=True, topdir=None,
 
     # our monitors
     # FIXME : actually implement them !
+    monitors = [(GstDebugLogMonitor,{"debug-level":"*:3"})]
+    if valgrinding:
+        monitors.append((ValgrindMemCheckMonitor,
+                         {"suppression-files":"gst.supp"}))
 
     #testrun = ListTestRun([test], {"uri" : generator1})
     testrun = ListTestRun(tests,
                           arguments = { "uri" : generator1 },
                           maxnbtests=maxnbtests,
-                          monitors = [GstDebugLogMonitor])
+                          monitors = monitors)
     #testrun.addTest(test2, {"filename" : generator2})
 
     return testrun
