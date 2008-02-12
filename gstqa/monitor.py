@@ -202,7 +202,7 @@ class GstDebugLogMonitor(Monitor):
         # set gst_debug to 0
         self.test._environ["GST_DEBUG"] = self.arguments.get("debug-level", "*:2")
         # get file for redirection
-        self._logfile, self._logfilepath = self.testrun.get_temp_file()
+        self._logfile, self._logfilepath = self.testrun.get_temp_file(nameid="gst-debug-log")
         debug("Got temporary file %s", self._logfilepath)
         if self.test._stderr:
             warning("stderr is already being used, can't setUp monitor")
@@ -219,10 +219,41 @@ class ValgrindMemCheckMonitor(Monitor):
     """
     Runs the test within a valgrind --tool=memcheck environment
     """
+    __monitor_name__ = "valgrind-memcheck-monitor"
+    __monitor_description__ = "Checks for memory leaks using valgrind memcheck"
+    __monitor_output_files__ = {
+        "memcheck-log" : "Full log from valgrind memcheck"
+        }
+
     __applies_on__ = DBusTest
 
     # needs to use --log-file=<tmpfile> to store results
     # needs to increase the timeout !
+
+    def setUp(self):
+        Monitor.setUp(self)
+        self._logfile, self._logfilepath = self.testrun.get_temp_file(nameid="valgrind-memcheck")
+        # prepend valgrind options
+        ourargs = ["valgrind", "-q", "--tool=memcheck",
+                   "--leak-check=full", "--trace-children=yes",
+                   "--leak-resolution=med", "--num-callers=20",
+                   "--log-file=%s" % self._logfilepath]
+        ourargs.extend(self.test._preargs)
+        self.test._preargs = ourargs
+        self.setOutputFile("memcheck-log", self._logfilepath)
+        # multiply timeout by 4
+        if not self.test.setTimeout(self.test.getTimeout() * 4):
+            warning("Couldn't change the timeout !")
+            return False
+        # multiply async-setup-timeout by 4 !
+        if not self.test.setAsyncSetupTimeout(self.test.getAsyncSetupTimeout() * 4):
+            warning("Couldn't change the asynchronous setup timeout !")
+            return False
+        return True
+
+    def tearDown(self):
+        if self._logfile:
+            self._logfile.close()
 
 class GDBMonitor(Monitor):
     """
