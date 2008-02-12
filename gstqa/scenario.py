@@ -79,8 +79,11 @@ class Scenario(Test):
             testclass, args, monitors = self._tests.pop(0)
             debug("About to create subtest %r with arguments %r", testclass, args)
             instance = testclass(testrun=self._testrun,
-                                 bus = self.arguments["bus"],
+                                 bus = self.arguments.get("bus"),
+                                 bus_address = self.arguments.get("bus_address"),
                                  **args)
+            for monitor in monitors:
+                instance.addMonitor(*monitor)
         except Exception, e:
             warning("Failed to create instance of class %r : %r", testclass, e)
             self.stop()
@@ -143,12 +146,9 @@ class Scenario(Test):
             d.update(sub.getArguments())
         return d
 
-    # setUp
-    # tearDown
-    # stop
-    # start
-
-    pass
+    def addMonitor(self, monitor, monitorargs={}):
+        # the subtests will do the check for validity
+        self._monitors.append((monitor, monitorargs))
 
 class ListScenario(Scenario):
     """
