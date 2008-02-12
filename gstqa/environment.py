@@ -33,6 +33,7 @@ import sys
 import string
 import gobject
 gobject.threads_init()
+import gst
 
 # TODO : methods/classes to retrieve/process environment
 #
@@ -81,14 +82,32 @@ def collectEnvironment(environ, callback):
 def tupletostr(atup):
     return string.join([str(x) for x in atup], ".")
 
+def _getGStreamerRegistry():
+    import stat
+    # returns a dictionnary with the contents of the registry:
+    # key : plugin-name
+    # value : (version, filename, date, [features])
+    #   [features] is a list of the names of the pluginfeatures
+    reg = gst.registry_get_default()
+    d = {}
+    for p in reg.get_plugin_list():
+        name = p.get_name()
+        filename = p.get_filename()
+        if filename:
+            date = os.stat(filename)[stat.ST_MTIME]
+        else:
+            date = 0
+        version = p.get_version()
+        features = [x.get_name() for x in reg.get_feature_list_by_plugin(name)]
+        d[name] = (filename, date, version, features)
+    return d
+
 def _getGStreamerEnvironment():
     # returns a dictionnary with the GStreamer specific details
-    import pygst
-    pygst.require("0.10")
-    import gst
     d = {}
     d["pygst-version"] = tupletostr(gst.get_pygst_version())
     d["gst-version"] = tupletostr(gst.get_gst_version())
+    d["gst-registry"] = _getGStreamerRegistry()
     # FIXME : Collect all information from the registry
     return d
 
