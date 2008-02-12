@@ -106,9 +106,11 @@ class Test(gobject.GObject):
                          gobject.TYPE_PYOBJECT))
         }
 
-    def __init__(self, testrun=None, uuid=None, *args, **kwargs):
+    def __init__(self, testrun=None, uuid=None, timeout=None,
+                 asynctimeout=None, *args, **kwargs):
         gobject.GObject.__init__(self)
-        self._timeout = self.__test_timeout__
+        self._timeout = timeout or self.__test_timeout__
+        self._asynctimeout = asynctimeout or self.__async_setup_timeout__
         self._running = False
         self.arguments = kwargs
         self._stopping = False
@@ -126,10 +128,17 @@ class Test(gobject.GObject):
         else:
             self.uuid = uuid
         self.arguments["uuid"] = self.uuid
+
         self._asynctimeoutid = 0
         self._testtimeoutid = 0
+        # time at which events started
         self._asyncstarttime = 0
         self._teststarttime = 0
+        # time at which the timeouts should occur,
+        # we store this in order to modify timeouts while
+        # running
+        self._asynctimeouttime = 0
+        self._testtimeouttime = 0
 
         self._monitors = []
         self._monitorinstances = []
@@ -157,13 +166,25 @@ class Test(gobject.GObject):
             self._checklist[key] = False
 
     def _asyncSetupTimeoutCb(self):
-        debug("timeout for %r", self)
+        debug("async setup timeout for %r", self)
+        now = time.time()
+        if now < self._asynctimeouttime:
+            debug("async setup timeout must have changed in the meantime")
+            diff = int((self._asynctimeouttime - now) * 1000)
+            self._asynctimeoutid = gobject.timeout_add(diff, self._asyncSetupTimeoutCb)
+            return False
         self._asynctimeoutid = 0
         self.stop()
         return False
 
     def _testTimeoutCb(self):
         debug("timeout for %r", self)
+        now = time.time()
+        if nwo < self._testtimeouttime:
+            debug("timeout must have changed in the meantime")
+            diff = int((self._testtimeouttime - now) * 1000)
+            self._testtimeoutid = gobject.timeoud_add(diff, self._testTimeoutCb)
+            return False
         self._testtimeoutid = 0
         self.stop()
         return False
@@ -179,7 +200,8 @@ class Test(gobject.GObject):
         if self.__async_setup__:
             # the subclass will call start() on his own
             # put in a timeout check
-            self._asynctimeoutid = gobject.timeout_add(self.__async_setup_timeout__ * 1000,
+            self._asynctimeouttime = time.time() + self._asynctimeout
+            self._asynctimeoutid = gobject.timeout_add(self._asynctimeout * 1000,
                                                        self._asyncSetupTimeoutCb)
             return
 
@@ -264,9 +286,11 @@ class Test(gobject.GObject):
                 self._asynctimeoutid = 0
             curtime = time.time()
             self.extraInfo("test-setup-duration", curtime - self._teststarttime)
+        self._running = True
         self.emit("start")
         self.validateStep("test-started")
         # start timeout for test !
+        self._testtimeouttime = time.time() + self._timeout
         self._testtimeoutid = gobject.timeout_add(self._timeout * 1000,
                                                   self._testTimeoutCb)
         self.test()
@@ -409,12 +433,30 @@ class Test(gobject.GObject):
         Set the timeout period for running this test in seconds.
         Returns True if the timeout could be modified, else False.
         """
-        # TODO/IDEA : be able to modify the timeout while the test
-        # is running
-        if self._running:
-            # we can't modify the timeout if the test has started
-            return False
+        debug("timeout : %d", timeout)
+        if self._testtimeoutid:
+            debug("updating timeout/timeouttime")
+            self._testtimeouttime = self._testtimeouttime - self._timeout + timeout
         self._timeout = timeout
+        return True
+
+    def getAsyncSetupTimeout(self):
+        """
+        Returns the currently configured async setup timeout
+        """
+        return self._asynctimeout
+
+    def setAsyncSetupTimeout(self, timeout):
+        """
+        Set the timeout period for asynchronous test to startup in
+        seconds.
+        Returns True if the timeout could be modified, else False.
+        """
+        debug("timeout : %d", timeout)
+        if self._asynctimeoutid:
+            debug("updating timeout/timeouttime")
+            self._asynctimeouttime = self._asynctimeouttime - self._asynctimeout + timeout
+        self._asynctimeout = timeout
         return True
 
     def addMonitor(self, monitor):
@@ -799,10 +841,11 @@ class DBusTest(Test, dbus.service.Object):
         debug("Got remote iface %r" % remoteRunner)
         args = self.arguments
         args["bus_address"] = self._bus_address
+        args["timeout"] = self._timeout
         remoteRunner.createTestInstance(self.get_file(),
                                         self.__module__,
                                         self.__class__.__name__,
-                                        self.arguments,
+                                        args,
                                         reply_handler=self._createTestInstanceCallBack,
                                         error_handler=self.voidRemoteErrBackHandler)
 
