@@ -183,7 +183,7 @@ class Test(gobject.GObject):
         if now < self._testtimeouttime:
             debug("timeout must have changed in the meantime")
             diff = int((self._testtimeouttime - now) * 1000)
-            self._testtimeoutid = gobject.timeoud_add(diff, self._testTimeoutCb)
+            self._testtimeoutid = gobject.timeout_add(diff, self._testTimeoutCb)
             return False
         self._testtimeoutid = 0
         self.stop()
@@ -1040,9 +1040,13 @@ class GStreamerTest(PythonDBusTest):
 
     def _elementAddedCb(self, container, element):
         debug("New element %r in container %r", element, container)
+        factory = element.get_factory()
+        factory_name = ""
+        if not factory is None:
+            factory_name = factory.get_name()
         # add himself
         self._elements.append((element.get_name(),
-                               element.get_factory().get_name(),
+                               factory_name,
                                container.get_name()))
         # if bin, add current and connect signal
         if isinstance(element, gst.Bin):
