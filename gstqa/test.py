@@ -180,7 +180,7 @@ class Test(gobject.GObject):
     def _testTimeoutCb(self):
         debug("timeout for %r", self)
         now = time.time()
-        if nwo < self._testtimeouttime:
+        if now < self._testtimeouttime:
             debug("timeout must have changed in the meantime")
             diff = int((self._testtimeouttime - now) * 1000)
             self._testtimeoutid = gobject.timeoud_add(diff, self._testTimeoutCb)
@@ -486,7 +486,11 @@ class DBusTest(Test, dbus.service.Object):
     __test_checklist__ = {
     "dbus-process-spawned":"The DBus child process spawned itself",
     "dbus-process-connected":"The DBus child process connected properly to the private Bus",
-    "remote-instance-created":"The remote version of this test was created properly"
+    "remote-instance-created":"The remote version of this test was created properly",
+    "subprocess-exited-normally":"The subprocess returned a positive exit code"
+    }
+    __test_extra_infos__ = {
+    "subprocess-return-code":"The exit value returned by the subprocess"
     }
     __test_arguments__ = {
     }
@@ -522,6 +526,8 @@ class DBusTest(Test, dbus.service.Object):
             self._process = None
             self._processPollId = 0
             self._remoteInstance = None
+            # return code from subprocess
+            self._returncode = None
             # variables for remote launching, can be modified by monitors
             self._stdin = None
             self._stdout = None
@@ -618,9 +624,22 @@ class DBusTest(Test, dbus.service.Object):
                     self._processPollId = 0
                 if self._process:
                     # double check it hasn't actually exited
-                    while self._process.poll() == None:
+                    # give the test up to one second to exit
+                    tries = 10
+                    while self._returncode == None and not tries == 0:
+                        time.sleep(0.1)
+                        self._returncode = self._process.poll()
+                        tries -= 1
+                    while self._returncode == None:
+                        info("Process isn't done yet, killing it")
                         os.kill(self._process.pid, signal.SIGKILL)
+                        self._returncode = self._process.poll()
+                    info("Process returned %d", self._returncode)
                     self._process = None
+                if not self._returncode == None:
+                    if self._returncode > 0:
+                        self.validateStep("subprocess-exited-normally")
+                    self.extraInfo("subprocess-return-code", self._returncode)
         else:
             self.remoteTearDown()
         Test.tearDown(self)
@@ -654,6 +673,7 @@ class DBusTest(Test, dbus.service.Object):
         #   process
         # Negative values means the process was killed by signal
         info("subprocess returned %r" % res)
+        self._returncode = res
         self._process = None
         self._processPollId = 0
         self.stop()
@@ -770,7 +790,7 @@ class DBusTest(Test, dbus.service.Object):
         info("%s", self.uuid)
         # because of being asynchronous, we call remoteTearDown first
         self.tearDown()
-        self.stop()
+        Test.stop(self)
 
     @dbus.service.method(dbus_interface="net.gstreamer.Insanity.Test",
                          in_signature='', out_signature='')
