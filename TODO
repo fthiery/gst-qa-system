@@ -10,15 +10,10 @@ Goal : Compatible behaviour as gst-media-test, but using the new API.
  * document the usage
 
 * testrun
- * get the environment + store in DB
  * Add possibility to modify the environment
 
 * Monitor support
- * GST_DEBUG monitor
  * gdb/backtrace monitor
-
-* Scenario support
- * If first test fails, redo it with higher debugging monitoring
 
 * Reporting support
 
@@ -27,6 +22,7 @@ Milestone 2
 Goal : Database support
 
 * DB storage support
+ * Store monitors
 * Remote DB storage support
 
 Milestone 3
@@ -50,19 +46,16 @@ Non-milestone-specific / Bonus features
 
 * Smarter introspection
  * Make __test_arguments__ have more information :
-  * name
-  * small description
   * default value
   * full documentation on that argument
  * Make __test_checklist__ have more information :
-  * name
-  * small description
   * full documentation , especially explaining what could have caused
     that step to not be validated, to make debugging/fixing easier.
 
 * Database
  * Add convenience functions for merging two DB together (or one in another).
  * Store the test class as an integer and not a name
+ * Add methods for updating old-versioned DB
 
 * Tests
  * Add some form of versioning so we can track changes.
