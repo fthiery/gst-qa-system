@@ -469,6 +469,7 @@ class Test(gobject.GObject):
 
         Returns True if the monitor was applied succesfully.
         """
+        debug("monitor:%r, args:%r", monitor, monitorargs)
         # check if monitor is valid
         if not isinstance(self, monitor.__applies_on__):
             warning("The given monitor cannot be applied on this test")
