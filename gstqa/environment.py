@@ -34,6 +34,7 @@ import string
 import gobject
 gobject.threads_init()
 import gst
+from gstqa.log import critical, error, warning, debug, info
 
 # TODO : methods/classes to retrieve/process environment
 #
@@ -72,8 +73,16 @@ def collectEnvironment(environ, callback):
     os.close(resfile)
     thispath = os.path.abspath(__file__.replace(".pyc", ".py"))
     pargs = [thispath, respath]
-    proc = subprocess.Popen(pargs, env=environ)
-    gobject.timeout_add(500, _pollSubProcess, proc, respath, callback)
+    try:
+        debug("spawning subprocess %r", pargs)
+        proc = subprocess.Popen(pargs, env=environ)
+    except:
+        warning("Spawning remote process failed")
+        resfile.close()
+        os.remove(respath)
+        callback({})
+    else:
+        gobject.timeout_add(500, _pollSubProcess, proc, respath, callback)
 
 ##
 ## SUBPROCESS METHODS/FUNCTIONS
