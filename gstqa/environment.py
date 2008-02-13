@@ -78,7 +78,6 @@ def collectEnvironment(environ, callback):
         proc = subprocess.Popen(pargs, env=environ)
     except:
         warning("Spawning remote process failed")
-        resfile.close()
         os.remove(respath)
         callback({})
     else:
