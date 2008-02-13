@@ -492,7 +492,9 @@ class DBusTest(Test, dbus.service.Object):
     "subprocess-exited-normally":"The subprocess returned a positive exit code"
     }
     __test_extra_infos__ = {
-    "subprocess-return-code":"The exit value returned by the subprocess"
+    "subprocess-return-code":"The exit value returned by the subprocess",
+    "subprocess-spawn-time":"How long it took to spawn the subprocess in seconds",
+    "remote-instance-creation-delay":"How long it took to create the remote instance"
     }
     __test_arguments__ = {
     }
@@ -536,6 +538,8 @@ class DBusTest(Test, dbus.service.Object):
             self._stderr = None
             self._preargs = []
             self._environ = os.environ.copy()
+            self._subprocessspawntime = 0
+            self._subprocessconnecttime = 0
         else:
             self._remoteTimeoutId = 0
             self._remoteTimedOut = False
@@ -586,6 +590,7 @@ class DBusTest(Test, dbus.service.Object):
             # spawn the other process
             info("opening %r" % pargs)
             try:
+                self._subprocessspawntime = time.time()
                 self._process = subprocess.Popen(pargs,
                                                  stdin = self._stdin,
                                                  stdout = self._stdout,
@@ -848,6 +853,9 @@ class DBusTest(Test, dbus.service.Object):
 
         info("%s our remote counterpart has started", self.uuid)
         self.validateStep("dbus-process-connected")
+        self._subprocessconnecttime = time.time()
+        delay = self._subprocessconnecttime - self._subprocessspawntime
+        self.extraInfo("subprocess-spawn-time", delay)
         # we need to give the remote process the following information:
         # * filename where the Test class is located (self.get_file())
         # * class name (self.__class__.__name__)
@@ -874,6 +882,8 @@ class DBusTest(Test, dbus.service.Object):
     def _createTestInstanceCallBack(self, retval):
         debug("%s retval:%r", self.uuid, retval)
         if retval:
+            delay = time.time() - self._subprocessconnecttime
+            self.extraInfo("remote-instance-creation-delay", delay)
             self.validateStep("remote-instance-created")
             rname = "net.gstreamer.Insanity.Test.Test%s" % self.uuid
             rpath = "/net/gstreamer/Insanity/Test/Test%s" % self.uuid
