@@ -597,7 +597,7 @@ class DBusTest(Test, dbus.service.Object):
                                                  stderr = self._stderr,
                                                  env=self._environ)
             except:
-                error("Error starting the subprocess command !")
+                error("Error starting the subprocess command ! %r", pargs)
                 return False
 
             self.validateStep("dbus-process-spawned")
