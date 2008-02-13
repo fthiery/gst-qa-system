@@ -448,6 +448,8 @@ class SQLiteStorage(DBStorage):
     def _getBlobVal(self, keyid):
         res = self._FetchOne("SELECT name,value FROM dictblob WHERE id=?",
                              (keyid, ))
+        if not res:
+            return (None, None)
         name,val = res
         return (name, loads(str(val)))
 
@@ -495,7 +497,7 @@ class SQLiteStorage(DBStorage):
         debug("testrunid", testrunid)
         liststr = "SELECT data FROM environment WHERE testrunid=?"
         res = self._FetchOne(liststr, (testrunid, ))
-        if len(res) == 0:
+        if not res:
             return {}
         environid = res[0]
         dic = self._getDict("environdicts", environid)
@@ -559,7 +561,10 @@ class SQLiteStorage(DBStorage):
         * the output files (dictionnary)
         """
         searchstr = "SELECT testrunid,type,arguments,results,resultpercentage,extrainfo,outputfiles FROM test WHERE id=?"
-        testrunid,ttype,argid,resid,resperc,extraid,outputfilesid = self._FetchOne(searchstr, (testid, ))
+        res = self._FetchOne(searchstr, (testid, ))
+        if not res:
+            return (None, None, None, None, None, None, None)
+        testrunid,ttype,argid,resid,resperc,extraid,outputfilesid = res
         args = self._getDict("argumentsdicts", argid)
         results = self._getDict("checklistdicts", resid)
         extras = self._getDict("extrainfodicts", extraid)
