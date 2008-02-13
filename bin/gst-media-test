@@ -169,7 +169,7 @@ class GstMediaTestClient(TesterClient):
             if infos:
                 print stub, "Extra information:"
             for extra in infos:
-                print stub, "  ", extra ," : ",  infos[extra]
+                print stub, "  %30s :\t%s" % (extra, infos[extra])
         if isinstance(test, Scenario):
             for sub in test.tests:
                 print stub, "Sub Test"
