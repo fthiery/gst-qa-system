@@ -37,6 +37,8 @@
 # * can modify timeout (i.e. with valgrind)
 
 import string
+import os
+import os.path
 from gstqa.test import Test, DBusTest, GStreamerTest
 from gstqa.log import critical, error, warning, debug, info
 
@@ -214,7 +216,7 @@ class GstDebugLogMonitor(Monitor):
 
     def tearDown(self):
         if self._logfile:
-            self._logfile.close()
+            os.close(self._logfile)
 
 class ValgrindMemCheckMonitor(Monitor):
     """
@@ -261,7 +263,7 @@ class ValgrindMemCheckMonitor(Monitor):
 
     def tearDown(self):
         if self._logfile:
-            self._logfile.close()
+            os.close(self._logfile)
 
 class GDBMonitor(Monitor):
     """
@@ -269,6 +271,12 @@ class GDBMonitor(Monitor):
     get backtraces.
 
     This monitor will NOT run the test under gdb
+
+    For this monitor to work, you need to have the two following
+    kernel values set properly:
+
+    /proc/sys/kernel/core_uses_pid = 1
+    /proc/sys/kernel/core_pattern = core
     """
 
     __applies_on__ = DBusTest
@@ -278,6 +286,43 @@ class GDBMonitor(Monitor):
     # when the test is done, check whether it crashed, if so:
     #  * run a gdb script to collect a backtrace
     #  * remove core file
+
+    def setUp(self):
+        Monitor.setUp(self)
+        # add some env variables
+        self.test._environ["G_DEBUG"] = "fatal_warnings"
+        try:
+            import resource
+            resource.setrlimit(resource.RLIMIT_CORE, (-1, -1))
+        except:
+            warning("Couldn't change core limit")
+            return False
+        return True
+
+    def tearDown(self):
+        # if the return value of the subprocess is non-null, we most
+        # likely have a crasher and core dump
+        if not self.test._returncode == 0:
+            debug("non-null returncode [%d] for pid %d",
+                  self.test._returncode,
+                  self.test._pid)
+            # try to find the core file
+            core = self._findCoreFile()
+            if core:
+                debug("Got core file %s", core)
+                # FIXME : Actually get backtrace :)
+                os.remove(core)
+
+    def _findCoreFile(self):
+        cwd = self.testrun.getWorkingDirectory()
+        root, dirs, files = list(os.walk(cwd))[0]
+        debug("files : %r", files)
+        for fname in files:
+            if fname == "core":
+                return os.path.join(cwd, fname)
+            if fname == "core.%d" % self.test._pid:
+                return os.path.join(cwd, fname)
+        return None
 
 class FileBasedMonitorInterface:
     """

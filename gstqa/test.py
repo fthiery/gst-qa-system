@@ -275,6 +275,8 @@ class Test(gobject.GObject):
             debug("stoptime:%r , teststarttime:%r",
                   stoptime, self._teststarttime)
             self.extraInfo("test-total-duration", stoptime - self._teststarttime)
+        for instance in self._monitorinstances:
+            instance.tearDown()
         self.emit("done")
 
     def start(self):
