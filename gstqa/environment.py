@@ -87,7 +87,7 @@ def collectEnvironment(environ, callback):
 ## SUBPROCESS METHODS/FUNCTIONS
 ##
 
-def tupletostr(atup):
+def _tupletostr(atup):
     return string.join([str(x) for x in atup], ".")
 
 def _getGStreamerRegistry():
@@ -113,8 +113,8 @@ def _getGStreamerRegistry():
 def _getGStreamerEnvironment():
     # returns a dictionnary with the GStreamer specific details
     d = {}
-    d["pygst-version"] = tupletostr(gst.get_pygst_version())
-    d["gst-version"] = tupletostr(gst.get_gst_version())
+    d["pygst-version"] = _tupletostr(gst.get_pygst_version())
+    d["gst-version"] = _tupletostr(gst.get_gst_version())
     d["gst-registry"] = _getGStreamerRegistry()
     # FIXME : Collect all information from the registry
     return d

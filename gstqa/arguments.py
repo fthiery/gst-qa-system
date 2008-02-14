@@ -20,14 +20,23 @@
 # Boston, MA 02111-1307, USA.
 
 """
-
+Arguments classes for tests
 """
+
 from log import critical, error, warning, debug, info
 from generator import Generator
 
 class Arguments:
-    # Need some iterable interface !
-    # to return a dictionnary of argument at each iteration
+    """
+    Iterable argument lists.
+
+    Takes a list of named arguments and can be iterated to return
+    dictionnaries of all the combinations.
+
+    Those arguments can either be :
+    * static arguments (ex: int, list, string, etc...), or
+    * dynamic arguments (currently only generators).
+    """
 
     def __init__(self, *args, **kwargs):
         self.args = kwargs
@@ -100,5 +109,7 @@ class Arguments:
     ## NOT IMPLEMENTED YET
 
     def isValidWithTest(self, testclass):
-        """ Checks if all arguments are valid with given test """
+        """
+        Checks if all arguments are valid with given test
+        """
         raise NotImplementedError

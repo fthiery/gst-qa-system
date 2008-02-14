@@ -63,7 +63,12 @@ class TesterClient(dbus.service.Object):
     """
     Base class for Tester clients
     """
+
+    # class variables
     __software_name__ = """USER FORGOT TO PUT CLIENT NAME"""
+    """
+    Subclasses of TesterClient need to put the name of their software in __software_name__
+    """
 
     def __init__(self, singlerun=False, storage=None,
                  *args, **kwargs):
@@ -219,11 +224,23 @@ class TesterClient(dbus.service.Object):
 
     ## methods for reporting progress to subclasses
     def test_run_start(self, testrun):
+        """
+        Subclasses can implement this method to know when a testrun has
+        started.
+        """
         pass
 
     def test_run_done(self, testrun):
+        """
+        Subclasses can implement this method to know when a testrun has
+        finished.
+        """
         pass
 
     def test_run_aborted(self, testrun):
+        """
+        Subclasses can implement this method to know when a testrun has
+        been aborted.
+        """
         pass
 

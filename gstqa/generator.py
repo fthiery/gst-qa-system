@@ -19,6 +19,12 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
+"""
+Generator classes
+
+Generators expand some arguments into a dictionnary of arguments.
+"""
+
 # TODO
 #  introspection
 #  python iterator-interface ?
@@ -33,13 +39,17 @@ from log import critical, error, warning, debug, info
 
 class Generator:
     """
-    Expands some arguments into a list of arguments
+    Expands some arguments into a list of arguments.
+
+    Base class, should not be used directly.
     """
 
     __args__ = {}
 
     def __init__(self, *args, **kwargs):
-        """Subclasses should call their parent __init__ will ALL arguments"""
+        """
+        Subclasses should call their parent __init__ will ALL arguments
+        """
         self.args = args
         self.kwargs = kwargs
         self.generated = []
@@ -48,7 +58,9 @@ class Generator:
         return self.__class__(*self.args, **self.kwargs)
 
     def generate(self):
-        """ Returns the full list of results """
+        """
+        Returns the full combination of results
+        """
         if not self.generated:
             self.generated = self._generate()
         return self.generated
@@ -69,13 +81,6 @@ class Generator:
     def __getitem__(self, idx):
         return self.generate()[idx]
 
-class PlaylistGenerator(Generator):
-    """
-    Takes a list of playlist file location
-    Returns a full list of URIs contained in those files
-    """
-    pass
-
 class FileSystemGenerator(Generator):
     """
     Arguments:
@@ -85,12 +90,18 @@ class FileSystemGenerator(Generator):
     * reject option (default : [])
 
     Returns:
-    * URI
+    * file system path
     """
 
     def __init__(self, paths=[], recursive=True,
                  matching=[], reject=[], *args,
                  **kwargs):
+        """
+        paths : list of paths and/or files
+        recursive : go down in subdirectories
+        matching : will only return files matching the given masks
+        reject : will not return files matching the given masks
+        """
         Generator.__init__(self, paths=paths, recursive=recursive,
                            matching=matching, reject=reject,
                            *args, **kwargs)
@@ -138,11 +149,27 @@ class FileSystemGenerator(Generator):
         return res
 
 class URIFileSystemGenerator(FileSystemGenerator):
+    """
+    Same as FileSystemGenerator, excepts that it returns URIs instead
+    of file system paths.
+    """
 
     def _generate(self):
         return ["file://%s" % x for x in FileSystemGenerator._generate(self)]
+
+##
+## FIXME : IMPLEMENT THESE GENERATORS
+##
 
 class CapsGenerator(Generator):
     """
     """
     pass
+
+class PlaylistGenerator(Generator):
+    """
+    Takes a list of playlist file location
+    Returns a full list of URIs contained in those files
+    """
+    pass
+

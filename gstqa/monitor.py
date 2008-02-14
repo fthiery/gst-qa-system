@@ -19,6 +19,13 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
+"""
+Monitors
+
+Monitors are objects that can be attached to tests to collect extra
+information, run extra analysis, etc...
+"""
+
 # TODO
 #
 # Add default monitor (spawn process, crash, timeout, IPC)
@@ -45,14 +52,51 @@ from gstqa.log import critical, error, warning, debug, info
 class Monitor:
     """
     Monitors a test
+
+    Base class
     """
     __monitor_name__ = "monitor"
+    """The searchable name of the monitor, should be unique"""
+
     __monitor_description__ = "Base Monitor class"
+    """A short description of the monitor"""
+
     __monitor_arguments__ = {}
+    """
+    The possible arguments of the monitors.
+    Dictionnary of:
+    * key : Argument name
+    * value : Description of the argument
+    """
+
     __monitor_output_files__ = {}
+    """
+    List of the files that the monitor generates
+    Dictionnary of:
+    * key : Output file name
+    * value : Description of the output file
+    """
+
     __monitor_checklist__ = {}
+    """
+    List of the checkitem:
+    Dictionnary of:
+    * key : Check item name
+    * value : Check item description
+    """
+
     __monitor_extra_infos__ = {}
+    """
+    List of extra information which the monitor generates
+    Dictionnary of:
+    * key : Extra information name
+    * value : Description of the extra information
+    """
+
     __applies_on__ = Test
+    """
+    Class of Test this monitor can be applied on.
+    """
 
     def __init__(self, testrun, instance, *args, **kwargs):
         self.testrun = testrun
@@ -63,12 +107,26 @@ class Monitor:
         self._outputfiles = {}
 
     def setUp(self):
+        """
+        Prepare the monitor.
+
+        Returns True if everything went well, else False.
+
+        Sub-classes should call their parent-class setUp() before
+        their implementation.
+        """
         return True
 
     def tearDown(self):
+        """
+        Clean up the monitor.
+
+        Sub-classes should call their parent-class tearDown() before
+        their implementation.
+        """
         pass
 
-    def processResults(self):
+    def _processResults(self):
         pass
 
     def _populateChecklist(self):
@@ -215,6 +273,7 @@ class GstDebugLogMonitor(Monitor):
         return True
 
     def tearDown(self):
+        Monitor.tearDown()
         if self._logfile:
             os.close(self._logfile)
 
@@ -262,6 +321,7 @@ class ValgrindMemCheckMonitor(Monitor):
         return True
 
     def tearDown(self):
+        Monitor.tearDown()
         if self._logfile:
             os.close(self._logfile)
 
@@ -300,6 +360,7 @@ class GDBMonitor(Monitor):
         return True
 
     def tearDown(self):
+        Monitor.tearDown()
         # if the return value of the subprocess is non-null, we most
         # likely have a crasher and core dump
         if not self.test._returncode == 0:
@@ -323,23 +384,3 @@ class GDBMonitor(Monitor):
             if fname == "core.%d" % self.test._pid:
                 return os.path.join(cwd, fname)
         return None
-
-class FileBasedMonitorInterface:
-    """
-    Interface for monitors that record data to file(s)
-    """
-
-    # TODO :
-    #  We should create the unique/temporary files in a location
-    #  specified by the client configuration
-    #
-    #  Make sure we can handle several files
-
-    def requestUniqueFileLocation(self):
-        # returns an opened file object
-        pass
-
-    def deleteAllFiles(self):
-        # used to clean up failed tests or files no longer needed
-        pass
-    pass
