@@ -544,6 +544,7 @@ class DBusTest(Test, dbus.service.Object):
             self._environ = os.environ.copy()
             self._subprocessspawntime = 0
             self._subprocessconnecttime = 0
+            self._pid = 0
         else:
             self._remoteTimeoutId = 0
             self._remoteTimedOut = False
@@ -604,9 +605,11 @@ class DBusTest(Test, dbus.service.Object):
                                                  stderr = self._stderr,
                                                  env=self._environ,
                                                  cwd=cwd)
+                self._pid = self._process.pid
             except:
                 error("Error starting the subprocess command ! %r", pargs)
                 return False
+            debug("Subprocess created successfully [pid:%d]", self._pid)
 
             self.validateStep("dbus-process-spawned")
             # add a poller for the proces
