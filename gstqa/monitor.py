@@ -273,7 +273,7 @@ class GstDebugLogMonitor(Monitor):
         return True
 
     def tearDown(self):
-        Monitor.tearDown()
+        Monitor.tearDown(self)
         if self._logfile:
             os.close(self._logfile)
 
@@ -321,7 +321,7 @@ class ValgrindMemCheckMonitor(Monitor):
         return True
 
     def tearDown(self):
-        Monitor.tearDown()
+        Monitor.tearDown(self)
         if self._logfile:
             os.close(self._logfile)
 
@@ -338,7 +338,16 @@ class GDBMonitor(Monitor):
     /proc/sys/kernel/core_uses_pid = 1
     /proc/sys/kernel/core_pattern = core
     """
-
+    __monitor_name__ = "gdb-monitor"
+    __monitor_description__ = """
+    Sets up the environment in order to collect core dumps of subprocesses
+    that failed. If possible, it will also get the backtrace of those
+    core dumps.
+    """
+    __monitor_output_files__ = {
+        "core-dump":"The core dump file",
+        "backtrace-file":"The backtrace file"
+        }
     __applies_on__ = DBusTest
 
     # doesn't need to do any redirections
@@ -360,7 +369,7 @@ class GDBMonitor(Monitor):
         return True
 
     def tearDown(self):
-        Monitor.tearDown()
+        Monitor.tearDown(self)
         # if the return value of the subprocess is non-null, we most
         # likely have a crasher and core dump
         if not self.test._returncode == 0:
@@ -371,8 +380,19 @@ class GDBMonitor(Monitor):
             core = self._findCoreFile()
             if core:
                 debug("Got core file %s", core)
+                # copy over the core dump
                 # FIXME : Actually get backtrace :)
-                os.remove(core)
+                corefd, corepath = self.testrun.get_temp_file(nameid="core-dump")
+                # copy core dump to that file
+                # FIXME : THIS MIGHT NOT WORK ON WINDOWS (see os.rename docs)
+                try:
+                    os.rename(core, corepath)
+                    self.setOutputFile("core-dump", corepath)
+                except:
+                    warning("Couldn't rename core dump file !!!")
+                    os.remove(core)
+                finally:
+                    os.close(corefd)
 
     def _findCoreFile(self):
         cwd = self.testrun.getWorkingDirectory()
