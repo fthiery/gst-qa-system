@@ -8,3 +8,15 @@ Pre-milestone 1 README
 To run:
 
 PYTHONPATH=/full/path/to/top/directory:$PYTHONPATH bin/gst-media-test
+
+
+Inline documentation
+--------------------
+
+  The source code is commented with python-style documentation.
+
+  You can get an html version by using epydoc and the following
+command:
+
+  epydoc -o epydoc --docformat plaintext -v  gstqa
+
