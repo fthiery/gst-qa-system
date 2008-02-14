@@ -206,8 +206,7 @@ def create_testrun(files, testscripts, recursive=True, topdir=None,
 
     # our monitors
     gdbscriptfile = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gdb.instructions")
-    monitors = [(GDBMonitor, {"save-core-dumps" : True,
-                              "gdb-script" : gdbscriptfile})]
+    monitors = [(GDBMonitor, {"gdb-script" : gdbscriptfile})]
     if valgrinding:
         # get full location of gst.supp
         suppfile = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gst.supp")
