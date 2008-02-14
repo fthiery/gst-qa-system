@@ -35,6 +35,7 @@ Attempts to simulate the behaviour of the (now deprecated) gst-media-test
 import sys
 import string
 import time
+import os.path
 from optparse import OptionParser
 from gstqa.client import TesterClient
 from gstqa.scenario import Scenario, ListScenario
@@ -206,8 +207,10 @@ def create_testrun(files, testscripts, recursive=True, topdir=None,
     # our monitors
     monitors = []
     if valgrinding:
+        # get full location of gst.supp
+        suppfile = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gst.supp")
         monitors.append((ValgrindMemCheckMonitor,
-                         {"suppression-files":"gst.supp"}))
+                         {"suppression-files":suppfile}))
 
     testrun = TestRun(maxnbtests=maxnbtests)
     for test in tests:
