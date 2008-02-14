@@ -29,6 +29,7 @@ from gstqa.log import critical, error, warning, debug, info
 from gstqa.storage.storage import DBStorage
 from gstqa.scenario import Scenario
 from gstqa.test import Test
+from gstqa.monitor import Monitor
 try:
     # In Python 2.5, this is part of the standard library:
     from sqlite3 import dbapi2 as sqlite
@@ -78,7 +79,28 @@ CREATE TABLE subtests (
    scenarioid INTEGER
 );
 
+CREATE TABLE monitor (
+   id INTEGER PRIMARY KEY,
+   testid INTEGER,
+   type TEXT,
+   arguments INTEGER,
+   results INTEGER,
+   resultpercentage FLOAT,
+   extrainfo INTEGER,
+   outputfiles INTEGER
+);
+
 CREATE TABLE testclassinfo (
+   type TEXT PRIMARY KEY,
+   parent TEXT,
+   description TEXT,
+   arguments INTEGER,
+   checklist INTEGER,
+   extrainfo INTEGER,
+   outputfiles INTEGER
+);
+
+CREATE TABLE monitorclassinfo (
    type TEXT PRIMARY KEY,
    parent TEXT,
    description TEXT,
@@ -93,6 +115,12 @@ CREATE TABLE dicts (
 );
 
 CREATE TABLE testclassdicts (
+   dictid INTEGER,
+   keyid INTEGER,
+   type INTEGER
+);
+
+CREATE TABLE monitorclassdicts (
    dictid INTEGER,
    keyid INTEGER,
    type INTEGER
@@ -201,7 +229,9 @@ class SQLiteStorage(DBStorage):
             return False
         # FIXME : Really check if all tables are present
         for tblname in ["version", "testrun", "environment", "client",
-                        "test", "subtests", "testclassinfo", "dicts",
+                        "test", "subtests", "monitor", "testclassinfo",
+                        "monitorclassinfo",
+                        "dicts", "testclassdicts", "monitorclassdicts",
                         "argumentsdicts", "extrainfodicts",
                         "outputfiledicts",
                         "environdicts", "checklistdicts",
@@ -295,13 +325,16 @@ class SQLiteStorage(DBStorage):
     def _storeTestClassDict(self, dict):
         return self._storeDict("testclassdicts", dict)
 
+    def _storeMonitorClassDict(self, dict):
+        return self._storeDict("monitorclassdicts", dict)
+
     def _storeOutputFileDict(self, dict):
         return self._storeDict("outputfiledicts", dict)
 
     def _storeEnvironmentDict(self, dict):
         return self._storeDict("environdicts", dict)
 
-    def _insertClassInfo(self, tclass):
+    def _insertTestClassInfo(self, tclass):
         ctype = tclass.__dict__.get("__test_name__")
         if len(self._FetchAll("SELECT * FROM testclassinfo WHERE type=?",
                               (ctype, ))) >= 1:
@@ -337,9 +370,50 @@ class SQLiteStorage(DBStorage):
             return
         # we need an inverted mro (so we can now the parent class)
         for cl in testinstance.__class__.mro():
-            if not self._insertClassInfo(cl):
+            if not self._insertTestClassInfo(cl):
                 break
             if cl == Test:
+                break
+
+    def _insertMonitorClassInfo(self, tclass):
+        ctype = tclass.__dict__.get("__monitor_name__")
+        if len(self._FetchAll("SELECT * FROM monitorclassinfo WHERE type=?",
+                              (ctype, ))) >= 1:
+            return False
+        # get info
+        desc = tclass.__dict__.get("__monitor_description__")
+        args = tclass.__dict__.get("__monitor_arguments__")
+        checklist = tclass.__dict__.get("__monitor_checklist__")
+        extrainfo = tclass.__dict__.get("__monitor_extra_infos__")
+        outputfiles = tclass.__dict__.get("__monitor_output_files__")
+        if tclass == Monitor:
+            parent = None
+        else:
+            parent = tclass.__base__.__dict__.get("__monitor_name__")
+
+        # insert into db
+        # dicts
+        argsid = self._storeMonitorClassDict(args)
+        checklistid = self._storeMonitorClassDict(checklist)
+        extrainfoid = self._storeMonitorClassDict(extrainfo)
+        outputfilesid = self._storeMonitorClassDict(outputfiles)
+        # final line
+        insertstr = "INSERT INTO monitorclassinfo (type, parent, description, arguments, checklist, extrainfo, outputfiles) VALUES (?, ?, ?, ?, ?, ?, ?)"
+        self._ExecuteCommit(insertstr, (ctype, parent, desc, argsid, checklistid, extrainfoid, outputfilesid))
+        return True
+
+    def _storeMonitorClassInfo(self, monitorinstance):
+        # check if we don't already have info for this class
+        existstr = "SELECT * FROM monitorclassinfo WHERE type=?"
+        res = self._FetchAll(existstr, (monitorinstance.__monitor_name__, ))
+        if len(res) >= 1:
+            # type already exists, returning
+            return
+        # we need an inverted mro (so we can now the parent class)
+        for cl in monitorinstance.__class__.mro():
+            if not self._insertMonitorClassInfo(cl):
+                break
+            if cl == Monitor:
                 break
 
 
@@ -431,7 +505,24 @@ class SQLiteStorage(DBStorage):
                                         self.__tests[test]))
         self._storeTestClassInfo(test)
 
+        # and on to the monitors
+        for monitor in test._monitorinstances:
+            self._storeMonitor(monitor, self.__tests[test])
 
+    def _storeMonitor(self, monitor, testid):
+        insertstr = """
+        INSERT INTO monitor (id, testid, type, arguments, results, resultpercentage, extrainfo, outputfiles)
+        VALUES (NULL, ?, ?, ?, ?, ?, ?, ?)
+        """
+        resultpercentage = monitor.getSuccessPercentage()
+        resultsid = self._storeCheckListDict(monitor.getCheckList())
+        argsid = self._storeArgumentsDict(monitor.getArguments())
+        extrainfoid = self._storeExtraInfoDict(monitor.getExtraInfo())
+        outputfilesid = self._storeOutputFileDict(monitor.getOutputFiles())
+        self._ExecuteCommit(insertstr, (testid, monitor.__monitor_name__,
+                                        argsid, resultsid, resultpercentage,
+                                        extrainfoid, outputfilesid))
+        self._storeMonitorClassInfo(monitor)
 
     # public retrieval API
 
