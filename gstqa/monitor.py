@@ -46,6 +46,7 @@ information, run extra analysis, etc...
 import string
 import os
 import os.path
+import subprocess
 from gstqa.test import Test, DBusTest, GStreamerTest
 from gstqa.log import critical, error, warning, debug, info
 
@@ -344,6 +345,11 @@ class GDBMonitor(Monitor):
     that failed. If possible, it will also get the backtrace of those
     core dumps.
     """
+    __monitor_arguments__ = {
+        "save-core-dumps":"Save core dump files (default: False)",
+        "generate-back-traces":"Generate back traces from core dumps (default True)",
+        "gdb-script":"Script to use to generate gdb backtraces (default : gdb.instructions"
+        }
     __monitor_output_files__ = {
         "core-dump":"The core dump file",
         "backtrace-file":"The backtrace file"
@@ -358,6 +364,9 @@ class GDBMonitor(Monitor):
 
     def setUp(self):
         Monitor.setUp(self)
+        self._saveCoreDumps = self.arguments.get("save-core-dumps", False)
+        self._generateBackTraces = self.arguments.get("generate-back-traces", True)
+        self._GDBScript = self.arguments.get("gdb-script", "gdb.instructions")
         # add some env variables
         self.test._environ["G_DEBUG"] = "fatal_warnings"
         try:
@@ -380,19 +389,37 @@ class GDBMonitor(Monitor):
             core = self._findCoreFile()
             if core:
                 debug("Got core file %s", core)
-                # copy over the core dump
-                # FIXME : Actually get backtrace :)
-                corefd, corepath = self.testrun.get_temp_file(nameid="core-dump")
-                # copy core dump to that file
-                # FIXME : THIS MIGHT NOT WORK ON WINDOWS (see os.rename docs)
-                try:
-                    os.rename(core, corepath)
-                    self.setOutputFile("core-dump", corepath)
-                except:
-                    warning("Couldn't rename core dump file !!!")
+                if self._generateBackTraces:
+                    # output file for backtrace
+                    backtracefd, backtracepath = self.testrun.get_temp_file(nameid="gdb-back-trace")
+                    backtracefile = open(backtracepath, "a+")
+
+                    # run the backtrace script
+                    gdb = subprocess.Popen(["gdb", "--batch", "-x", self._GDBScript, "python", core],
+                                           stdout = backtracefile,
+                                           stderr = backtracefile).wait()
+
+                    # cleanup
+                    os.close(backtracefd)
+                    backtracefile.close()
+
+                    # notify of backtrace file
+                    self.setOutputFile("backtrace-file", backtracepath)
+                if self._saveCoreDumps:
+                    # copy over the core dump
+                    corefd, corepath = self.testrun.get_temp_file(nameid="core-dump")
+                    # copy core dump to that file
+                    # FIXME : THIS MIGHT NOT WORK ON WINDOWS (see os.rename docs)
+                    try:
+                        os.rename(core, corepath)
+                        self.setOutputFile("core-dump", corepath)
+                    except:
+                        warning("Couldn't rename core dump file !!!")
+                        os.remove(core)
+                    finally:
+                        os.close(corefd)
+                else:
                     os.remove(core)
-                finally:
-                    os.close(corefd)
 
     def _findCoreFile(self):
         cwd = self.testrun.getWorkingDirectory()
