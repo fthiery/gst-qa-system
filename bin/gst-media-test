@@ -40,7 +40,7 @@ from optparse import OptionParser
 from gstqa.client import TesterClient
 from gstqa.scenario import Scenario, ListScenario
 from gstqa.generator import FileSystemGenerator, URIFileSystemGenerator
-from gstqa.monitor import GstDebugLogMonitor, ValgrindMemCheckMonitor
+from gstqa.monitor import GstDebugLogMonitor, ValgrindMemCheckMonitor, GDBMonitor
 from gstqa.test import PythonDBusTest
 from gstqa.testrun import TestRun, ListTestRun
 import gstqa.utils as utils
@@ -205,7 +205,9 @@ def create_testrun(files, testscripts, recursive=True, topdir=None,
     tests = [utils.get_test_class(name) for name in testscripts]
 
     # our monitors
-    monitors = []
+    gdbscriptfile = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gdb.instructions")
+    monitors = [(GDBMonitor, {"save-core-dumps" : True,
+                              "gdb-script" : gdbscriptfile})]
     if valgrinding:
         # get full location of gst.supp
         suppfile = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gst.supp")
