@@ -271,7 +271,10 @@ class Test(gobject.GObject):
         if self._testtimeoutid:
             self.validateStep("no-timeout")
         self.tearDown()
-        self.extraInfo("test-total-duration", stoptime - self._teststarttime)
+        if self._teststarttime:
+            debug("stoptime:%r , teststarttime:%r",
+                  stoptime, self._teststarttime)
+            self.extraInfo("test-total-duration", stoptime - self._teststarttime)
         self.emit("done")
 
     def start(self):
@@ -327,6 +330,7 @@ class Test(gobject.GObject):
 
         Called by the test itself
         """
+        info("uuid:%s, key:%s, value:%r", self.uuid, key, value)
         self._extraInfo[key] = value
         self.emit("extra-info", key, value)
 
@@ -583,19 +587,23 @@ class DBusTest(Test, dbus.service.Object):
             pargs = self._preargs
             pargs.extend(self.get_remote_launcher_args())
 
+            cwd = self._testrun.getWorkingDirectory()
+
             self._environ["PRIVATE_DBUS_ADDRESS"] = self._bus_address
             info("Setting PRIVATE_DBUS_ADDRESS : %r" % self._bus_address)
             info("bus:%r" % self._bus)
 
             # spawn the other process
             info("opening %r" % pargs)
+            info("cwd %s" % cwd)
             try:
                 self._subprocessspawntime = time.time()
                 self._process = subprocess.Popen(pargs,
                                                  stdin = self._stdin,
                                                  stdout = self._stdout,
                                                  stderr = self._stderr,
-                                                 env=self._environ)
+                                                 env=self._environ,
+                                                 cwd=cwd)
             except:
                 error("Error starting the subprocess command ! %r", pargs)
                 return False

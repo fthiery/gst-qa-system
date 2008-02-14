@@ -86,7 +86,7 @@ class TestRun(gobject.GObject):
     def __init__(self, maxnbtests=1, workingdir=None):
         """
         maxnbtests : Maximum number of tests to run simultaneously in each batch.
-        workingdir : Working directory (default : getcwd() + /outputfiles/)
+        workingdir : Working directory (default : getcwd() + /workingdir/)
         """
         gobject.GObject.__init__(self)
         self._setupPrivateBus()
@@ -100,7 +100,9 @@ class TestRun(gobject.GObject):
         self._starttime = None
         self._stoptime = None
         self._environment = {}
-        self._workingdir = workingdir or os.path.join(os.getcwd(), "outputfiles")
+        self._workingdir = workingdir or os.path.join(os.getcwd(), "workingdir")
+        self._outputdir = os.path.join(self._workingdir, "outputfiles")
+        self._running = False
 
     ## PUBLIC API
 
@@ -108,6 +110,12 @@ class TestRun(gobject.GObject):
         """
         Start executing the tests.
         """
+        if self._running:
+            error("TestRun is already running")
+            return
+        # make sure working directory exists
+        if not os.path.exists(self._outputdir):
+            os.makedirs(self._outputdir)
         self._collectEnvironment()
 
     def abort(self):
@@ -259,6 +267,7 @@ class TestRun(gobject.GObject):
             info("No more tests batch to run, we're done")
             self._stoptime = int(time.time())
             self._storage.endTestRun(self)
+            self._running = False
             self.emit("done")
             return False
 
@@ -277,6 +286,28 @@ class TestRun(gobject.GObject):
         self._runNext()
         return False
 
+    def getWorkingDirectory(self):
+        """
+        Returns the currently configured working directory for this
+        TestRun.
+        """
+        return self._workingdir
+
+    def setWorkingDirectory(self, workdir):
+        """
+        Change the working directory. This can only be called when the
+        TestRun isn't running.
+
+        Returns True if the working directory was properly changed.
+        Returns False if there was a problem.
+        """
+        if self._running:
+            return False
+        debug("Changing workdir to %s", workdir)
+        self._workingdir = workdir
+        self._outputdir = os.path.join(self._workingdir, "outputfiles")
+        return True
+
     def get_temp_file(self, nameid='', suffix=''):
         """
         Creates a new temporary file in a secure fashion, guaranteeing
@@ -291,12 +322,10 @@ class TestRun(gobject.GObject):
         Return (filepath, fileobject) for the newly created file
         """
         # we create temporary files in a specified directory
-        if not os.path.exists(self._workingdir):
-            os.makedirs(self._workingdir)
         prefix = "gstqa-output-" + nameid
         return tempfile.mkstemp(prefix=prefix,
                                 suffix=suffix,
-                                dir=self._workingdir)
+                                dir=self._outputdir)
 
 
 gobject.type_register(TestRun)

@@ -7,4 +7,4 @@ Pre-milestone 1 README
 
 To run:
 
-PYTHONPATH=./ bin/gst-media-test
+PYTHONPATH=/full/path/to/top/directory:$PYTHONPATH bin/gst-media-test
