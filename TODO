@@ -24,10 +24,13 @@ Goal : Database support
 * DB storage support
  * Store monitors
 * Remote DB storage support
+ * Might have to be done with Milestone 3+4
 
 Milestone 3
 -----------
 Goal : Centralized scheduling/control system
+
+Using buildbot
 
 Milestone 4
 -----------
