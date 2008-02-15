@@ -126,5 +126,6 @@ if __name__ == "__main__":
     except:
         exception("We had an issue !")
         sys.exit(1)
-        
+
+    debug("process exiting normally (return code: 0)")
     sys.exit(0)
