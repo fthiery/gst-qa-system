@@ -20,3 +20,13 @@ command:
 
   epydoc -o epydoc --docformat plaintext -v  gstqa
 
+Database support
+----------------
+
+  Currently the data is stored in a sqlite file.
+
+  WARNING WARNING WARNING : Until milestone 1 is released, the database
+  schema might change without possibilities to update the previously existing
+  one.
+  Milestone 1 will contain updating facilities to transfer existing databases
+  to the modified schemas.
