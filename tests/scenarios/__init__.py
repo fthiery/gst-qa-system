@@ -23,4 +23,4 @@
 Collection of standard scenarios
 """
 
-__all__ = ['mediascenario']
+__all__ = ['mediascenario', "gstmediatest"]

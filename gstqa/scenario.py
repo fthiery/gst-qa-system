@@ -122,7 +122,8 @@ class Scenario(Test):
         # filter out unused arguments in arguments
         args = {}
         for validkey in testclass.getFullArgumentList():
-            args[validkey] = arguments[validkey]
+            if validkey in arguments.keys():
+                args[validkey] = arguments[validkey]
         if position == -1:
             self._tests.append((testclass, args, monitors))
         else:

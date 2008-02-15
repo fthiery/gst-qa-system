@@ -38,65 +38,12 @@ import time
 import os.path
 from optparse import OptionParser
 from gstqa.client import TesterClient
-from gstqa.scenario import Scenario, ListScenario
+from gstqa.scenario import Scenario
 from gstqa.generator import FileSystemGenerator, URIFileSystemGenerator
 from gstqa.monitor import GstDebugLogMonitor, ValgrindMemCheckMonitor, GDBMonitor
-from gstqa.test import PythonDBusTest
-from gstqa.testrun import TestRun, ListTestRun
+from gstqa.testrun import TestRun
 import gstqa.utils as utils
-from tests.playbin import PlaybinTest
-from tests.ismedia import IsMediaTest
-from tests.scenarios.mediascenario import MediaBarrierScenario
-
-class GstMediaTestScenario(Scenario):
-    """
-    This is a scenario that will attempt to run the given test.
-    If it doesn't reach 100% succes, it will be re-run with more aggressive
-    monitoring.
-
-    It automatically adds the correct monitors to the underlying tests, or
-    sets the right parameter for tests that have default monitor.
-
-    This reproduces the re-try behaviour of gst-media-test
-    """
-    __test_name__ = "GstMediaTestScenario"
-    __test_arguments__ = {
-        "subtest-class":"TestClass to run",
-        "debug-level-1":"GST_DEBUG level to use on first run (default:'*:2')",
-        "debug-level-2":"GST_DEBUG level to use on second run (default:'*:5')"
-        }
-    __test_checklist__ = {
-        "similar-results":"were the results similar over the two runs"
-        }
-
-    def setUp(self):
-        if not Scenario.setUp(self):
-            return False
-        # add the initial test
-        subtest = self.arguments.get("subtest-class")
-        debuglevel = self.arguments.get("debug-level-1", "*:2")
-        if not subtest:
-            return False
-        self.addSubTest(subtest, self.arguments,
-                        [(GstDebugLogMonitor, {"debug-level": debuglevel})
-                         ])
-        return True
-
-    def subTestDone(self, test):
-        if len(self.tests) == 2:
-            if test.getSuccessPercentage() == self.tests[0].getSuccessPercentage():
-                self.validateStep("similar-results")
-            return True
-        if not test.getSuccessPercentage() == 100.0:
-            subtest = self.arguments.get("subtest-class")
-            debuglevel = self.arguments.get("debug-level-2", "*:5")
-            self.addSubTest(subtest, self.arguments,
-                            [(GstDebugLogMonitor, {"debug-level": debuglevel})
-                             ])
-        else:
-            self.validateStep("similar-results")
-        return True
-
+from tests.scenarios.gstmediatest import GstMediaTestScenario
 
 class GstMediaTestClient(TesterClient):
 
