@@ -46,7 +46,7 @@ import utils
 utils.scan_for_tests()
 
 from testrun import TestRun
-from log import critical, error, warning, debug, info, initLogging
+from log import critical, error, warning, debug, info, exception, initLogging
 
 initLogging()
 
@@ -103,7 +103,7 @@ class TesterClient(dbus.service.Object):
         try:
             self._ml.run()
         except KeyboardInterrupt:
-            debug("Interrupted, calling clean-up")
+            exception("Interrupted, calling clean-up")
             self.quit()
 
     def quit(self):

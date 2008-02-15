@@ -48,7 +48,7 @@ import os
 import os.path
 import subprocess
 from gstqa.test import Test, DBusTest, GStreamerTest
-from gstqa.log import critical, error, warning, debug, info
+from gstqa.log import critical, error, warning, debug, info, exception
 
 class Monitor(object):
     """
@@ -409,7 +409,7 @@ class GDBMonitor(Monitor):
             import resource
             resource.setrlimit(resource.RLIMIT_CORE, (-1, -1))
         except:
-            warning("Couldn't change core limit")
+            exception("Couldn't change core limit")
             return False
         return True
 
@@ -450,7 +450,7 @@ class GDBMonitor(Monitor):
                         os.rename(core, corepath)
                         self.setOutputFile("core-dump", corepath)
                     except:
-                        warning("Couldn't rename core dump file !!!")
+                        exception("Couldn't rename core dump file !!!")
                         os.remove(core)
                     finally:
                         os.close(corefd)

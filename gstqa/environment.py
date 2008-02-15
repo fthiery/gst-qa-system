@@ -34,7 +34,7 @@ import string
 import gobject
 gobject.threads_init()
 import gst
-from gstqa.log import critical, error, warning, debug, info
+from gstqa.log import critical, error, warning, debug, info, exception
 
 # TODO : methods/classes to retrieve/process environment
 #
@@ -54,6 +54,7 @@ def _pollSubProcess(process, resfile, callback):
         mf.close()
         os.remove(resfile)
     except:
+        exception("Couldn't get pickle from file %s", resfile)
         resdict = {}
     # call callback with dictionnary
     callback(resdict)
@@ -77,7 +78,7 @@ def collectEnvironment(environ, callback):
         debug("spawning subprocess %r", pargs)
         proc = subprocess.Popen(pargs, env=environ)
     except:
-        warning("Spawning remote process failed")
+        exception("Spawning remote process failed")
         os.remove(respath)
         callback({})
     else:

@@ -30,7 +30,7 @@ import dbus
 import dbus.gobject_service
 from dbustools import unwrap
 
-from log import critical, error, warning, debug, info
+from log import critical, error, warning, debug, info, exception
 import utils
 
 """
@@ -609,7 +609,7 @@ class DBusTest(Test, dbus.service.Object):
                                                  cwd=cwd)
                 self._pid = self._process.pid
             except:
-                error("Error starting the subprocess command ! %r", pargs)
+                exception("Error starting the subprocess command ! %r", pargs)
                 return False
             debug("Subprocess created successfully [pid:%d]", self._pid)
 
@@ -975,6 +975,7 @@ class GStreamerTest(PythonDBusTest):
         try:
             self.pipeline = self.createPipeline()
         except:
+            exception("Error while creating pipeline")
             self.pipeline = None
         finally:
             if not self.pipeline == None:
@@ -1128,7 +1129,7 @@ class GStreamerTest(PythonDBusTest):
         try:
             p = gst.parse_launch(pipestring)
         except:
-            warning("error while creating pipeline")
+            exception("error while creating pipeline")
             p = None
         return p
 

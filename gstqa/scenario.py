@@ -21,7 +21,7 @@
 
 import gobject
 from test import Test
-from log import critical, error, warning, debug, info
+from log import critical, error, warning, debug, info, exception
 
 class Scenario(Test):
     """
@@ -85,7 +85,7 @@ class Scenario(Test):
             for monitor in monitors:
                 instance.addMonitor(*monitor)
         except Exception, e:
-            warning("Failed to create instance of class %r : %r", testclass, e)
+            exception("Failed to create instance of class %r : %r", testclass, e)
             self.stop()
             return
         # connect to signals

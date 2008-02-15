@@ -43,7 +43,7 @@ import dbus.bus
 import dbus.service
 import imp
 import gstqa
-from gstqa.log import critical, error, warning, debug, info, initLogging
+from gstqa.log import critical, error, warning, debug, info, initLogging, exception
 from dbus.mainloop.glib import DBusGMainLoop
 
 initLogging()
@@ -124,4 +124,5 @@ if __name__ == "__main__":
         dbr = DbusRunner(bus, uuid, busname)
         sys.exit(dbr.run())
     except:
+        exception("We had an issue !")
         sys.exit(1)
