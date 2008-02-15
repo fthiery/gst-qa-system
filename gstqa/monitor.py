@@ -285,22 +285,28 @@ class GstDebugLogMonitor(Monitor):
     # needs to redirect stderr to a file
     def setUp(self):
         Monitor.setUp(self)
-        # set gst_debug to 0
+        if self.test._stderr:
+            warning("stderr is already being used, can't setUp monitor")
+            return False
+        # set gst_debug to requested level
         self.test._environ["GST_DEBUG"] = self.arguments.get("debug-level", "*:2")
         # get file for redirection
         self._logfile, self._logfilepath = self.testrun.get_temp_file(nameid="gst-debug-log")
         debug("Got temporary file %s", self._logfilepath)
-        if self.test._stderr:
-            warning("stderr is already being used, can't setUp monitor")
-            return False
         self.test._stderr = self._logfile
-        self.setOutputFile("gst-log-file", self._logfilepath)
         return True
 
     def tearDown(self):
         Monitor.tearDown(self)
         if self._logfile:
             os.close(self._logfile)
+        if not os.path.getsize(self._logfilepath):
+            # if log file is empty remove it
+            debug("log file is empty, removing it")
+            os.remove(self._logfilepath)
+        else:
+            # else report it
+            self.setOutputFile("gst-log-file", self._logfilepath)
 
 class ValgrindMemCheckMonitor(Monitor):
     """
@@ -332,7 +338,6 @@ class ValgrindMemCheckMonitor(Monitor):
                 ourargs.append("--suppressions=%s" % sup)
         ourargs.extend(self.test._preargs)
         self.test._preargs = ourargs
-        self.setOutputFile("memcheck-log", self._logfilepath)
         # set some env variables
         self.test._environ["G_SLICE"] = "always-malloc"
         # multiply timeout by 4
@@ -349,6 +354,13 @@ class ValgrindMemCheckMonitor(Monitor):
         Monitor.tearDown(self)
         if self._logfile:
             os.close(self._logfile)
+        if not os.path.getsize(self._logfilepath):
+            # if log file is empty remove it
+            debug("log file is empty, removing it")
+            os.remove(self._logfilepath)
+        else:
+            # else report it
+            self.setOutputFile("memcheck-log", self._logfilepath)
 
 class GDBMonitor(Monitor):
     """
