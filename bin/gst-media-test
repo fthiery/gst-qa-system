@@ -184,6 +184,10 @@ if __name__ == "__main__":
         print "Available tests:"
         for name, desc, cls in tests:
             print "\t% -20s : %s" % (name, desc)
+        scenarios = utils.list_available_scenarios()
+        print "Available scenarios:"
+        for name, desc, cls in scenarios:
+            print "\t% -20s : %s" % (name, desc)
         sys.exit()
     if not len(files):
         print "No files/directories to test were given"
