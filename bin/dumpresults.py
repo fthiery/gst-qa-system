@@ -49,7 +49,7 @@ def printTestInfo(db, testid, failedonly=False):
     if failedonly and resperc == 100.0:
         return
     # test number + name
-    print "Test #% 3d (%s)" % (testid, ttype)
+    print "Test #% 3d (%s) Success : %0.1f%%" % (testid, ttype, resperc)
     # arguments
     print "Arguments :"
     for key,val in args.iteritems():
@@ -72,7 +72,7 @@ def printTestInfo(db, testid, failedonly=False):
         print "Applied Monitors:"
         for mid in monitors:
             tid,mtyp,args,results,resperc,extras,outputfiles = db.getFullMonitorInfo(mid)
-            print "\tMonitor #% 3d (%s)" % (mid, mtyp)
+            print "\tMonitor #% 3d (%s) Success : %0.1f%%" % (mid, mtyp, resperc)
             if args:
                 print "\t\tArguments :"
                 for k,v in args.iteritems():
