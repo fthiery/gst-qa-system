@@ -272,16 +272,17 @@ class SQLiteStorage(DBStorage):
         return res
 
     def _storeDict(self, dicttable, pdict):
-        # get a unique dict key id
-        insertstr = "INSERT INTO dicts VALUES (NULL)"
-        dictid = self._ExecuteCommit(insertstr)
-        debug("Got key id %d to insert in table %s", dictid, dicttable)
-
         pdict = self._conformDict(pdict)
 
         if not pdict:
             # empty dictionnary
-            return dictid
+            debug("Empty dictionnary, returning None")
+            return None
+
+        # get a unique dict key id
+        insertstr = "INSERT INTO dicts VALUES (NULL)"
+        dictid = self._ExecuteCommit(insertstr)
+        debug("Got key id %d to insert in table %s", dictid, dicttable)
 
         # figure out which values to add to which tables
         strs = []
@@ -547,6 +548,10 @@ class SQLiteStorage(DBStorage):
     def _getDict(self, tableid, dictid):
         # returns a dict object
         # get all the key/type for that dictid
+        if dictid == None:
+            debug("NULL dictionnary ID, return empty dictionnary")
+            return {}
+
         searchstr = "SELECT keyid,type FROM %s WHERE dictid=?" % tableid
         res = self._FetchAll(searchstr, (dictid, ))
         d = {}
@@ -661,3 +666,36 @@ class SQLiteStorage(DBStorage):
         extras = self._getDict("extrainfodicts", extraid)
         outputfiles = self._getDict("outputfiledicts", outputfilesid)
         return (testrunid, ttype, args, results, resperc, extras, outputfiles)
+
+    def getMonitorsIDForTest(self, testid):
+        """
+        Returns a list of monitorid for the given test
+        """
+        searchstr = "SELECT id FROM monitor WHERE testid=?"
+        res = self._FetchAll(searchstr, (testid, ))
+        if not res:
+            return []
+        return list(zip(*res)[0])
+
+    def getFullMonitorInfo(self, monitorid):
+        """
+        Returns a tuple with the following info:
+        * the ID of the test on which this monitor was applied
+        * the type of the monitor
+        * the arguments (dictionnary)
+        * the results (dictionnary)
+        * the result percentage
+        * the extra information (dictionnary)
+        * the output files (dictionnary)
+        """
+        searchstr = "SELECT testid,type,arguments,results,resultpercentage,extrainfo,outputfiles FROM monitor WHERE id=?"
+        res = self._FetchOne(searchstr, (monitorid, ))
+        if not res:
+            return (None, None, None, None, None, None, None)
+        testid,mtype,argid,resid,resperc,extraid,outputfilesid = res
+        args = self._getDict("argumentsdicts", argid)
+        results = self._getDict("checklistdicts", resid)
+        extras = self._getDict("extrainfodicts", extraid)
+        outputfiles = self._getDict("outputfiledicts", outputfilesid)
+        return (testid, mtype, args, results, resperc, extras, outputfiles)
+
