@@ -115,9 +115,19 @@ def _getGStreamerEnvironment():
     # returns a dictionnary with the GStreamer specific details
     d = {}
     d["pygst-version"] = _tupletostr(gst.get_pygst_version())
+    d["pygst-path"] = gst.__path__[0]
+    d["pygst-file"] = gst.__file__
     d["gst-version"] = _tupletostr(gst.get_gst_version())
     d["gst-registry"] = _getGStreamerRegistry()
-    # FIXME : Collect all information from the registry
+    return d
+
+def _getGObjectEnvironment():
+    d = {}
+    d["pygobject-path"] = gobject.__path__[0]
+    d["pygobject-file"] = gobject.__file__
+    d["glib-version"] = _tupletostr(gobject.glib_version)
+    d["pygobject-version"] = _tupletostr(gobject.pygobject_version)
+    d["pygtk-version"] = _tupletostr(gobject.pygtk_version)
     return d
 
 def _privateCollectEnvironment():
@@ -127,6 +137,7 @@ def _privateCollectEnvironment():
     res = {}
     res["env-variables"] = os.environ.copy()
     res["uname"] = os.uname()
+    res.update(_getGObjectEnvironment())
     res.update(_getGStreamerEnvironment())
     return res
 
