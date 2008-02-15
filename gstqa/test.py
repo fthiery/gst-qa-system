@@ -495,7 +495,7 @@ class DBusTest(Test, dbus.service.Object):
     "dbus-process-spawned":"The DBus child process spawned itself",
     "dbus-process-connected":"The DBus child process connected properly to the private Bus",
     "remote-instance-created":"The remote version of this test was created properly",
-    "subprocess-exited-normally":"The subprocess returned a positive exit code"
+    "subprocess-exited-normally":"The subprocess returned a null exit code (success)"
     }
     __test_extra_infos__ = {
     "subprocess-return-code":"The exit value returned by the subprocess",
@@ -657,7 +657,7 @@ class DBusTest(Test, dbus.service.Object):
                     info("Process returned %d", self._returncode)
                     self._process = None
                 if not self._returncode == None:
-                    if self._returncode > 0:
+                    if self._returncode == 0:
                         self.validateStep("subprocess-exited-normally")
                     self.extraInfo("subprocess-return-code", self._returncode)
         else:

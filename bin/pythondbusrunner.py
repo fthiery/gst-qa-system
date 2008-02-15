@@ -122,7 +122,9 @@ if __name__ == "__main__":
         busname = dbus.service.BusName("net.gstreamer.Insanity.Test.Test%s" % uuid, bus)
 
         dbr = DbusRunner(bus, uuid, busname)
-        sys.exit(dbr.run())
+        dbr.run()
     except:
         exception("We had an issue !")
         sys.exit(1)
+        
+    sys.exit(0)
