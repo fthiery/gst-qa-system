@@ -37,7 +37,7 @@ import string
 import time
 import os.path
 from optparse import OptionParser
-from gstqa.client import TesterClient
+from gstqa.client import CommandLineTesterClient
 from gstqa.scenario import Scenario
 from gstqa.generator import FileSystemGenerator, URIFileSystemGenerator
 from gstqa.monitor import GstDebugLogMonitor, ValgrindMemCheckMonitor, GDBMonitor
@@ -45,7 +45,7 @@ from gstqa.testrun import TestRun
 import gstqa.utils as utils
 from tests.scenarios.gstmediatest import GstMediaTestScenario
 
-class GstMediaTestClient(TesterClient):
+class GstMediaTestClient(CommandLineTesterClient):
 
     __software_name__ = """gst-media-test"""
     # simulate the behaviour of the previous gst-media-test
@@ -55,80 +55,13 @@ class GstMediaTestClient(TesterClient):
     # Some options might be difficult to reproduce with the new system.
 
     def __init__(self, testrun, verbose=False):
-        TesterClient.__init__(self, singlerun=True)
+        CommandLineTesterClient.__init__(self, verbose=verbose, singlerun=True)
         self.addTestRun(testrun)
-        self._verbose = verbose
-
-    def test_run_start(self, testrun):
-        print "Starting", testrun
-        testrun.connect("single-test-done", self._singleTestDoneCb)
-        if self._verbose:
-            self._printTestRunEnvironment(testrun)
-
-    def test_run_done(self, testrun):
-        print "Done with", testrun
-        ids = self._storage.listTestRuns()
-        for key in ids:
-            clientid, starttime, stoptime = self._storage.getTestRun(key)
-            print "TestRun #%d from client %d" % (key, clientid)
-            softw,name,user = self._storage.getClientInfoForTestRun(key)
-            print "\t\tsoftware:%s,name:%s,user:%s" % (softw,name,user)
-            print "\tStart:", time.ctime(starttime)
-            print "\tStop:", time.ctime(stoptime)
-            print "\tNb tests:", len(self._storage.getTestsForTestRun(key))
-            print "\n"
-
-    def test_run_aborted(self, testrun):
-        print "Aborted", testrun
-
-    def _singleTestDoneCb(self, testrun, test):
-        self.printSingleTestResult(test)
-
-    def _printTestRunEnvironment(self, testrun):
-        d = testrun.getEnvironment()
-        if d:
-            print "Environment:"
-            for key,val in d.iteritems():
-                if isinstance(val, dict):
-                    print "\t% -30s:" % (key)
-                    for dk,dv in val.iteritems():
-                        print "\t\t% -30s:\t%s" % (dk,dv)
-                else:
-                    print "\t% -30s:\t%s" % (key,val)
-
-    def printSingleTestResult(self, test, offset=0):
-        stub = " " * offset
-        print stub, "Test %r is done (Success:%0.1f%%)" % (test, test.getSuccessPercentage())
-        if self._verbose:
-            # print out all details from test
-            print stub, "Arguments:"
-            ta = test.arguments
-            fa = test.getFullArgumentList()
-            for arg in [x for x in fa if ta.has_key(x)]:
-                print stub, "  %s : %s\t\t%s" % (arg, fa[arg], ta[arg])
-            # print results from test
-            print stub, "Results"
-            tc = test.getCheckList()
-            fc = test.getFullCheckList()
-            for c in fc:
-                print stub, "  %30s:%10s\t\t%s" % (c, tc[c], fc[c])
-
-            infos = test.getExtraInfo()
-            if infos:
-                print stub, "Extra information:"
-            for extra in infos:
-                print stub, "  %30s :\t%s" % (extra, infos[extra])
-        if isinstance(test, Scenario):
-            for sub in test.tests:
-                print stub, "Sub Test"
-                self.printSingleTestResult(sub, offset=offset+4)
-            print "\n"
 
 def create_testrun(files, testscripts, recursive=True, topdir=None,
                    extreme=False, valgrinding=False,
                    debuglevel=2, debuglevel2=5,
                    acceptlist=[], rejectlist=[],
-                   compressed=True, subdirectory=None, weboutput=True,
                    maxnbtests=2):
     """
     Takes the parameters of gst-media-test and creates a TestRun object
@@ -160,7 +93,10 @@ def create_testrun(files, testscripts, recursive=True, topdir=None,
         monitors.append((ValgrindMemCheckMonitor,
                          {"suppression-files":suppfile}))
 
-    testrun = TestRun(maxnbtests=maxnbtests)
+    # get the full path for topdir
+    if topdir:
+        topdir = os.path.abspath(topdir)
+    testrun = TestRun(maxnbtests=maxnbtests, workingdir=topdir)
     for test in tests:
         testrun.addTest(GstMediaTestScenario,
                         arguments = { "uri" : generator1,
@@ -168,11 +104,6 @@ def create_testrun(files, testscripts, recursive=True, topdir=None,
                                       "debug-level-1":str(debuglevel),
                                       "debug-level-2":str(debuglevel2) },
                         monitors = monitors)
-
-#     testrun = ListTestRun(tests,
-#                           arguments = { "uri" : generator1 },
-#                           maxnbtests=maxnbtests,
-#                           monitors = monitors)
 
     return testrun
 
@@ -234,17 +165,8 @@ if __name__ == "__main__":
     parser.add_option("-e", "--exclude", dest="exclude",
                       help="Coma-separated list of file extensions to exclude.",
                       default=None, metavar="EXTENSIONS")
-    parser.add_option("-u", "--uncompressed-logs", dest="compressed",
-                      action="store_false", default=True,
-                      help="Don't compress debug logs")
-    parser.add_option("-s", "--subdirectory-name", dest="subdirectory",
-                      help="name of output sub-directory (default date)",
-                      default=None)
     parser.add_option("-S", "--simultaneous", dest="maxnbtests",
                       type="int", default=1, help="Maximum number of simultaneous tests (default:1)")
-    parser.add_option("-w", "--no-output", dest="weboutput",
-                      action="store_false", default=True,
-                      help="Do not automatically generate html outputs")
     (options, args) = parser.parse_args(sys.argv[1:])
     files = options.files
     tests = options.tests
@@ -267,8 +189,6 @@ if __name__ == "__main__":
         print "No files/directories to test were given"
     elif not len(tests):
         print "No test was given"
-    elif not options.output == None and not os.path.isdir(options.output):
-        print "%s is not a valid directory" % options.output
     else:
         testrun = create_testrun(files, tests,
                                  topdir=options.output,
@@ -279,9 +199,6 @@ if __name__ == "__main__":
                                  debuglevel2=options.debuglevel2,
                                  acceptlist=acceptlist,
                                  rejectlist=rejectlist,
-                                 compressed=options.compressed,
-                                 subdirectory=options.subdirectory,
-                                 weboutput=options.weboutput,
                                  maxnbtests=options.maxnbtests)
         tester = GstMediaTestClient(testrun, verbose=options.verbose)
         tester.run()

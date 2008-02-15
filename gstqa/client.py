@@ -40,13 +40,15 @@ import dbus
 import dbus.service
 import dbus.mainloop.glib
 import dbustools
+import time
 
 # import all tests and scenarios
 import utils
 utils.scan_for_tests()
 
-from testrun import TestRun
-from log import critical, error, warning, debug, info, exception, initLogging
+from gstqa.testrun import TestRun
+from gstqa.scenario import Scenario
+from gstqa.log import critical, error, warning, debug, info, exception, initLogging
 
 initLogging()
 
@@ -244,3 +246,83 @@ class TesterClient(dbus.service.Object):
         """
         pass
 
+class CommandLineTesterClient(TesterClient):
+    """
+    Base class for command line clients.
+
+    It will show the ongoing status of the testruns.
+
+    Offers possibility to output verbose printout of ongoing tests
+    """
+
+    def __init__(self, verbose=False, *args, **kwargs):
+        """
+        verbose : If True, will output verbose details on ongoing test
+        """
+        TesterClient.__init__(self, *args, **kwargs)
+        self._verbose = verbose
+
+    def test_run_start(self, testrun):
+        print "Starting", testrun
+        testrun.connect("single-test-done", self._singleTestDoneCb)
+        if self._verbose:
+            self._printTestRunEnvironment(testrun)
+
+    def test_run_done(self, testrun):
+        print "Done with", testrun
+        ids = self._storage.listTestRuns()
+        for key in ids:
+            clientid, starttime, stoptime = self._storage.getTestRun(key)
+            print "TestRun #%d from client %d" % (key, clientid)
+            softw,name,user = self._storage.getClientInfoForTestRun(key)
+            print "\t\tsoftware:%s,name:%s,user:%s" % (softw,name,user)
+            print "\tStart:", time.ctime(starttime)
+            print "\tStop:", time.ctime(stoptime)
+            print "\tNb tests:", len(self._storage.getTestsForTestRun(key))
+            print "\n"
+
+    def test_run_aborted(self, testrun):
+        print "Aborted", testrun
+
+    def _singleTestDoneCb(self, testrun, test):
+        self.printSingleTestResult(test)
+
+    def _printTestRunEnvironment(self, testrun):
+        d = testrun.getEnvironment()
+        if d:
+            print "Environment:"
+            for key,val in d.iteritems():
+                if isinstance(val, dict):
+                    print "\t% -30s:" % (key)
+                    for dk,dv in val.iteritems():
+                        print "\t\t% -30s:\t%s" % (dk,dv)
+                else:
+                    print "\t% -30s:\t%s" % (key,val)
+
+    def printSingleTestResult(self, test, offset=0):
+        stub = " " * offset
+        print stub, "Test %r is done (Success:%0.1f%%)" % (test, test.getSuccessPercentage())
+        if self._verbose:
+            # print out all details from test
+            print stub, "Arguments:"
+            ta = test.arguments
+            fa = test.getFullArgumentList()
+            for arg in [x for x in fa if ta.has_key(x)]:
+                print stub, "  %s : %s\t\t%s" % (arg, fa[arg], ta[arg])
+            # print results from test
+            print stub, "Results"
+            tc = test.getCheckList()
+            fc = test.getFullCheckList()
+            for c in fc:
+                print stub, "  %30s:%10s\t\t%s" % (c, tc[c], fc[c])
+
+            infos = test.getExtraInfo()
+            if infos:
+                print stub, "Extra information:"
+            for extra in infos:
+                print stub, "  %30s :\t%s" % (extra, infos[extra])
+        if isinstance(test, Scenario):
+            for sub in test.tests:
+                print stub, "Sub Test"
+                self.printSingleTestResult(sub, offset=offset+4)
+            print "\n"
