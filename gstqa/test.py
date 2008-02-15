@@ -885,6 +885,7 @@ class DBusTest(Test, dbus.service.Object):
         args = self.arguments
         args["bus_address"] = self._bus_address
         args["timeout"] = self._timeout
+        debug("Creating remote instance with arguments %r", args)
         remoteRunner.createTestInstance(self.get_file(),
                                         self.__module__,
                                         self.__class__.__name__,
@@ -970,6 +971,7 @@ class GStreamerTest(PythonDBusTest):
         # local variables
         self._errors = []
         self._tags = {}
+        self._elements = []
 
         # create the pipeline
         try:
