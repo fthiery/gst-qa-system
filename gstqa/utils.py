@@ -105,6 +105,7 @@ def get_test_class(testname):
     Returns the Test class corresponding to the given testname
     """
     tests = list_available_tests()
+    tests.extend(list_available_scenarios())
     testname = testname.strip()
     for name, desc, cls in tests:
         if testname == name:
