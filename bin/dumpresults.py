@@ -66,6 +66,30 @@ def printTestInfo(db, testid, failedonly=False):
         print "Output files:"
         for key,val in outputfiles.iteritems():
             print "\t% -30s:\t%s" % (key,val)
+    # monitors
+    monitors = db.getMonitorsIDForTest(testid)
+    if monitors:
+        print "Applied Monitors:"
+        for mid in monitors:
+            tid,mtyp,args,results,resperc,extras,outputfiles = db.getFullMonitorInfo(mid)
+            print "\tMonitor #% 3d (%s)" % (mid, mtyp)
+            if args:
+                print "\t\tArguments :"
+                for k,v in args.iteritems():
+                    print "\t\t\t% -30s:\t%s" % (k,v)
+            if results:
+                print "\t\tResults :"
+                for k,v in results.iteritems():
+                    print "\t\t\t% -30s:\t%s" % (k,v)
+            if extras:
+                print "\t\tExtra Information :"
+                for k,v in extras.iteritems():
+                    print "\t\t\t% -30s:\t%s" % (k,v)
+            if outputfiles:
+                print "\t\tOutput Files :"
+                for k,v in outputfiles.iteritems():
+                    print "\t\t\t% -30s:\t%s" % (k,v)
+    print ""
 
 def printEnvironment(d):
     print "Environment"
@@ -76,6 +100,7 @@ def printEnvironment(d):
                 print "\t\t% -30s:\t%s" % (dk,dv)
         else:
             print "\t% -30s:\t%s" % (key,val)
+    print ""
 
 def printTestRun(db, testrunid, failedonly=False):
     # let's output everything !
