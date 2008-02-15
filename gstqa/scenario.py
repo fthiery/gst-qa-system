@@ -77,10 +77,12 @@ class Scenario(Test):
     def _startNextSubTest(self):
         try:
             testclass, args, monitors = self._tests.pop(0)
+            if not 'bus' in args.keys():
+                args["bus"] = self.arguments.get("bus")
+            if not 'bus_address' in args.keys():
+                args["bus_address"] = self.arguments.get("bus_address")
             debug("About to create subtest %r with arguments %r", testclass, args)
             instance = testclass(testrun=self._testrun,
-                                 bus = self.arguments.get("bus"),
-                                 bus_address = self.arguments.get("bus_address"),
                                  **args)
             for monitor in monitors:
                 instance.addMonitor(*monitor)
@@ -101,6 +103,8 @@ class Scenario(Test):
     def _subTestDoneCb(self, subtest):
         debug("Done with subtest %r", subtest)
         carryon = self.subTestDone(subtest)
+        debug("carryon:%r , len(self._tests):%d",
+              carryon, len(self._tests))
         if carryon and len(self._tests) > 0:
             # startup the next test !
             debug("Carrying on with next test")
@@ -111,7 +115,7 @@ class Scenario(Test):
 
     # overridable methods
 
-    def addSubTest(self, testclass, arguments, monitors, position=-1):
+    def addSubTest(self, testclass, arguments, monitors=[], position=-1):
         """
         testclass : a testclass to run next, can be a Scenario
         arguments : dictionnary of arguments
@@ -119,11 +123,15 @@ class Scenario(Test):
 
         This method can be called several times in a row at any moment.
         """
-        # filter out unused arguments in arguments
-        args = {}
-        for validkey in testclass.getFullArgumentList():
-            if validkey in arguments.keys():
-                args[validkey] = arguments[validkey]
+        # filter out unused arguments in arguments for non-scenarios
+        if not issubclass(testclass, Scenario):
+            args = {}
+            for validkey in testclass.getFullArgumentList():
+                if validkey in arguments.keys():
+                    args[validkey] = arguments[validkey]
+        else:
+            args = arguments
+        debug("Appending subtest %r args:%r", testclass, args)
         if position == -1:
             self._tests.append((testclass, args, monitors))
         else:
