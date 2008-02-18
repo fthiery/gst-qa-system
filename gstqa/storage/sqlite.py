@@ -38,6 +38,9 @@ except ImportError:
     from pysqlite2 import dbapi2 as sqlite
 from cPickle import dumps, loads
 
+# New dictionnaries table have the following name
+# <container name>_<dictionnary name>_dict
+
 TABLECREATION = """
 CREATE TABLE version (
    version INTEGER,
@@ -51,11 +54,6 @@ CREATE TABLE testrun (
    stoptime INTEGER
 );
 
-CREATE TABLE environment (
-   testrunid INTEGER,
-   data INTEGER
-);
-
 CREATE TABLE client (
    id INTEGER PRIMARY KEY,
    software TEXT,
@@ -67,11 +65,7 @@ CREATE TABLE test (
    id INTEGER PRIMARY KEY,
    testrunid INTEGER,
    type TEXT,
-   arguments INTEGER,
-   results INTEGER,
-   resultpercentage FLOAT,
-   extrainfo INTEGER,
-   outputfiles INTEGER
+   resultpercentage FLOAT
 );
 
 CREATE TABLE subtests (
@@ -83,95 +77,148 @@ CREATE TABLE monitor (
    id INTEGER PRIMARY KEY,
    testid INTEGER,
    type TEXT,
-   arguments INTEGER,
-   results INTEGER,
-   resultpercentage FLOAT,
-   extrainfo INTEGER,
-   outputfiles INTEGER
+   resultpercentage FLOAT
 );
 
 CREATE TABLE testclassinfo (
    type TEXT PRIMARY KEY,
    parent TEXT,
-   description TEXT,
-   arguments INTEGER,
-   checklist INTEGER,
-   extrainfo INTEGER,
-   outputfiles INTEGER
+   description TEXT
 );
 
 CREATE TABLE monitorclassinfo (
    type TEXT PRIMARY KEY,
    parent TEXT,
-   description TEXT,
-   arguments INTEGER,
-   checklist INTEGER,
-   extrainfo INTEGER,
-   outputfiles INTEGER
+   description TEXT
 );
 
-CREATE TABLE dicts (
-   id INTEGER PRIMARY KEY
-);
-
-CREATE TABLE testclassdicts (
-   dictid INTEGER,
-   keyid INTEGER,
-   type INTEGER
-);
-
-CREATE TABLE monitorclassdicts (
-   dictid INTEGER,
-   keyid INTEGER,
-   type INTEGER
-);
-
-CREATE TABLE argumentsdicts (
-   dictid INTEGER,
-   keyid INTEGER,
-   type INTEGER
-);
-
-CREATE TABLE extrainfodicts (
-   dictid INTEGER,
-   keyid INTEGER,
-   type INTEGER
-);
-
-CREATE TABLE outputfiledicts (
-   dictid INTEGER,
-   keyid INTEGER,
-   type INTEGER
-);
-
-CREATE TABLE environdicts (
-   dictid INTEGER,
-   keyid INTEGER,
-   type INTEGER
-);
-
-CREATE TABLE checklistdicts (
-   dictid INTEGER,
-   keyid INTEGER,
-   type INTEGER
-);
-
-CREATE TABLE dictstr (
+CREATE TABLE testrun_environment_dict (
    id INTEGER PRIMARY KEY,
-   name STRING,
-   value STRING
+   containerid INTEGER,
+   name TEXT,
+   intvalue INTEGER,
+   txtvalue TXT,
+   blobvalue BLOB
 );
 
-CREATE TABLE dictint (
+CREATE TABLE test_arguments_dict (
    id INTEGER PRIMARY KEY,
-   name STRING,
-   value INTEGER
+   containerid INTEGER,
+   name TEXT,
+   intvalue INTEGER,
+   txtvalue TXT,
+   blobvalue BLOB
 );
 
-CREATE TABLE dictblob (
+CREATE TABLE test_checklist_dict (
    id INTEGER PRIMARY KEY,
-   name STRING,
-   value BLOB
+   containerid INTEGER,
+   name TEXT,
+   intvalue INTEGER
+);
+
+CREATE TABLE test_extrainfo_dict (
+   id INTEGER PRIMARY KEY,
+   containerid INTEGER,
+   name TEXT,
+   intvalue INTEGER,
+   txtvalue TXT,
+   blobvalue BLOB
+);
+
+CREATE TABLE test_outputfiles_dict (
+   id INTEGER PRIMARY KEY,
+   containerid INTEGER,
+   name TEXT,
+   txtvalue TXT
+);
+
+CREATE TABLE monitor_arguments_dict (
+   id INTEGER PRIMARY KEY,
+   containerid INTEGER,
+   name TEXT,
+   intvalue INTEGER,
+   txtvalue TXT,
+   blobvalue BLOB
+);
+
+CREATE TABLE monitor_checklist_dict (
+   id INTEGER PRIMARY KEY,
+   containerid INTEGER,
+   name TEXT,
+   intvalue INTEGER
+);
+
+CREATE TABLE monitor_extrainfo_dict (
+   id INTEGER PRIMARY KEY,
+   containerid INTEGER,
+   name TEXT,
+   intvalue INTEGER,
+   txtvalue TXT,
+   blobvalue BLOB
+);
+
+CREATE TABLE monitor_outputfiles_dict (
+   id INTEGER PRIMARY KEY,
+   containerid INTEGER,
+   name TEXT,
+   txtvalue TXT
+);
+
+CREATE TABLE testclassinfo_arguments_dict (
+   id INTEGER PRIMARY KEY,
+   containerid INTEGER,
+   name TEXT,
+   txtvalue TXT
+);
+
+CREATE TABLE testclassinfo_checklist_dict (
+   id INTEGER PRIMARY KEY,
+   containerid INTEGER,
+   name TEXT,
+   txtvalue TXT
+);
+
+CREATE TABLE testclassinfo_extrainfo_dict (
+   id INTEGER PRIMARY KEY,
+   containerid INTEGER,
+   name TEXT,
+   txtvalue TXT
+);
+
+CREATE TABLE testclassinfo_outputfiles_dict (
+   id INTEGER PRIMARY KEY,
+   containerid INTEGER,
+   name TEXT,
+   txtvalue TXT
+);
+
+CREATE TABLE monitorclassinfo_arguments_dict (
+   id INTEGER PRIMARY KEY,
+   containerid INTEGER,
+   name TEXT,
+   txtvalue TXT
+);
+
+CREATE TABLE monitorclassinfo_checklist_dict (
+   id INTEGER PRIMARY KEY,
+   containerid INTEGER,
+   name TEXT,
+   txtvalue TXT
+);
+
+CREATE TABLE monitorclassinfo_extrainfo_dict (
+   id INTEGER PRIMARY KEY,
+   containerid INTEGER,
+   name TEXT,
+   txtvalue TXT
+);
+
+CREATE TABLE monitorclassinfo_outputfiles_dict (
+   id INTEGER PRIMARY KEY,
+   containerid INTEGER,
+   name TEXT,
+   txtvalue TXT
 );
 """
 
@@ -227,15 +274,19 @@ class SQLiteStorage(DBStorage):
         tables = [x[0] for x in self.con.execute(CHECKTABLES).fetchall()]
         if len(tables) == 0:
             return False
-        # FIXME : Really check if all tables are present
-        for tblname in ["version", "testrun", "environment", "client",
+        for tblname in ["version", "testrun", "client",
                         "test", "subtests", "monitor", "testclassinfo",
                         "monitorclassinfo",
-                        "dicts", "testclassdicts", "monitorclassdicts",
-                        "argumentsdicts", "extrainfodicts",
-                        "outputfiledicts",
-                        "environdicts", "checklistdicts",
-                        "dictstr", "dictint", "dictblob"]:
+                        "testrun_environment_dict",
+                        "test_arguments_dict", "test_checklist_dict",
+                        "test_extrainfo_dict", "test_outputfiles_dict",
+                        "monitor_arguments_dict", "monitor_checklist_dict",
+                        "monitor_extrainfo_dict", "monitor_outputfiles_dict",
+                        "testclassinfo_arguments_dict", "testclassinfo_checklist_dict",
+                        "testclassinfo_extrainfo_dict", "testclassinfo_outputfiles_dict",
+                        "monitorclassinfo_arguments_dict", "monitorclassinfo_checklist_dict",
+                        "monitorclassinfo_extrainfo_dict", "monitorclassinfo_outputfiles_dict"
+                        ]:
             if not tblname in tables:
                 return False
         return True
@@ -271,69 +322,85 @@ class SQLiteStorage(DBStorage):
             res[key] = value
         return res
 
-    def _storeDict(self, dicttable, pdict):
+    def _storeDict(self, dicttable, containerid, pdict):
         pdict = self._conformDict(pdict)
 
         if not pdict:
             # empty dictionnary
-            debug("Empty dictionnary, returning None")
-            return None
-
-        # get a unique dict key id
-        insertstr = "INSERT INTO dicts VALUES (NULL)"
-        dictid = self._ExecuteCommit(insertstr)
-        debug("Got key id %d to insert in table %s", dictid, dicttable)
+            debug("Empty dictionnary, returning")
+            return
 
         # figure out which values to add to which tables
         strs = []
         ints = []
         blobs = []
-        insertstr = "INSERT INTO %s (id, name, value) VALUES (NULL, ?, ?)"
+        insertstr = "INSERT INTO %s (id, containerid, name, %s) VALUES (NULL, ?, ?, ?)"
         for key,value in pdict.iteritems():
             debug("Adding key:%s , value:%r", key, value)
             val = value
             if isinstance(value, int):
-                comstr = insertstr % "dictint"
+                valstr = "intvalue"
                 lst = ints
             elif isinstance(value, basestring):
-                comstr = insertstr % "dictstr"
+                valstr = "txtvalue"
                 lst = strs
             else:
-                comstr = insertstr % "dictblob"
+                valstr = "blobvalue"
                 lst = blobs
                 val = sqlite.Binary(dumps(value))
-            lst.append(self._ExecuteCommit(comstr, (key, val)))
+            comstr = insertstr % (dicttable, valstr)
+            lst.append(self._ExecuteCommit(comstr, (containerid, key, val)))
 
-        # Now add the various values to the dicttable
-        insertstr = "INSERT INTO %s (dictid, keyid, type) VALUES (? , ?, ?)" % dicttable
-        for keyid in ints:
-            self._ExecuteCommit(insertstr, (dictid, keyid, DATA_TYPE_INT))
-        for keyid in strs:
-            self._ExecuteCommit(insertstr, (dictid, keyid, DATA_TYPE_STR))
-        for keyid in blobs:
-            self._ExecuteCommit(insertstr, (dictid, keyid, DATA_TYPE_BLOB))
-        return dictid
+    def _storeTestArgumentsDict(self, testid, dict):
+        return self._storeDict("test_arguments_dict", testid, dict)
 
-    def _storeArgumentsDict(self, dict):
-        return self._storeDict("argumentsdicts", dict)
+    def _storeTestCheckListDict(self, testid, dict):
+        return self._storeDict("test_checklist_dict", testid, dict)
 
-    def _storeCheckListDict(self, dict):
-        return self._storeDict("checklistdicts", dict)
+    def _storeTestExtraInfoDict(self, testid, dict):
+        return self._storeDict("test_extrainfo_dict", testid, dict)
 
-    def _storeExtraInfoDict(self, dict):
-        return self._storeDict("extrainfodicts", dict)
+    def _storeTestOutputFileDict(self, testid, dict):
+        return self._storeDict("test_outputfiles_dict", testid, dict)
 
-    def _storeTestClassDict(self, dict):
-        return self._storeDict("testclassdicts", dict)
+    def _storeMonitorArgumentsDict(self, monitorid, dict):
+        return self._storeDict("monitor_arguments_dict", monitorid, dict)
 
-    def _storeMonitorClassDict(self, dict):
-        return self._storeDict("monitorclassdicts", dict)
+    def _storeMonitorCheckListDict(self, monitorid, dict):
+        return self._storeDict("monitor_checklist_dict", monitorid, dict)
 
-    def _storeOutputFileDict(self, dict):
-        return self._storeDict("outputfiledicts", dict)
+    def _storeMonitorExtraInfoDict(self, monitorid, dict):
+        return self._storeDict("monitor_extrainfo_dict", monitorid, dict)
 
-    def _storeEnvironmentDict(self, dict):
-        return self._storeDict("environdicts", dict)
+    def _storeMonitorOutputFileDict(self, monitorid, dict):
+        return self._storeDict("monitor_outputfiles_dict", monitorid, dict)
+
+    def _storeTestClassArgumentsDict(self, testclassinfoid, dict):
+        return self._storeDict("testclassinfo_arguments_dict", testclassinfoid, dict)
+
+    def _storeTestClassCheckListDict(self, testclassinfoid, dict):
+        return self._storeDict("testclassinfo_checklist_dict", testclassinfoid, dict)
+
+    def _storeTestClassExtraInfoDict(self, testclassinfoid, dict):
+        return self._storeDict("testclassinfo_extrainfo_dict", testclassinfoid, dict)
+
+    def _storeTestClassOutputFileDict(self, testclassinfoid, dict):
+        return self._storeDict("testclassinfo_outputfiles_dict", testclassinfoid, dict)
+
+    def _storeMonitorClassArgumentsDict(self, monitorclassinfoid, dict):
+        return self._storeDict("monitorclassinfo_arguments_dict", monitorclassinfoid, dict)
+
+    def _storeMonitorClassCheckListDict(self, monitorclassinfoid, dict):
+        return self._storeDict("monitorclassinfo_checklist_dict", monitorclassinfoid, dict)
+
+    def _storeMonitorClassExtraInfoDict(self, monitorclassinfoid, dict):
+        return self._storeDict("monitorclassinfo_extrainfo_dict", monitorclassinfoid, dict)
+
+    def _storeMonitorClassOutputFileDict(self, monitorclassinfoid, dict):
+        return self._storeDict("monitorclassinfo_outputfiles_dict", monitorclassinfoid, dict)
+
+    def _storeEnvironmentDict(self, testrunid, dict):
+        return self._storeDict("testrun_environment_dict", testrunid, dict)
 
     def _insertTestClassInfo(self, tclass):
         ctype = tclass.__dict__.get("__test_name__")
@@ -352,14 +419,14 @@ class SQLiteStorage(DBStorage):
             parent = tclass.__base__.__dict__.get("__test_name__")
 
         # insert into db
-        # dicts
-        argsid = self._storeTestClassDict(args)
-        checklistid = self._storeTestClassDict(checklist)
-        extrainfoid = self._storeTestClassDict(extrainfo)
-        outputfilesid = self._storeTestClassDict(outputfiles)
-        # final line
-        insertstr = "INSERT INTO testclassinfo (type, parent, description, arguments, checklist, extrainfo, outputfiles) VALUES (?, ?, ?, ?, ?, ?, ?)"
-        self._ExecuteCommit(insertstr, (ctype, parent, desc, argsid, checklistid, extrainfoid, outputfilesid))
+        insertstr = "INSERT INTO testclassinfo (type, parent, description) VALUES (?, ?, ?)"
+        tcid = self._ExecuteCommit(insertstr, (ctype, parent, desc))
+
+        # store the dicts
+        self._storeTestClassArgumentsDict(tcid, args)
+        self._storeTestClassCheckListDict(tcid, checklist)
+        self._storeTestClassExtraInfoDict(tcid, extrainfo)
+        self._storeTestClassOutputFileDict(tcid, outputfiles)
         return True
 
     def _storeTestClassInfo(self, testinstance):
@@ -393,14 +460,14 @@ class SQLiteStorage(DBStorage):
             parent = tclass.__base__.__dict__.get("__monitor_name__")
 
         # insert into db
-        # dicts
-        argsid = self._storeMonitorClassDict(args)
-        checklistid = self._storeMonitorClassDict(checklist)
-        extrainfoid = self._storeMonitorClassDict(extrainfo)
-        outputfilesid = self._storeMonitorClassDict(outputfiles)
-        # final line
-        insertstr = "INSERT INTO monitorclassinfo (type, parent, description, arguments, checklist, extrainfo, outputfiles) VALUES (?, ?, ?, ?, ?, ?, ?)"
-        self._ExecuteCommit(insertstr, (ctype, parent, desc, argsid, checklistid, extrainfoid, outputfilesid))
+        insertstr = "INSERT INTO monitorclassinfo (type, parent, description) VALUES (?, ?, ?)"
+        tcid = self._ExecuteCommit(insertstr, (ctype, parent, desc))
+
+        # store the dicts
+        self._storeMonitorClassArgumentsDict(tcid, args)
+        self._storeMonitorClassCheckListDict(tcid, checklist)
+        self._storeMonitorClassExtraInfoDict(tcid, extrainfo)
+        self._storeMonitorClassOutputFileDict(tcid, outputfiles)
         return True
 
     def _storeMonitorClassInfo(self, monitorinstance):
@@ -416,6 +483,7 @@ class SQLiteStorage(DBStorage):
                 break
             if cl == Monitor:
                 break
+
 
 
     # public storage API
@@ -450,10 +518,7 @@ class SQLiteStorage(DBStorage):
         self.__testrunid = self._ExecuteCommit(insertstr, (self.__clientid, testrun._starttime))
         envdict = testrun.getEnvironment()
         if envdict:
-            # store environement
-            envdictid = self._storeEnvironmentDict(envdict)
-            insertstr = "INSERT INTO environment (testrunid, data) VALUES (?, ?)"
-            self._ExecuteCommit(insertstr, (self.__testrunid, envdictid))
+            self._storeEnvironmentDict(self.__testrunid, envdict)
         self.__testrun = testrun
         debug("Got testrun id %d", self.__testrunid)
 
@@ -483,7 +548,8 @@ class SQLiteStorage(DBStorage):
             self.startNewTestRun(testrun)
         if not self.__tests.has_key(test):
             self.newTestStarted(testrun, test)
-        debug("test:%r", test)
+        tid = self.__tests[test]
+        debug("test:%r:%d", test, tid)
         # if it's a scenario, fill up the subtests
         if isinstance(test, Scenario):
             sublist = []
@@ -494,75 +560,64 @@ class SQLiteStorage(DBStorage):
             for sub in test.tests:
                 self._ExecuteCommit(insertstr, (self.__tests[sub],
                                                 self.__tests[test]))
-        updatestr = "UPDATE test SET arguments=?,results=?,resultpercentage=?,extrainfo=?,outputfiles=? WHERE id=?"
+
+        # store the dictionnaries
+        self._storeTestArgumentsDict(tid, test.getArguments())
+        self._storeTestCheckListDict(tid, test.getCheckList())
+        self._storeTestExtraInfoDict(tid, test.getExtraInfo())
+        self._storeTestOutputFileDict(tid, test.getOutputFiles())
+
+        # finally update the test
+        updatestr = "UPDATE test SET resultpercentage=? WHERE id=?"
         resultpercentage = test.getSuccessPercentage()
-        resultsid = self._storeCheckListDict(test.getCheckList())
-        argsid = self._storeArgumentsDict(test.getArguments())
-        extrainfoid = self._storeExtraInfoDict(test.getExtraInfo())
-        outputfilesid = self._storeOutputFileDict(test.getOutputFiles())
-        self._ExecuteCommit(updatestr, (argsid, resultsid,
-                                        resultpercentage,
-                                        extrainfoid, outputfilesid,
-                                        self.__tests[test]))
+        self._ExecuteCommit(updatestr, (resultpercentage, tid))
         self._storeTestClassInfo(test)
 
         # and on to the monitors
         for monitor in test._monitorinstances:
-            self._storeMonitor(monitor, self.__tests[test])
+            self._storeMonitor(monitor, tid)
 
     def _storeMonitor(self, monitor, testid):
         insertstr = """
-        INSERT INTO monitor (id, testid, type, arguments, results, resultpercentage, extrainfo, outputfiles)
-        VALUES (NULL, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO monitor (id, testid, type, resultpercentage)
+        VALUES (NULL, ?, ?, ?)
         """
-        resultpercentage = monitor.getSuccessPercentage()
-        resultsid = self._storeCheckListDict(monitor.getCheckList())
-        argsid = self._storeArgumentsDict(monitor.getArguments())
-        extrainfoid = self._storeExtraInfoDict(monitor.getExtraInfo())
-        outputfilesid = self._storeOutputFileDict(monitor.getOutputFiles())
-        self._ExecuteCommit(insertstr, (testid, monitor.__monitor_name__,
-                                        argsid, resultsid, resultpercentage,
-                                        extrainfoid, outputfilesid))
+        # store monitor
+        mid = self._ExecuteCommit(insertstr, (testid, monitor.__monitor_name__,
+                                              monitor.getSuccessPercentage()))
+        # store related dictionnaries
+        self._storeMonitorArgumentsDict(mid, monitor.getArguments())
+        self._storeMonitorCheckListDict(mid, monitor.getCheckList())
+        self._storeMonitorExtraInfoDict(mid, monitor.getExtraInfo())
+        self._storeMonitorOutputFileDict(mid, monitor.getOutputFiles())
+
         self._storeMonitorClassInfo(monitor)
 
     # public retrieval API
 
-    def _getIntVal(self, keyid):
-        res = self._FetchOne("SELECT name,value FROM dictint WHERE id=?",
-                             (keyid, ))
-        return res
-
-    def _getStrVal(self, keyid):
-        res = self._FetchOne("SELECT name,value FROM dictstr WHERE id=?",
-                             (keyid, ))
-        return res
-
-    def _getBlobVal(self, keyid):
-        res = self._FetchOne("SELECT name,value FROM dictblob WHERE id=?",
-                             (keyid, ))
-        if not res:
-            return (None, None)
-        name,val = res
-        return (name, loads(str(val)))
-
-    def _getDict(self, tableid, dictid):
+    def _getDict(self, tablename, containerid, blobonly=False, txtonly=False, intonly=False):
         # returns a dict object
         # get all the key/type for that dictid
-        if dictid == None:
-            debug("NULL dictionnary ID, return empty dictionnary")
-            return {}
+        searchstr = "SELECT * FROM %s WHERE containerid=?" % tablename
+        res = self._FetchAll(searchstr, (containerid, ))
 
-        searchstr = "SELECT keyid,type FROM %s WHERE dictid=?" % tableid
-        res = self._FetchAll(searchstr, (dictid, ))
         d = {}
-        for keyid, ktype in res:
-            if ktype == DATA_TYPE_INT:
-                keyname, keyval = self._getIntVal(keyid)
-            elif ktype == DATA_TYPE_STR:
-                keyname, keyval = self._getStrVal(keyid)
-            elif ktype == DATA_TYPE_BLOB:
-                keyname, keyval = self._getBlobVal(keyid)
-            d[keyname] = keyval
+        for row in res:
+            id, containerid, name = row[:3]
+            if intonly or txtonly:
+                val = row[3]
+            elif blobonly:
+                val = loads(str(row[3]))
+            else:
+                # we need to figure it out
+                ival, tval, bval = row[3:]
+                if not ival == None:
+                    val = ival
+                elif not tval == None:
+                    val = tval
+                else:
+                    val = loads(str(bval))
+            d[name] = val
         return d
 
     def getClientInfoForTestRun(self, testrunid):
@@ -591,13 +646,7 @@ class SQLiteStorage(DBStorage):
 
     def getEnvironmentForTestRun(self, testrunid):
         debug("testrunid", testrunid)
-        liststr = "SELECT data FROM environment WHERE testrunid=?"
-        res = self._FetchOne(liststr, (testrunid, ))
-        if not res:
-            return {}
-        environid = res[0]
-        dic = self._getDict("environdicts", environid)
-        return dic
+        return self._getDict("testrun_environment_dict", testrunid)
 
     def getTestsForTestRun(self, testrunid, withscenarios=True):
         debug("testrunid:%d", testrunid)
@@ -656,15 +705,15 @@ class SQLiteStorage(DBStorage):
         * the extra information (dictionnary)
         * the output files (dictionnary)
         """
-        searchstr = "SELECT testrunid,type,arguments,results,resultpercentage,extrainfo,outputfiles FROM test WHERE id=?"
+        searchstr = "SELECT testrunid,type,resultpercentage FROM test WHERE id=?"
         res = self._FetchOne(searchstr, (testid, ))
         if not res:
             return (None, None, None, None, None, None, None)
-        testrunid,ttype,argid,resid,resperc,extraid,outputfilesid = res
-        args = self._getDict("argumentsdicts", argid)
-        results = self._getDict("checklistdicts", resid)
-        extras = self._getDict("extrainfodicts", extraid)
-        outputfiles = self._getDict("outputfiledicts", outputfilesid)
+        testrunid,ttype,resperc = res
+        args = self._getDict("test_arguments_dict", testid)
+        results = self._getDict("test_checklist_dict", testid, intonly=True)
+        extras = self._getDict("test_extrainfo_dict", testid)
+        outputfiles = self._getDict("test_outputfiles_dict", testid, txtonly=True)
         return (testrunid, ttype, args, results, resperc, extras, outputfiles)
 
     def getMonitorsIDForTest(self, testid):
@@ -688,14 +737,14 @@ class SQLiteStorage(DBStorage):
         * the extra information (dictionnary)
         * the output files (dictionnary)
         """
-        searchstr = "SELECT testid,type,arguments,results,resultpercentage,extrainfo,outputfiles FROM monitor WHERE id=?"
+        searchstr = "SELECT testid,type,resultpercentage FROM monitor WHERE id=?"
         res = self._FetchOne(searchstr, (monitorid, ))
         if not res:
             return (None, None, None, None, None, None, None)
-        testid,mtype,argid,resid,resperc,extraid,outputfilesid = res
-        args = self._getDict("argumentsdicts", argid)
-        results = self._getDict("checklistdicts", resid)
-        extras = self._getDict("extrainfodicts", extraid)
-        outputfiles = self._getDict("outputfiledicts", outputfilesid)
+        testid,mtype,resperc = res
+        args = self._getDict("monitor_arguments_dict", monitorid)
+        results = self._getDict("monitor_checklist_dict", monitorid, intonly=True)
+        extras = self._getDict("monitor_extrainfo_dict", monitorid)
+        outputfiles = self._getDict("monitor_outputfiles_dict", monitorid, txtonly=True)
         return (testid, mtype, args, results, resperc, extras, outputfiles)
 
