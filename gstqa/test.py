@@ -30,6 +30,14 @@ import dbus
 import dbus.gobject_service
 from dbustools import unwrap
 
+if gst.pygst_version < (0, 10, 9):
+    # pygst before 0.10.9 has atexit(gst_deinit), causing segfaults.  Let's
+    # replace sys.exit with something that overrides atexit processing:
+    import sys
+    def exit(status=0):
+        os._exit(status)
+    sys.exit = exit
+
 from log import critical, error, warning, debug, info, exception
 import utils
 
