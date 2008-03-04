@@ -782,6 +782,7 @@ class DBusTest(Test, dbus.service.Object):
                     while self._returncode == None:
                         info("Process isn't done yet, killing it")
                         os.kill(self._process.pid, signal.SIGKILL)
+                        time.sleep(0.1)
                         self._returncode = self._process.poll()
                     info("Process returned %d", self._returncode)
                     self._process = None
