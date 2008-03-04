@@ -81,4 +81,4 @@ def initLogging():
     # basicConfig
     basicConfig(level = debuglevel, format = debugformat)
     info("Logging is now properly setup")
-    __logging_setup__ = False
+    __logging_setup__ = True
