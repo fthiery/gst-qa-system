@@ -23,6 +23,7 @@ import gobject
 gobject.threads_init()
 import gst
 import os
+import sys
 import subprocess
 import signal
 import time
@@ -33,7 +34,6 @@ from dbustools import unwrap
 if gst.pygst_version < (0, 10, 9):
     # pygst before 0.10.9 has atexit(gst_deinit), causing segfaults.  Let's
     # replace sys.exit with something that overrides atexit processing:
-    import sys
     def exit(status=0):
         os._exit(status)
     sys.exit = exit
@@ -940,6 +940,15 @@ class PythonDBusTest(DBusTest):
     """
     __test_name__ = """python-dbus-test"""
     __test_description__ = """Base Class for Python DBUS tests"""
+    __test_extra_infos__ = {
+        "python-exception" : """Python unhandled exception information"""}
+
+    def __init__(self, proxy=True, *args, **kwargs):
+
+        DBusTest.__init__(self, proxy=proxy, *args, **kwargs)
+
+        if not proxy:
+            self.__setup_excepthook()
 
     def get_remote_launcher_args(self):
         import os
@@ -948,6 +957,33 @@ class PythonDBusTest(DBusTest):
         # HACK : take top-level-dir/bin/pythondbusrunner.py
         rootdir = os.path.split(os.path.dirname(os.path.abspath(__file__)))[0]
         return [os.path.join(rootdir, "bin", "pythondbusrunner.py"), self.uuid]
+
+    def __excepthook(self, exc_type, exc_value, exc_traceback):
+
+        import traceback
+
+        if not self.__exception_handled:
+
+            self.__exception_handled = True
+            exc_format = traceback.format_exception(exc_type, exc_value, exc_traceback)
+            self.extraInfo("python-exception", "".join(exc_format))
+            
+            self.stop()
+            
+            self.__orig_excepthook(exc_type, exc_value, exc_traceback)
+
+        sys.exit(1)
+
+    def __setup_excepthook(self):
+
+        try:
+            if sys.excepthook == self.__excepthook:
+                return
+        except AttributeError:
+            return
+        self.__exception_handled = False
+        self.__orig_excepthook = sys.excepthook
+        sys.excepthook = self.__excepthook
 
 class GStreamerTest(PythonDBusTest):
     """
