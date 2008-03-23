@@ -23,4 +23,4 @@
 Collection of tests
 """
 
-__all__ = ["gnltest", "ismedia", "playbin", "typefind"]
+__all__ = ["gnltest", "ismedia", "playbin", "typefind", "encoder"]
