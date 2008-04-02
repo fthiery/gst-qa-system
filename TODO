@@ -55,6 +55,11 @@ Non-milestone-specific / Bonus features
   * full documentation , especially explaining what could have caused
     that step to not be validated, to make debugging/fixing easier.
 
+* Checklist validation
+ * Currently all checklist items are set to an initial value
+  * Make all check items 'non-validated' by default
+  * Allows validating by True/False and ignoring items that weren't validated.
+
 * Database
  * Add convenience functions for merging two DB together (or one in another).
  * Store the test class as an integer and not a name
