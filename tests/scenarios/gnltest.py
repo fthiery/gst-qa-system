@@ -26,9 +26,14 @@ Full gnonlin scenario
 from gstqa.scenario import Scenario
 from tests.gnltest import GnlFileSourceTest
 from tests.typefind import TypeFindTest
+import gst
 
 class FullGnlFileSourceScenario(Scenario):
 
+    __test_description__ = """
+    Will analyze a given uri (using typefind-test) and then add a gnltest
+    for each contained stream.
+    """
     __test_name__ = "full-gnlfilesource-scenario"
 
     def setUp(self):
@@ -53,12 +58,24 @@ class FullGnlFileSourceScenario(Scenario):
         if not 'streams' in infos.keys():
             return False
 
+        if not 'total-uri-duration' in infos.keys():
+            return False
+
+        uriduration = infos['total-uri-duration']
+        # pick a duration/media-start which is within the given uri duration
+        mstart = uriduration / 2
+        duration = gst.SECOND
+        if uriduration < 2 * gst.SECOND:
+            duration = mstart
+
         # finally, add a GnlFileSourceTest for each stream
         streams = infos["streams"]
         for stream in streams:
             padname, length, caps = stream
             args = self.arguments.copy()
             args["caps-string"] = caps
+            args["media-start"] = mstart
+            args["duration"] = duration
             self.addSubTest(GnlFileSourceTest, args)
         self.__doneTypeFindTest = True
         return True
