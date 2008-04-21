@@ -152,7 +152,7 @@ class TesterClient(dbus.service.Object):
         import socket
         clientname = socket.getfqdn()
         # user, email address or username
-        for i in ["MAIL_ADDRESS", "USERNAME"]:
+        for i in ["EMAIL_ADDRESS", "MAIL_ADDRESS", "REAL_NAME", "USERNAME"]:
             username = os.getenv(i)
             if username:
                 break

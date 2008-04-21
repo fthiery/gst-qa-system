@@ -1,6 +1,6 @@
 # GStreamer QA system
 #
-#       tests/__init__.py
+#       generators/__init__.py
 #
 # Copyright (c) 2007, Edward Hervey <bilboed@bilboed.com>
 #
@@ -20,7 +20,9 @@
 # Boston, MA 02111-1307, USA.
 
 """
-Collection of tests
+Collection of generators
 """
 
-__all__ = ["gnltest", "ismedia", "playbin", "typefind", "encoder"]
+# add module names to __all__ when adding new generator modules
+
+__all__ = ["filesystem"]

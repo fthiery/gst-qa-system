@@ -39,7 +39,7 @@ import os.path
 from optparse import OptionParser
 from gstqa.client import CommandLineTesterClient
 from gstqa.scenario import Scenario
-from gstqa.generator import FileSystemGenerator, URIFileSystemGenerator
+from gstqa.generators.filesystem import FileSystemGenerator, URIFileSystemGenerator
 from gstqa.monitor import GstDebugLogMonitor, ValgrindMemCheckMonitor, GDBMonitor
 from gstqa.testrun import TestRun
 import gstqa.utils as utils

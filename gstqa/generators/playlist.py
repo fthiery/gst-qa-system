@@ -1,6 +1,6 @@
 # GStreamer QA system
 #
-#       tests/__init__.py
+#       generators/playlist.py
 #
 # Copyright (c) 2007, Edward Hervey <bilboed@bilboed.com>
 #
@@ -20,7 +20,17 @@
 # Boston, MA 02111-1307, USA.
 
 """
-Collection of tests
+Playlist-related generators
 """
 
-__all__ = ["gnltest", "ismedia", "playbin", "typefind", "encoder"]
+from gstqa.generator import Generator
+from gstqa.log import critical, error, warning, debug, info
+
+
+class PlaylistGenerator(Generator):
+    """
+    Takes a list of playlist file location
+    Returns a full list of URIs contained in those files
+    """
+    pass
+

@@ -65,16 +65,17 @@ class EncoderMuxerTest(GStreamerTest):
     Encodes raw audio and/or video using the specified encoder(s) and
     muxer.
     """
-    __test_name__ = "encoder-muxer-tes"
+    __test_name__ = "encoder-muxer-test"
     __test_arguments__ = {
         "encode-video":"Should video be generated and encoded (default:False)",
-        "video-caps":"caps to use when generating the video to be encoded (default:ANY)",
-        "video-encoder-factory":"Name of the gst.ElementFactory to use to encode the video stream (default None)",
         "encode-audio":"Should audio be generated and encoded (default:False)",
+        "video-caps":"caps to use when generating the raw video stream to be encoded (default:ANY)",
+        "audio-caps":"caps to use when generating the raw audio stream to be encoded (default:ANY)",
+        "video-encoder-factory":"Name of the gst.ElementFactory to use to encode the video stream (default None)",
         "audio-encoder-factory":"Name of the gst.ElementFactory to use to encode the audio stream (default None)",
-        "audio-caps":"caps to use when generating the audio to be encoded (default:ANY)",
         "muxer-factory":"Name of the gst.ElementFactory to use to contain the streams (default None)",
-        "media-duration":"Duration of the media to generate (in nanoseconds, default:20s)"
+        "media-duration":"Duration of the media to generate (in nanoseconds, default:20s)",
+        "media-offset":"Initial buffer timestamp (default 0s)"
         }
 
     __test_output_files__ = {
