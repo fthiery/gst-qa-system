@@ -167,7 +167,7 @@ class Monitor(object):
         Report the location of an output file
         """
         debug("%s : %s", key, value)
-        self._outputfiles["key"] = value
+        self._outputfiles[key] = value
 
     # getters
 
