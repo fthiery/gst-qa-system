@@ -83,7 +83,8 @@ CREATE TABLE monitor (
 CREATE TABLE testclassinfo (
    type TEXT PRIMARY KEY,
    parent TEXT,
-   description TEXT
+   description TEXT,
+   fulldescription TEXT
 );
 
 CREATE TABLE monitorclassinfo (
@@ -436,6 +437,7 @@ class SQLiteStorage(DBStorage):
             return False
         # get info
         desc = tclass.__dict__.get("__test_description__")
+        fdesc = tclass.__dict__.get("__test_full_description__")
         args = tclass.__dict__.get("__test_arguments__")
         checklist = tclass.__dict__.get("__test_checklist__")
         extrainfo = tclass.__dict__.get("__test_extra_infos__")
@@ -446,8 +448,8 @@ class SQLiteStorage(DBStorage):
             parent = tclass.__base__.__dict__.get("__test_name__")
 
         # insert into db
-        insertstr = "INSERT INTO testclassinfo (type, parent, description) VALUES (?, ?, ?)"
-        tcid = self._ExecuteCommit(insertstr, (ctype, parent, desc))
+        insertstr = "INSERT INTO testclassinfo (type, parent, description, fulldescription) VALUES (?, ?, ?, ?)"
+        tcid = self._ExecuteCommit(insertstr, (ctype, parent, desc, fdesc))
 
         # store the dicts
         self._storeTestClassArgumentsDict(tcid, args)
