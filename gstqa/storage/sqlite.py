@@ -398,6 +398,33 @@ class SQLiteStorage(DBStorage):
             comstr = insertstr % (dicttable, valstr)
             cur.execute(comstr, (containerid, key, val))
 
+    def _storeList(self, dicttable, containerid, pdict):
+        if not pdict:
+            # empty dictionnary
+            debug("Empty list, returning")
+            return
+
+        # figure out which values to add to which tables
+        strs = []
+        ints = []
+        blobs = []
+        insertstr = "INSERT INTO %s (id, containerid, name, %s) VALUES (NULL, ?, ?, ?)"
+        for key,value in pdict:
+            debug("Adding key:%s , value:%r", key, value)
+            val = value
+            if isinstance(value, int):
+                valstr = "intvalue"
+                lst = ints
+            elif isinstance(value, basestring):
+                valstr = "txtvalue"
+                lst = strs
+            else:
+                valstr = "blobvalue"
+                lst = blobs
+                val = sqlite.Binary(dumps(value))
+            comstr = insertstr % (dicttable, valstr)
+            lst.append(self._ExecuteCommit(comstr, (containerid, key, val)))
+
     def _storeTestArgumentsDict(self, testid, dict):
         return self._storeDict("test_arguments_dict", testid, dict)
 
