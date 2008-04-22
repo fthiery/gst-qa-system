@@ -38,3 +38,19 @@ MONITORS
  monitor queue levels
  monitor QOS
  monitor latency in live pipelines
+
+
+REPORTING/ANALYSIS
+------------------
+
+Find all similar test issues in a testrun, or accross several testruns.
+
+I.e. : 
+  For tests of the same type (else, you can't really comare them)
+     For similar checklists
+        Assign to a issue group
+
+  Then refine based:
+    * on elements used
+    * on arguments
+    * ????
