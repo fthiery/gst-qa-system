@@ -102,10 +102,8 @@ class GnlFileSourceTest(GStreamerTest):
             debug("buffer %s", gst.TIME_ARGS(data.timestamp))
             if not self._gotFirstBuffer:
                 self.extraInfo("first-buffer-timestamp", data.timestamp)
-                if data.timestamp == self._mstart:
-                    self.validateStep("correct-initial-buffer")
-                if self._gotNewSegment:
-                    self.validateStep("first-buffer-after-newsegment")
+                self.validateStep("correct-initial-buffer", data.timestamp == self._mstart)
+                self.validateStep("first-buffer-after-newsegment", self._gotNewSegment)
                 self._gotFirstBuffer = True
         elif data.type == gst.EVENT_NEWSEGMENT:
             if not self._gotNewSegment:
@@ -113,14 +111,10 @@ class GnlFileSourceTest(GStreamerTest):
                 self.extraInfo("newsegment-values", data.parse_new_segment())
                 # make sure the newsegment is valid
                 update, rate, format, start, stop, position = data.parse_new_segment()
-                if format == gst.FORMAT_TIME:
-                    self.validateStep("correct-newsegment-format")
-                if start == self._mstart:
-                    self.validateStep("correct-newsegment-start")
-                if stop == self._mstart + self._mduration:
-                    self.validateStep("correct-newsegment-stop")
-                if position == self._start:
-                    self.validateStep("correct-newsegment-position")
+                self.validateStep("correct-newsegment-format", format == gst.FORMAT_TIME)
+                self.validateStep("correct-newsegment-start", start == self._mstart)
+                self.validateStep("correct-newsegment-stop",stop == self._mstart + self._mduration)
+                self.validateStep("correct-newsegment-position", position == self._start)
                 if self._gotFirstBuffer:
                     gobject.idle_add(self.stop)
                 self._gotNewSegment = True

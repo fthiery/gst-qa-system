@@ -329,7 +329,11 @@ class Test(gobject.GObject):
         Called by the test itself
         """
         info("step %s for item %r : %r" % (checkitem, self, validated))
+        # check for valid checkitem
         if not checkitem in self._possibleChecklist:
+            return
+        # check to see if we don't already have it
+        if checkitem in dict(self._checklist):
             return
         self._checklist.append((checkitem, validated))
         #self._checklist[checkitem] = True
@@ -625,6 +629,7 @@ class DBusTest(Test, dbus.service.Object):
                 self._pid = self._process.pid
             except:
                 exception("Error starting the subprocess command ! %r", pargs)
+                self.validateStep("dbus-process-spawned", False)
                 return False
             debug("Subprocess created successfully [pid:%d]", self._pid)
 
@@ -672,8 +677,7 @@ class DBusTest(Test, dbus.service.Object):
                     info("Process returned %d", self._returncode)
                     self._process = None
                 if not self._returncode == None:
-                    if self._returncode == 0:
-                        self.validateStep("subprocess-exited-normally")
+                    self.validateStep("subprocess-exited-normally", self._returncode == 0)
                     self.extraInfo("subprocess-return-code", self._returncode)
         else:
             self.remoteTearDown()
@@ -838,11 +842,11 @@ class DBusTest(Test, dbus.service.Object):
         to the parent remoteTearDown() at the *beginning of their
         implementation.
         """
-        info("%s", self.uuid)
+        info("%s remoteTimeoutId:%r", self.uuid, self._remoteTimeoutId)
         # remote the timeout
         if self._remoteTimeoutId:
             gobject.source_remove(self._remoteTimeoutId)
-            self._remoteTimedOut = True
+            self._remoteTimedOut = False
             self._remoteTimeoutId = 0
         self.validateStep("no-timeout", not self._remoteTimedOut)
 
@@ -1030,10 +1034,8 @@ class GStreamerTest(PythonDBusTest):
             exception("Error while creating pipeline")
             self.pipeline = None
         finally:
-            if not self.pipeline == None:
-                self.validateStep("valid-pipeline")
-            else:
-                self.validateStep("valid-pipeline", False)
+            self.validateStep("valid-pipeline", not self.pipeline == None)
+            if self.pipeline == None:
                 self.stop()
                 return
 
@@ -1053,10 +1055,8 @@ class GStreamerTest(PythonDBusTest):
         # unref pipeline and so forth
         if self.pipeline:
             self.pipeline.set_state(gst.STATE_NULL)
-        if self._errors == []:
-            self.validateStep("no-errors-seen")
-        else:
-            self.validateStep("no-errors-seen", False)
+        self.validateStep("no-errors-seen", self._errors == [])
+        if not self._errors == []:
             self.extraInfo("errors", self._errors)
         if not self._tags == {}:
             debug("Got tags %r", self._tags)

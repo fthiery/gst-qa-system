@@ -53,7 +53,9 @@ class IsMediaTest(GStreamerTest):
         # uri source
         uri = self.arguments["uri"]
         if not gst.uri_is_valid(uri):
+            self.validateStep("is-valid-uri-format", False)
             return None
+
         self.validateStep("is-valid-uri-format")
         src = gst.element_make_from_uri(gst.URI_SRC, uri, "uri-src")
 

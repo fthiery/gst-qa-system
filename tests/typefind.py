@@ -109,21 +109,20 @@ class TypeFindTest(GStreamerTest):
         self._analyzeDecodebin()
         length, issimilar = self._getStreamsDuration()
         debug("length:%s, similar:%r", gst.TIME_ARGS(length), issimilar)
-        if issimilar:
-            self.validateStep("stream-duration-identical")
+        self.validateStep("stream-duration-identical", issimilar)
+        self.validateStep("duration-available", not length == -1)
         if not length == -1:
-            self.validateStep("duration-available")
             self.extraInfo("total-uri-duration", length)
-        if not self.mimetype in [s.caps.to_string() for s in self._streams]:
-            self.validateStep("available-demuxer")
+        self.validateStep("available-demuxer",
+                          not self.mimetype in [s.caps.to_string() for s in self._streams])
+
         debug("allstreams : %s", [s.pad.get_name() for s in self._streams])
         raws = [s for s in self._streams if s.raw]
         notraws = [s for s in self._streams if not s.raw]
         nonfixedraw = [s for s in raws if not s.caps.is_fixed()]
-        if not len([s for s in raws if not s.caps.is_fixed()]):
-            self.validateStep("all-fixed-caps-streams")
-        if not len(notraws):
-            self.validateStep("all-streams-decodable")
+        self.validateStep("all-fixed-caps-streams",
+                          not len([s for s in raws if not s.caps.is_fixed()]))
+        self.validateStep("all-streams-decodable", not len(notraws))
         if len(notraws):
             self.extraInfo("unhandled-formats", [s.caps.get_string() for s in notraws])
         xs = [(s.pad.get_name(), s.length, s.caps.to_string()) for s in self._streams]
@@ -179,6 +178,7 @@ class TypeFindTest(GStreamerTest):
                   ]:
             debug("not a media type, stopping")
             gobject.idle_add(self.stop)
+            self.validateStep("is-media-type", False)
         else:
             self.validateStep("is-media-type")
 
