@@ -172,6 +172,9 @@ class ListScenario(Scenario):
         }
     __test_description__ = """
     This scenario will execute the given tests one after the other.
+    """
+    __test_full_description__ = """
+    This scenario will execute the given tests one after the other.
     If fata-subtest-failure is set to True, then it will stop whenever
     one test hasn't succeeded fully (all steps validated).
     """

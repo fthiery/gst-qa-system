@@ -29,8 +29,10 @@ from tests.typefind import TypeFindTest
 import gst
 
 class FullGnlFileSourceScenario(Scenario):
-
     __test_description__ = """
+    Runs gnlfilesource test on each media stream of the given uri
+    """
+    __test_full_description__ = """
     Will analyze a given uri (using typefind-test) and then add a gnltest
     for each contained stream.
     """

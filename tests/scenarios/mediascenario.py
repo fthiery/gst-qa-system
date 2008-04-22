@@ -30,6 +30,9 @@ class MediaBarrierScenario(ListScenario):
 
     __test_name__ = """media-barrier-scenario"""
     __test_description__ = """
+    Only runs the given subtests if the uri/file is a usable media type
+    """
+    __test_full_description__ = """
     This scenario will first check the mime-type of the given uri/file
     and if it is not a useable media type, will return without executing
     the given tests.

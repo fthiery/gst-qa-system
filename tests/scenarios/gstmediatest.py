@@ -37,7 +37,11 @@ class GstMediaTestScenario(Scenario):
 
     This reproduces the re-try behaviour of gst-media-test
     """
+
     __test_name__ = "GstMediaTestScenario"
+    __test_description__ = """
+    Re-runs failed subtests with higher debug level
+    """
     __test_arguments__ = {
         "subtest-class":"TestClass to run",
         "debug-level-1":"GST_DEBUG level to use on first run (default:'*:2')",

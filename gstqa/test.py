@@ -82,6 +82,15 @@ class Test(gobject.GObject):
     One-liner description of the test
     """
 
+    __test_full_description__ = __test_description__
+    """
+    Extended description of the test
+
+    By default, the same value as __test_description__ will be
+    used, but it can be useful for tests that can not summarize
+    in one line their purpose and usage.
+    """
+
     __test_arguments__ = { }
     """
     Dictionnary of arguments this test can take.
