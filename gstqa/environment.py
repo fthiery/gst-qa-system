@@ -74,6 +74,7 @@ def collectEnvironment(environ, callback):
     os.close(resfile)
     thispath = os.path.abspath(__file__.replace(".pyc", ".py"))
     pargs = [thispath, respath]
+
     try:
         debug("spawning subprocess %r", pargs)
         proc = subprocess.Popen(pargs, env=environ)

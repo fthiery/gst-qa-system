@@ -83,10 +83,11 @@ class TestRun(gobject.GObject):
                                  (gobject.TYPE_STRING, ))
         }
 
-    def __init__(self, maxnbtests=1, workingdir=None):
+    def __init__(self, maxnbtests=1, workingdir=None, env={}):
         """
         maxnbtests : Maximum number of tests to run simultaneously in each batch.
         workingdir : Working directory (default : getcwd() + /workingdir/)
+        env : extra environment variables
         """
         gobject.GObject.__init__(self)
         self._setupPrivateBus()
@@ -99,7 +100,12 @@ class TestRun(gobject.GObject):
         self._maxnbtests = maxnbtests
         self._starttime = None
         self._stoptime = None
+        # disambiguation
+        # _environment are the environment information
+        # _environ are the environment variables (env)
         self._environment = {}
+        self._env = os.environ.copy()
+        self._env.update(env)
         self._workingdir = workingdir or os.path.join(os.getcwd(), "workingdir")
         self._outputdir = os.path.join(self._workingdir, "outputfiles")
         self._running = False
@@ -187,7 +193,11 @@ class TestRun(gobject.GObject):
         """
         Collect the environment settings, parameters, variables,...
         """
-        environment.collectEnvironment(os.environ, self._gotEnvironment)
+        # we specify our own registry
+        if not "GST_REGISTRY" in self._env:
+            obj, path = self.get_temp_file(nameid="registry", category="testrun")
+            self._env["GST_REGISTRY"] = path
+        environment.collectEnvironment(self._env, self._gotEnvironment)
 
     def _gotEnvironment(self, resdict):
         info("Got environment %r", resdict)
@@ -212,7 +222,7 @@ class TestRun(gobject.GObject):
         self._storage.newTestFinished(self, test)
         gobject.idle_add(self._runNext)
 
-    def _singleTestCheck(self, test, check):
+    def _singleTestCheck(self, test, check, validate):
         pass
 
     def _runNext(self):
@@ -308,7 +318,7 @@ class TestRun(gobject.GObject):
         self._outputdir = os.path.join(self._workingdir, "outputfiles")
         return True
 
-    def get_temp_file(self, nameid='', suffix=''):
+    def get_temp_file(self, nameid='', suffix='', category="gstqa-output"):
         """
         Creates a new temporary file in a secure fashion, guaranteeing
         it will be unique and only accessible from this user.
@@ -322,7 +332,7 @@ class TestRun(gobject.GObject):
         Return (filepath, fileobject) for the newly created file
         """
         # we create temporary files in a specified directory
-        prefix = "gstqa-output-" + nameid
+        prefix = "%s-%s" % (category, nameid)
         return tempfile.mkstemp(prefix=prefix,
                                 suffix=suffix,
                                 dir=self._outputdir)
