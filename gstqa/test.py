@@ -68,27 +68,77 @@ class Test(gobject.GObject):
     * uuid : unique identifier for the test
         This is assigned by the controlling object
     """
+
     __test_name__ = "test-base-class"
+    """
+    Name of the test
+
+    This name should be unique amongst all tests, it is
+    used as an identifier for this test.
+    """
+
     __test_description__ = """Base class for tests"""
+    """
+    One-liner description of the test
+    """
+
     __test_arguments__ = { }
+    """
+    Dictionnary of arguments this test can take.
+
+    key : name of the argument
+    value : description of the argument
+    """
+
     __test_checklist__ = {
         "test-started":"The test started",
         "no-timeout":"The test didn't timeout",
         }
+    """
+    Dictionnary of check items this test will validate.
+
+    For each item, the test will try to validate them as
+    being succesfull (True) or not (False).
+
+    key : name of the check item
+    value : description of the check item
+    """
+
     __test_timeout__ = 15
+    """
+    Allowed duration for the test to run (in seconds).
+    """
+
     __test_extra_infos__ = {
         "test-setup-duration" : "How long it took to setup the test (in seconds) for asynchronous tests",
         "test-total-duration" : "How long it took to run the entire test (in seconds)"
         }
+    """
+    Dictionnary of extra information this test can produce.
+    """
+
     __test_output_files__ = { }
+    """
+    Dictionnary of output files this test can produce
+    """
 
     # Set to True if your setUp doesn't happen synchronously
     __async_setup__ = False
+    """
+    Indicates if this test starts up asynchronously
+    """
+
     # Subclasses need to call ready within that delay (in seconds)
     __async_setup_timeout__ = 10
+    """
+    Allowed duration for the test to start up (in seconds)
+    """
 
     # Set to False if you test() method returns immediatly
     __async_test__ = True
+    """
+    Indicates if this test runs asynchronously 
+    """
 
     __gsignals__ = {
         "start" : (gobject.SIGNAL_RUN_LAST,
