@@ -1121,20 +1121,8 @@ class GStreamerTest(PythonDBusTest):
             exception("Error while creating pipeline")
             self.pipeline = None
         finally:
-<<<<<<< HEAD:gstqa/test.py
-<<<<<<< HEAD:gstqa/test.py
             self.validateStep("valid-pipeline", not self.pipeline == None)
             if self.pipeline == None:
-=======
-            if not self.pipeline == None:
-                self.validateStep("valid-pipeline")
-            else:
-                self.validateStep("valid-pipeline", False)
->>>>>>> First go at listed checklist items:gstqa/test.py
-=======
-            self.validateStep("valid-pipeline", not self.pipeline == None)
-            if self.pipeline == None:
->>>>>>> Fix remaining issues for validated and ordered properties:gstqa/test.py
                 self.stop()
                 return
 
@@ -1154,20 +1142,8 @@ class GStreamerTest(PythonDBusTest):
         # unref pipeline and so forth
         if self.pipeline:
             self.pipeline.set_state(gst.STATE_NULL)
-<<<<<<< HEAD:gstqa/test.py
-<<<<<<< HEAD:gstqa/test.py
         self.validateStep("no-errors-seen", self._errors == [])
         if not self._errors == []:
-=======
-        if self._errors == []:
-            self.validateStep("no-errors-seen")
-        else:
-            self.validateStep("no-errors-seen", False)
->>>>>>> First go at listed checklist items:gstqa/test.py
-=======
-        self.validateStep("no-errors-seen", self._errors == [])
-        if not self._errors == []:
->>>>>>> Fix remaining issues for validated and ordered properties:gstqa/test.py
             self.extraInfo("errors", self._errors)
         if not self._tags == {}:
             debug("Got tags %r", self._tags)
