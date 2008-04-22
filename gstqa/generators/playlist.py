@@ -26,11 +26,27 @@ Playlist-related generators
 from gstqa.generator import Generator
 from gstqa.log import critical, error, warning, debug, info
 
+# FIXME
+#   Should check to see if we actually have valid URI(s)
 
 class PlaylistGenerator(Generator):
     """
     Takes a list of playlist file location
     Returns a full list of URIs contained in those files
     """
-    pass
+
+    __args__ = {
+        "location":"location of the playlist file"
+        }
+
+    def _generate(self):
+        res = []
+        location = self.kwargs.get("location", None)
+        if not location:
+            return res
+        resfile = open(location, "r")
+        # this is a bit too simplistic
+        res = [x.strip() for x in resfile.readlines()]
+        resfile.close()
+        return res
 
