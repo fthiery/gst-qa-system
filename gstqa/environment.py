@@ -82,6 +82,7 @@ def collectEnvironment(environ, callback):
             thispath = thispath[:-len(suffix)] + ".py"
             break
     pargs = [thispath, respath]
+
     try:
         debug("spawning subprocess %r", pargs)
         proc = subprocess.Popen(pargs, env=environ)

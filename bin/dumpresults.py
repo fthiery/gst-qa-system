@@ -56,7 +56,7 @@ def printTestInfo(db, testid, failedonly=False):
         print "\t% -30s:\t%s" % (key, val)
     # results
     print "Results :"
-    for key,val in checks.iteritems():
+    for key,val in checks:
         print "\t% -30s:\t%d" % (key, val)
     if extras:
         print "Extra Information:"

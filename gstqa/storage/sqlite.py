@@ -351,11 +351,38 @@ class SQLiteStorage(DBStorage):
             comstr = insertstr % (dicttable, valstr)
             lst.append(self._ExecuteCommit(comstr, (containerid, key, val)))
 
+    def _storeList(self, dicttable, containerid, pdict):
+        if not pdict:
+            # empty dictionnary
+            debug("Empty list, returning")
+            return
+
+        # figure out which values to add to which tables
+        strs = []
+        ints = []
+        blobs = []
+        insertstr = "INSERT INTO %s (id, containerid, name, %s) VALUES (NULL, ?, ?, ?)"
+        for key,value in pdict:
+            debug("Adding key:%s , value:%r", key, value)
+            val = value
+            if isinstance(value, int):
+                valstr = "intvalue"
+                lst = ints
+            elif isinstance(value, basestring):
+                valstr = "txtvalue"
+                lst = strs
+            else:
+                valstr = "blobvalue"
+                lst = blobs
+                val = sqlite.Binary(dumps(value))
+            comstr = insertstr % (dicttable, valstr)
+            lst.append(self._ExecuteCommit(comstr, (containerid, key, val)))
+
     def _storeTestArgumentsDict(self, testid, dict):
         return self._storeDict("test_arguments_dict", testid, dict)
 
-    def _storeTestCheckListDict(self, testid, dict):
-        return self._storeDict("test_checklist_dict", testid, dict)
+    def _storeTestCheckListList(self, testid, dict):
+        return self._storeList("test_checklist_dict", testid, dict)
 
     def _storeTestExtraInfoDict(self, testid, dict):
         return self._storeDict("test_extrainfo_dict", testid, dict)
@@ -563,7 +590,7 @@ class SQLiteStorage(DBStorage):
 
         # store the dictionnaries
         self._storeTestArgumentsDict(tid, test.getArguments())
-        self._storeTestCheckListDict(tid, test.getCheckList())
+        self._storeTestCheckListList(tid, test.getCheckList())
         self._storeTestExtraInfoDict(tid, test.getExtraInfo())
         self._storeTestOutputFileDict(tid, test.getOutputFiles())
 
@@ -619,6 +646,32 @@ class SQLiteStorage(DBStorage):
                     val = loads(str(bval))
             d[name] = val
         return d
+
+    def _getList(self, tablename, containerid, blobonly=False, txtonly=False, intonly=False):
+        # returns a list object
+        # get all the key, value for that dictid
+        searchstr = "SELECT * FROM %s WHERE containerid=?" % tablename
+        res = self._FetchAll(searchstr, (containerid, ))
+
+        d = []
+        for row in res:
+            id, containerid, name = row[:3]
+            if intonly or txtonly:
+                val = row[3]
+            elif blobonly:
+                val = loads(str(row[3]))
+            else:
+                # we need to figure it out
+                ival, tval, bval = row[3:]
+                if not ival == None:
+                    val = ival
+                elif not tval == None:
+                    val = tval
+                else:
+                    val = loads(str(bval))
+            d.append((name, val))
+        return d
+
 
     def getClientInfoForTestRun(self, testrunid):
         debug("testrunid:%d", testrunid)
@@ -700,7 +753,7 @@ class SQLiteStorage(DBStorage):
         * the testrun id in which it was executed
         * the type of the test
         * the arguments (dictionnary)
-        * the results (checklist dictionnary)
+        * the results (checklist list)
         * the result percentage
         * the extra information (dictionnary)
         * the output files (dictionnary)
@@ -711,7 +764,7 @@ class SQLiteStorage(DBStorage):
             return (None, None, None, None, None, None, None)
         testrunid,ttype,resperc = res
         args = self._getDict("test_arguments_dict", testid)
-        results = self._getDict("test_checklist_dict", testid, intonly=True)
+        results = self._getList("test_checklist_dict", testid, intonly=True)
         extras = self._getDict("test_extrainfo_dict", testid)
         outputfiles = self._getDict("test_outputfiles_dict", testid, txtonly=True)
         return (testrunid, ttype, args, results, resperc, extras, outputfiles)

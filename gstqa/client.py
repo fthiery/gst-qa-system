@@ -313,8 +313,8 @@ class CommandLineTesterClient(TesterClient):
             print stub, "Results"
             tc = test.getCheckList()
             fc = test.getFullCheckList()
-            for c in fc:
-                print stub, "  %30s:%10s\t\t%s" % (c, tc[c], fc[c])
+            for step,val in tc:
+                print stub, "  %30s:%10s\t\t%s" % (c, val, fc[step])
 
             infos = test.getExtraInfo()
             if infos:

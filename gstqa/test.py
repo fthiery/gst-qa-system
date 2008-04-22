@@ -60,11 +60,6 @@ Base Test Classes
 #           +--- CmdLineTest
 #
 
-# TODO
-#
-# Make sure Scenarios can properly be a subclass of Test,
-#  if not ==> Create an intermediary class, generalize.
-
 class Test(gobject.GObject):
     """
     Runs a series of commands
@@ -106,7 +101,8 @@ class Test(gobject.GObject):
 
         "check" : (gobject.SIGNAL_RUN_LAST,
                    gobject.TYPE_NONE,
-                   (gobject.TYPE_PYOBJECT, )),
+                   (gobject.TYPE_PYOBJECT,
+                    gobject.TYPE_PYOBJECT)),
 
         "extra-info" : (gobject.SIGNAL_RUN_LAST,
                         gobject.TYPE_NONE,
@@ -123,7 +119,10 @@ class Test(gobject.GObject):
         self.arguments = kwargs
         self._stopping = False
 
-        self._checklist = {}
+        # list of actual check items
+        self._checklist = []
+        # dictionnary of possible values
+        self._possibleChecklist = {}
         # populate checklist with all possible checkitems
         # initialize checklist to False
         self._populateChecklist()
@@ -172,7 +171,7 @@ class Test(gobject.GObject):
         """ fill the instance checklist with default values """
         ckl = self.getFullCheckList()
         for key in ckl.keys():
-            self._checklist[key] = False
+            self._possibleChecklist[key] = False
 
     def _asyncSetupTimeoutCb(self):
         debug("async setup timeout for %r", self)
@@ -276,8 +275,10 @@ class Test(gobject.GObject):
         self._stopping = True
         stoptime = time.time()
         # if we still have the timeoutid, we didn't timeout
+        notimeout = False
         if self._testtimeoutid:
-            self.validateStep("no-timeout")
+            notimeout = True
+        self.validateStep("no-timeout", notimeout)
         self.tearDown()
         if self._teststarttime:
             debug("stoptime:%r , teststarttime:%r",
@@ -318,18 +319,21 @@ class Test(gobject.GObject):
 
     ## Methods for tests to return information
 
-    def validateStep(self, checkitem):
+    def validateStep(self, checkitem, validated=True):
         """
         Validate a step in the checklist.
         checkitem is one of the keys of __test_checklist__
+        validated is a boolean indicating whether that step should be
+           validated or not.
 
         Called by the test itself
         """
-        info("step %s for item %r" % (checkitem, self))
-        if not checkitem in self._checklist:
+        info("step %s for item %r : %r" % (checkitem, self, validated))
+        if not checkitem in self._possibleChecklist:
             return
-        self._checklist[checkitem] = True
-        self.emit("check", checkitem)
+        self._checklist.append((checkitem, validated))
+        #self._checklist[checkitem] = True
+        self.emit("check", checkitem, validated)
 
     def extraInfo(self, key, value):
         """
@@ -401,7 +405,9 @@ class Test(gobject.GObject):
 
     def getCheckList(self):
         """
-        Returns the instance checklist.
+        Returns the instance checklist as a list of tuples of:
+        * checkitem name
+        * boolean indicating whether the success of that step
         """
         return self._checklist
 
@@ -421,8 +427,8 @@ class Test(gobject.GObject):
         Returns the success rate of this instance as a float
         """
         ckl = self.getCheckList()
-        nbsteps = len(ckl)
-        nbsucc = len([x for x in ckl if ckl[x] == True])
+        nbsteps = len(self._possibleChecklist)
+        nbsucc = len([step for step,val in ckl if val == True])
         return (100.0 * nbsucc) / nbsteps
 
     def getExtraInfo(self):
@@ -517,7 +523,7 @@ class DBusTest(Test, dbus.service.Object):
     __metaclass__ = dbus.gobject_service.ExportedGObjectType
 
     def __init__(self, bus=None, bus_address="", proxy=True,
-                 *args, **kwargs):
+                 env={}, *args, **kwargs):
         """
         bus is the private DBusConnection used for testing.
         bus_address is the address of the private DBusConnection used for testing.
@@ -551,7 +557,8 @@ class DBusTest(Test, dbus.service.Object):
             self._stdout = None
             self._stderr = None
             self._preargs = []
-            self._environ = os.environ.copy()
+            self._environ = env
+            self._environ.update(os.environ.copy())
             self._subprocessspawntime = 0
             self._subprocessconnecttime = 0
             self._pid = 0
@@ -572,13 +579,13 @@ class DBusTest(Test, dbus.service.Object):
             # really do the test
             raise Exception("I shouldn't be called ! I am the remote test !")
 
-    def validateStep(self, checkitem):
-        info("uuid:%s proxy:%r checkitem:%s", self.uuid,
-             self._isProxy, checkitem)
+    def validateStep(self, checkitem, validate=True):
+        info("uuid:%s proxy:%r checkitem:%s : %r", self.uuid,
+             self._isProxy, checkitem, validate)
         if self._isProxy:
-            Test.validateStep(self, checkitem)
+            Test.validateStep(self, checkitem, validate)
         else:
-            self.remoteValidateStepSignal(checkitem)
+            self.remoteValidateStepSignal(checkitem, validate)
 
     def extraInfo(self, key, value):
         info("uuid:%s proxy:%r", self.uuid, self._isProxy)
@@ -770,9 +777,9 @@ class DBusTest(Test, dbus.service.Object):
         info("%s", self.uuid)
         self.stop()
 
-    def _remoteValidateStepCb(self, step):
-        info("%s step:%s", self.uuid, step)
-        self.validateStep(unwrap(step))
+    def _remoteValidateStepCb(self, step, validate):
+        info("%s step:%s : %r", self.uuid, step, validate)
+        self.validateStep(unwrap(step), validate)
 
     def _remoteExtraInfoCb(self, key, value):
         info("%s key:%s value:%r", self.uuid, key, value)
@@ -837,8 +844,7 @@ class DBusTest(Test, dbus.service.Object):
             gobject.source_remove(self._remoteTimeoutId)
             self._remoteTimedOut = True
             self._remoteTimeoutId = 0
-        if not self._remoteTimedOut:
-            self.validateStep("no-timeout")
+        self.validateStep("no-timeout", not self._remoteTimedOut)
 
     ## Remote DBUS signals
     @dbus.service.signal(dbus_interface="net.gstreamer.Insanity.Test",
@@ -857,9 +863,9 @@ class DBusTest(Test, dbus.service.Object):
         info("%s", self.uuid)
 
     @dbus.service.signal(dbus_interface="net.gstreamer.Insanity.Test",
-                         signature='s')
-    def remoteValidateStepSignal(self, step):
-        info("%s %s", self.uuid, step)
+                         signature='sb')
+    def remoteValidateStepSignal(self, step, validate):
+        info("%s %s %s", self.uuid, step, validate)
 
     @dbus.service.signal(dbus_interface="net.gstreamer.Insanity.Test",
                          signature='sv')
@@ -1027,6 +1033,7 @@ class GStreamerTest(PythonDBusTest):
             if not self.pipeline == None:
                 self.validateStep("valid-pipeline")
             else:
+                self.validateStep("valid-pipeline", False)
                 self.stop()
                 return
 
@@ -1049,6 +1056,7 @@ class GStreamerTest(PythonDBusTest):
         if self._errors == []:
             self.validateStep("no-errors-seen")
         else:
+            self.validateStep("no-errors-seen", False)
             self.extraInfo("errors", self._errors)
         if not self._tags == {}:
             debug("Got tags %r", self._tags)
