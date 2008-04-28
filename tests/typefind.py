@@ -107,6 +107,10 @@ class TypeFindTest(GStreamerTest):
     def pipelineReachedInitialState(self):
         # do some checks based on what we have
         self._analyzeDecodebin()
+        self._validateStreams()
+        return True
+
+    def _validateStreams(self):
         length, issimilar = self._getStreamsDuration()
         debug("length:%s, similar:%r", gst.TIME_ARGS(length), issimilar)
         self.validateStep("stream-duration-identical", issimilar)
@@ -124,10 +128,10 @@ class TypeFindTest(GStreamerTest):
                           not len([s for s in raws if not s.caps.is_fixed()]))
         self.validateStep("all-streams-decodable", not len(notraws))
         if len(notraws):
-            self.extraInfo("unhandled-formats", [s.caps.get_string() for s in notraws])
+            self.extraInfo("unhandled-formats", [s.caps.to_string() for s in notraws])
         xs = [(s.pad.get_name(), s.length, s.caps.to_string()) for s in self._streams]
         self.extraInfo("streams", dbus.Array(xs, signature="(sxs)"))
-        return True
+
 
     def _analyzeDecodebin(self):
         debug("Querying length")
@@ -198,6 +202,9 @@ class TypeFindTest(GStreamerTest):
         debug("no more pads")
         if len([stream for stream in self._streams if not stream.raw]):
             debug("we have non-raw streams, stopping")
+            # FIXME : add post-checking
+            self._analyzeDecodebin()
+            self._validateStreams()
             gobject.idle_add(self.stop)
 
     def _connectFakesink(self, pad, container):
