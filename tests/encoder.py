@@ -62,8 +62,7 @@ def make_audio_test_source(*args, **kwargs):
 class EncoderMuxerTest(GStreamerTest):
 
     __test_description__ = """
-    Encodes raw audio and/or video using the specified encoder(s) and
-    muxer.
+    Encodes raw audio and/or video using the specified encoder(s) and muxer.
     """
     __test_name__ = "encoder-muxer-test"
     __test_arguments__ = {
