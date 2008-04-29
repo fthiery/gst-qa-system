@@ -851,6 +851,7 @@ class DBusTest(Test, dbus.service.Object):
     ## Remote DBUS calls
     def _remoteTestTimeoutCb(self):
         debug("%s", self.uuid)
+        self.validateStep("no-timeout", False)
         self.remoteTearDown()
         self._remoteTimeoutId = 0
         return False
@@ -1073,6 +1074,16 @@ class GStreamerTest(PythonDBusTest):
         }
     # Initial pipeline state, subclasses can override this
     __pipeline_initial_state__ = gst.STATE_PLAYING
+
+    def __init__(self, env={}, *args, **kwargs):
+        # We don't want the tests to update the registry because:
+        # * it will make the tests start up faster
+        # * the tests accros testrun should be using the same registry/plugins
+        #
+        # This feature is only available since 0.10.29.1 (24th April 2008) in
+        # GStreamer core
+        env["GST_REGISTRY_UPDATE"] = "no"
+        PythonDBusTest.__init__(self, env=env, *args, **kwargs)
 
     def setUp(self):
         # default gst debug output to NOTHING
