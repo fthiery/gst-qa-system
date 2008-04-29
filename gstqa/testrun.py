@@ -229,6 +229,7 @@ class TestRun(gobject.GObject):
                                 self._storage.newTestFinished,
                                 self, test)
         gobject.idle_add(self._runNext)
+        gobject.idle_add(self._storage.newTestFinished, self, test)
 
     def _singleTestCheck(self, test, check, validate):
         pass
