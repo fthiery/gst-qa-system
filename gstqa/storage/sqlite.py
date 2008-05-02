@@ -249,7 +249,7 @@ class SQLiteStorage(DBStorage):
 
     def openDatabase(self):
         debug("opening sqlite db for path '%s'", self.path)
-        self.con = sqlite.connect(self.path)
+        self.con = sqlite.connect(self.path, check_same_thread=False)
 
     def createTables(self):
         # check if tables aren't already created
@@ -510,7 +510,7 @@ class SQLiteStorage(DBStorage):
 
     # public storage API
 
-    def setClientInfo(self, softwarename, clientname, user, id=None):
+    def _setClientInfo(self, softwarename, clientname, user, id=None):
         # check if that triplet is already present
         debug("softwarename:%s, clientname:%s, user:%s", softwarename, clientname, user)
         existstr = "SELECT id FROM client WHERE software=? AND name=? AND user=?"
@@ -529,7 +529,17 @@ class SQLiteStorage(DBStorage):
         self.__clientid = key
         return key
 
+    def setClientInfo(self, softwarename, clientname, user, id=None):
+        self._lock.acquire()
+        self._setClientInfo(softwarename, clientname, user)
+        self._lock.release()
+
     def startNewTestRun(self, testrun):
+        self._lock.acquire()
+        self._startNewTestRun(testrun)
+        self._lock.release()
+
+    def _startNewTestRun(self, testrun):
         # create new testrun entry with client entry
         debug("testrun:%r", testrun)
         if not self.__clientid:
@@ -545,19 +555,29 @@ class SQLiteStorage(DBStorage):
         debug("Got testrun id %d", self.__testrunid)
 
     def endTestRun(self, testrun):
+        self._lock.acquire()
+        self._endTestRun(testrun)
+        self._lock.release()
+
+    def _endTestRun(self, testrun):
         debug("testrun:%r", testrun)
         if not self.__testrun == testrun:
             # add the testrun since it wasn't done before
-            self.startNewTestRun(testrun)
+            self._startNewTestRun(testrun)
         updatestr = "UPDATE testrun SET stoptime=? WHERE id=?"
         self._ExecuteCommit(updatestr, (testrun._stoptime, self.__testrunid))
         debug("updated")
 
     def newTestStarted(self, testrun, test, commit=True):
+        self._lock.acquire()
+        self._newTestStarted(testrun, test, commit)
+        self._lock.release()
+
+    def _newTestStarted(self, testrun, test, commit=True):
         if not isinstance(test, Test):
             raise TypeError("test isn't a Test instance !")
         if not self.__testrun == testrun:
-            self.startNewTestRun(testrun)
+            self._startNewTestRun(testrun)
         debug("test:%r", test)
         insertstr = "INSERT INTO test (id, testrunid, type) VALUES (NULL, ?, ?)"
         testid = self._ExecuteCommit(insertstr,
@@ -568,17 +588,22 @@ class SQLiteStorage(DBStorage):
 
 
     def newTestFinished(self, testrun, test):
+        self._lock.acquire()
+        self._newTestFinished(testrun, test)
+        self._lock.release()
+
+    def _newTestFinished(self, testrun, test):
         if not self.__testrun == testrun:
-            self.startNewTestRun(testrun)
+            self._startNewTestRun(testrun)
         if not self.__tests.has_key(test):
-            self.newTestStarted(testrun, test, commit=False)
+            self._newTestStarted(testrun, test, commit=False)
         tid = self.__tests[test]
         debug("test:%r:%d", test, tid)
         # if it's a scenario, fill up the subtests
         if isinstance(test, Scenario):
             sublist = []
             for sub in test.tests:
-                self.newTestFinished(testrun, sub)
+                self._newTestFinished(testrun, sub)
             # now add those to the subtests table
             insertstr = "INSERT INTO subtests (testid, scenarioid) VALUES (?,?)"
             for sub in test.tests:
