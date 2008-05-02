@@ -32,7 +32,7 @@ class IsMediaTest(GStreamerTest):
     __test_name__ = "is-media-test"
     __test_description__ = """Checks if uri is a format usable by GStreamer"""
     __test_arguments__ = {
-        "uri" : "URI to test"
+        "uri" : ( "URI to test", None, None)
         }
     __test_checklist__ = {
         "is-valid-uri-format" : "The URI format is valid",

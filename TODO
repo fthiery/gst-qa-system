@@ -47,7 +47,7 @@ Non-milestone-specific / Bonus features
    several seconds... blocking the triggering of other subtests.
  * Storage : SQLite backend shouldn't always execute/commit for every single
    command, but rather do many executes and then one commit, or use
-   executemany
+   executemany or executescript
 
 * Namespace changing
  * Switch to instanity (Insanity / net.gstreamer.Insanity)

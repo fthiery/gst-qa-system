@@ -111,7 +111,7 @@ CREATE TABLE test_arguments_dict (
    blobvalue BLOB
 );
 
-CREATE TABLE test_checklist_dict (
+CREATE TABLE test_checklist_list (
    id INTEGER PRIMARY KEY,
    containerid INTEGER,
    name TEXT,
@@ -170,7 +170,7 @@ CREATE TABLE testclassinfo_arguments_dict (
    id INTEGER PRIMARY KEY,
    containerid INTEGER,
    name TEXT,
-   txtvalue TXT
+   blobvalue BLOB
 );
 
 CREATE TABLE testclassinfo_checklist_dict (
@@ -279,7 +279,7 @@ class SQLiteStorage(DBStorage):
                         "test", "subtests", "monitor", "testclassinfo",
                         "monitorclassinfo",
                         "testrun_environment_dict",
-                        "test_arguments_dict", "test_checklist_dict",
+                        "test_arguments_dict", "test_checklist_list",
                         "test_extrainfo_dict", "test_outputfiles_dict",
                         "monitor_arguments_dict", "monitor_checklist_dict",
                         "monitor_extrainfo_dict", "monitor_outputfiles_dict",
@@ -295,9 +295,12 @@ class SQLiteStorage(DBStorage):
     def _ExecuteCommit(self, instruction, *args, **kwargs):
         # Convenience function to call execute and commit in one line
         # returns the last row id
+        commit = kwargs.pop("commit", True)
+        debug("%s args:%r kwargs:%r", instruction, args, kwargs)
         cur = self.con.cursor()
         cur.execute(instruction, *args, **kwargs)
-        self.con.commit()
+        if commit:
+            self.con.commit()
         return cur.lastrowid
 
     def _FetchAll(self, instruction, *args, **kwargs):
@@ -331,26 +334,20 @@ class SQLiteStorage(DBStorage):
             debug("Empty dictionnary, returning")
             return
 
-        # figure out which values to add to which tables
-        strs = []
-        ints = []
-        blobs = []
         insertstr = "INSERT INTO %s (id, containerid, name, %s) VALUES (NULL, ?, ?, ?)"
+        cur = self.con.cursor()
         for key,value in pdict.iteritems():
             debug("Adding key:%s , value:%r", key, value)
             val = value
             if isinstance(value, int):
                 valstr = "intvalue"
-                lst = ints
             elif isinstance(value, basestring):
                 valstr = "txtvalue"
-                lst = strs
             else:
                 valstr = "blobvalue"
-                lst = blobs
                 val = sqlite.Binary(dumps(value))
             comstr = insertstr % (dicttable, valstr)
-            lst.append(self._ExecuteCommit(comstr, (containerid, key, val)))
+            cur.execute(comstr, (containerid, key, val))
 
     def _storeList(self, dicttable, containerid, pdict):
         if not pdict:
@@ -358,32 +355,26 @@ class SQLiteStorage(DBStorage):
             debug("Empty list, returning")
             return
 
-        # figure out which values to add to which tables
-        strs = []
-        ints = []
-        blobs = []
+        cur = self.con.cursor()
         insertstr = "INSERT INTO %s (id, containerid, name, %s) VALUES (NULL, ?, ?, ?)"
         for key,value in pdict:
             debug("Adding key:%s , value:%r", key, value)
             val = value
             if isinstance(value, int):
                 valstr = "intvalue"
-                lst = ints
             elif isinstance(value, basestring):
                 valstr = "txtvalue"
-                lst = strs
             else:
                 valstr = "blobvalue"
-                lst = blobs
                 val = sqlite.Binary(dumps(value))
             comstr = insertstr % (dicttable, valstr)
-            lst.append(self._ExecuteCommit(comstr, (containerid, key, val)))
+            cur.execute(comstr, (containerid, key, val))
 
     def _storeTestArgumentsDict(self, testid, dict):
         return self._storeDict("test_arguments_dict", testid, dict)
 
     def _storeTestCheckListList(self, testid, dict):
-        return self._storeList("test_checklist_dict", testid, dict)
+        return self._storeList("test_checklist_list", testid, dict)
 
     def _storeTestExtraInfoDict(self, testid, dict):
         return self._storeDict("test_extrainfo_dict", testid, dict)
@@ -456,6 +447,7 @@ class SQLiteStorage(DBStorage):
         self._storeTestClassCheckListDict(tcid, checklist)
         self._storeTestClassExtraInfoDict(tcid, extrainfo)
         self._storeTestClassOutputFileDict(tcid, outputfiles)
+        self.con.commit()
         return True
 
     def _storeTestClassInfo(self, testinstance):
@@ -497,6 +489,7 @@ class SQLiteStorage(DBStorage):
         self._storeMonitorClassCheckListDict(tcid, checklist)
         self._storeMonitorClassExtraInfoDict(tcid, extrainfo)
         self._storeMonitorClassOutputFileDict(tcid, outputfiles)
+        self.con.commit()
         return True
 
     def _storeMonitorClassInfo(self, monitorinstance):
@@ -560,14 +553,16 @@ class SQLiteStorage(DBStorage):
         self._ExecuteCommit(updatestr, (testrun._stoptime, self.__testrunid))
         debug("updated")
 
-    def newTestStarted(self, testrun, test):
+    def newTestStarted(self, testrun, test, commit=True):
         if not isinstance(test, Test):
             raise TypeError("test isn't a Test instance !")
         if not self.__testrun == testrun:
             self.startNewTestRun(testrun)
         debug("test:%r", test)
         insertstr = "INSERT INTO test (id, testrunid, type) VALUES (NULL, ?, ?)"
-        testid = self._ExecuteCommit(insertstr, (self.__testrunid, test.__test_name__))
+        testid = self._ExecuteCommit(insertstr,
+                                     (self.__testrunid, test.__test_name__),
+                                     commit=commit)
         debug("got testid %d", testid)
         self.__tests[test] = testid
 
@@ -576,7 +571,7 @@ class SQLiteStorage(DBStorage):
         if not self.__testrun == testrun:
             self.startNewTestRun(testrun)
         if not self.__tests.has_key(test):
-            self.newTestStarted(testrun, test)
+            self.newTestStarted(testrun, test, commit=False)
         tid = self.__tests[test]
         debug("test:%r:%d", test, tid)
         # if it's a scenario, fill up the subtests
@@ -595,6 +590,7 @@ class SQLiteStorage(DBStorage):
         self._storeTestCheckListList(tid, test.getCheckList())
         self._storeTestExtraInfoDict(tid, test.getExtraInfo())
         self._storeTestOutputFileDict(tid, test.getOutputFiles())
+        self.con.commit()
 
         # finally update the test
         updatestr = "UPDATE test SET resultpercentage=? WHERE id=?"
@@ -619,7 +615,7 @@ class SQLiteStorage(DBStorage):
         self._storeMonitorCheckListDict(mid, monitor.getCheckList())
         self._storeMonitorExtraInfoDict(mid, monitor.getExtraInfo())
         self._storeMonitorOutputFileDict(mid, monitor.getOutputFiles())
-
+        self.con.commit()
         self._storeMonitorClassInfo(monitor)
 
     # public retrieval API
@@ -766,7 +762,7 @@ class SQLiteStorage(DBStorage):
             return (None, None, None, None, None, None, None)
         testrunid,ttype,resperc = res
         args = self._getDict("test_arguments_dict", testid)
-        results = self._getList("test_checklist_dict", testid, intonly=True)
+        results = self._getList("test_checklist_list", testid, intonly=True)
         extras = self._getDict("test_extrainfo_dict", testid)
         outputfiles = self._getDict("test_outputfiles_dict", testid, txtonly=True)
         return (testrunid, ttype, args, results, resperc, extras, outputfiles)

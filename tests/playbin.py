@@ -31,7 +31,7 @@ class PlaybinTest(GStreamerTest):
     __test_name__ = "playbin-test"
     __test_description__ = """Test the behaviour of playbin"""
     __test_arguments__ = {
-        "uri" : "URI to test with playbin"
+        "uri" : ( "URI to test with playbin", None, None)
         }
 
     @classmethod
