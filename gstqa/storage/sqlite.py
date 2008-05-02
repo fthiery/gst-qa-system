@@ -376,26 +376,20 @@ class SQLiteStorage(DBStorage):
             debug("Empty list, returning")
             return
 
-        # figure out which values to add to which tables
-        strs = []
-        ints = []
-        blobs = []
+        cur = self.con.cursor()
         insertstr = "INSERT INTO %s (id, containerid, name, %s) VALUES (NULL, ?, ?, ?)"
         for key,value in pdict:
             debug("Adding key:%s , value:%r", key, value)
             val = value
             if isinstance(value, int):
                 valstr = "intvalue"
-                lst = ints
             elif isinstance(value, basestring):
                 valstr = "txtvalue"
-                lst = strs
             else:
                 valstr = "blobvalue"
-                lst = blobs
                 val = sqlite.Binary(dumps(value))
             comstr = insertstr % (dicttable, valstr)
-            lst.append(self._ExecuteCommit(comstr, (containerid, key, val)))
+            cur.execute(comstr, (containerid, key, val))
 
     def _storeTestArgumentsDict(self, testid, dict):
         return self._storeDict("test_arguments_dict", testid, dict)
@@ -814,11 +808,7 @@ class SQLiteStorage(DBStorage):
             return (None, None, None, None, None, None, None)
         testrunid,ttype,resperc = res
         args = self._getDict("test_arguments_dict", testid)
-<<<<<<< HEAD:gstqa/storage/sqlite.py
         results = self._getList("test_checklist_list", testid, intonly=True)
-=======
-        results = self._getList("test_checklist_dict", testid, intonly=True)
->>>>>>> First go at listed checklist items:gstqa/storage/sqlite.py
         extras = self._getDict("test_extrainfo_dict", testid)
         outputfiles = self._getDict("test_outputfiles_dict", testid, txtonly=True)
         return (testrunid, ttype, args, results, resperc, extras, outputfiles)
