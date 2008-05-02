@@ -43,11 +43,6 @@ Non-milestone-specific / Bonus features
  * DBusRemoteTest : Add features so that, for some tests, we don't spawn a new
    remote process for every instance, but instead reuse existing ones (and
    re-spawning new instances if that one crashes).
- * Storage : SQLite storage is being done in the main thread, which can take
-   several seconds... blocking the triggering of other subtests.
- * Storage : SQLite backend shouldn't always execute/commit for every single
-   command, but rather do many executes and then one commit, or use
-   executemany or executescript
 
 * Namespace changing
  * Switch to instanity (Insanity / net.gstreamer.Insanity)
