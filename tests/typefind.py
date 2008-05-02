@@ -54,7 +54,7 @@ class TypeFindTest(GStreamerTest):
     Tests the multimedia play-ability of a given uri with GStreamer
     """
     __test_arguments__ = {
-        "uri" : "URI to test"
+        "uri" : ( "URI to test", None, None )
         }
     __test_checklist__ = {
         "known-mime-type" : "The mimetype of the URI was recognized by GStreamer",

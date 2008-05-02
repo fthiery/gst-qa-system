@@ -43,9 +43,11 @@ class GstMediaTestScenario(Scenario):
     Re-runs failed subtests with higher debug level
     """
     __test_arguments__ = {
-        "subtest-class":"TestClass to run",
-        "debug-level-1":"GST_DEBUG level to use on first run (default:'*:2')",
-        "debug-level-2":"GST_DEBUG level to use on second run (default:'*:5')"
+        "subtest-class": ( "TestClass to run", None, None ),
+        "debug-level-1": ( "GST_DEBUG specification to use on first run",
+                           "*:2", None ),
+        "debug-level-2": ( "GST_DEBUG specification to use on second run",
+                           "*:5", None )
         }
     __test_checklist__ = {
         "similar-results":"were the results similar over the two runs"

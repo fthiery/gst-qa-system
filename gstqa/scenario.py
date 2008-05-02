@@ -167,8 +167,10 @@ class ListScenario(Scenario):
 
     __test_name__ = """list-scenario"""
     __test_arguments__ = {
-        "subtest-list" : "List of Testclass to run sequentially",
-        "fatal-subtest-failure" : "Do not carry on with next subtest if previous failed"
+        "subtest-list" : ( "List of Testclass to run sequentially",
+                           [], None ),
+        "fatal-subtest-failure" : ( "Do not carry on with next subtest if previous failed",
+                                    True, None )
         }
     __test_description__ = """
     This scenario will execute the given tests one after the other.

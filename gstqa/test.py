@@ -96,12 +96,15 @@ class Test(gobject.GObject):
     Dictionnary of arguments this test can take.
 
     key : name of the argument
-    value : description of the argument
+    value : tuple of :
+         * short description of the argument
+         * default value used
+         * long description of the argument (if None, same as short description)
     """
 
     __test_checklist__ = {
-        "test-started":"The test started",
-        "no-timeout":"The test didn't timeout",
+        "test-started": "The test started",
+        "no-timeout": "The test didn't timeout",
         }
     """
     Dictionnary of check items this test will validate.
@@ -110,7 +113,10 @@ class Test(gobject.GObject):
     being succesfull (True) or not (False).
 
     key : name of the check item
-    value : description of the check item
+    value : tuple of:
+         * short description of the check item
+         * extended description of this step, including what could have possibly
+           gone wrong
     """
 
     __test_timeout__ = 15
@@ -394,7 +400,7 @@ class Test(gobject.GObject):
         # check to see if we don't already have it
         if checkitem in dict(self._checklist):
             return
-        self._checklist.append((checkitem, validated))
+        self._checklist.append((checkitem, bool(validated)))
         #self._checklist[checkitem] = True
         self.emit("check", checkitem, validated)
 
@@ -431,6 +437,13 @@ class Test(gobject.GObject):
     def getFullArgumentList(cls):
         """
         Returns the full list of arguments with descriptions.
+
+        The format of the returned argument dictionnary is:
+        key : argument name
+        value : tuple of :
+            * short description
+            * default value
+            * extended description (Can be None)
         """
         d = {}
         for cl in cls.mro():
@@ -559,6 +572,7 @@ class Test(gobject.GObject):
             return False
         self._monitors.append((monitor, monitorargs))
 
+
 class DBusTest(Test, dbus.service.Object):
     """
     Class for tests being run in a separate process
@@ -566,21 +580,24 @@ class DBusTest(Test, dbus.service.Object):
     DBus is the ONLY IPC system used for getting results from remote
     tests.
     """
+
     __test_name__ = """dbus-test"""
+
     __test_description__ = """Base class for distributed tests using DBUS"""
+
     __test_checklist__ = {
     "dbus-process-spawned":"The DBus child process spawned itself",
     "dbus-process-connected":"The DBus child process connected properly to the private Bus",
     "remote-instance-created":"The remote version of this test was created properly",
     "subprocess-exited-normally":"The subprocess returned a null exit code (success)"
     }
+
     __test_extra_infos__ = {
     "subprocess-return-code":"The exit value returned by the subprocess",
     "subprocess-spawn-time":"How long it took to spawn the subprocess in seconds",
     "remote-instance-creation-delay":"How long it took to create the remote instance"
     }
-    __test_arguments__ = {
-    }
+
     __async_setup__ = True
     ## Needed for dbus
     __metaclass__ = dbus.gobject_service.ExportedGObjectType
@@ -1037,9 +1054,9 @@ class PythonDBusTest(DBusTest):
             self.__exception_handled = True
             exc_format = traceback.format_exception(exc_type, exc_value, exc_traceback)
             self.extraInfo("python-exception", "".join(exc_format))
-            
+
             self.stop()
-            
+
             self.__orig_excepthook(exc_type, exc_value, exc_traceback)
 
         sys.exit(1)

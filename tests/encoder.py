@@ -66,15 +66,33 @@ class EncoderMuxerTest(GStreamerTest):
     """
     __test_name__ = "encoder-muxer-test"
     __test_arguments__ = {
-        "encode-video":"Should video be generated and encoded (default:False)",
-        "encode-audio":"Should audio be generated and encoded (default:False)",
-        "video-caps":"caps to use when generating the raw video stream to be encoded (default:ANY)",
-        "audio-caps":"caps to use when generating the raw audio stream to be encoded (default:ANY)",
-        "video-encoder-factory":"Name of the gst.ElementFactory to use to encode the video stream (default None)",
-        "audio-encoder-factory":"Name of the gst.ElementFactory to use to encode the audio stream (default None)",
-        "muxer-factory":"Name of the gst.ElementFactory to use to contain the streams (default None)",
-        "media-duration":"Duration of the media to generate (in nanoseconds, default:20s)",
-        "media-offset":"Initial buffer timestamp (default 0s)"
+        "encode-video": ("Should video be generated and encoded",
+                         False,
+                         None),
+        "encode-audio": ("Should audio be generated and encoded",
+                         False,
+                         None),
+        "video-caps": ("caps to use when generating the raw video stream to be encoded",
+                       gst.caps_new_any(),
+                       None),
+        "audio-caps": ("caps to use when generating the raw audio stream to be encoded",
+                       gst.caps_new_any(),
+                       None),
+        "video-encoder-factory": ("Name of the gst.ElementFactory to use to encode the video stream",
+                                  None,
+                                  None),
+        "audio-encoder-factory": ("Name of the gst.ElementFactory to use to encode the audio stream",
+                                  None,
+                                  None),
+        "muxer-factory": ( "Name of the gst.ElementFactory to use to contain the streams",
+                           None,
+                           None ),
+        "media-duration": ( "Duration of the media to generate (in nanoseconds)",
+                            20 * gst.SECOND,
+                            None ),
+        "media-offset": ( "Initial buffer timestamp",
+                          0,
+                          None )
         }
 
     __test_output_files__ = {

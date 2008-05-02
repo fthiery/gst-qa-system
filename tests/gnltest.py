@@ -36,12 +36,18 @@ class GnlFileSourceTest(GStreamerTest):
     Tests the behaviour of gnlfilesource on various files.
     """
     __test_arguments__ = {
-        "uri" : "URI to test gnlfilesource with",
-        "start" : "start position in nanoseconds (default 0s)",
-        "duration" : "duration in nanoseconds (default 1s)",
-        "media-start" : "media-start position in nanoseconds (default 5s)",
-        "media-duration" : "media-duration in nanoseconds (default : duration)",
-        "caps-string" : "caps property to use on gnlfilesource as a string (default : raw audio)"
+        "uri" : ( "URI to test gnlfilesource with",
+                  None, None ),
+        "start" : ( "start position in nanoseconds",
+                    0, None ),
+        "duration" : ( "duration in nanoseconds",
+                       gst.SECOND, None ) ,
+        "media-start" : ( "media-start position in nanoseconds",
+                          5 * gst.SECOND, None ),
+        "media-duration" : ( "media-duration in nanoseconds",
+                             None, "Same as duration if not specified" ),
+        "caps-string" : ( "caps property to use on gnlfilesource as a string",
+                          "audio/x-raw-int;audio/x-raw-float", None)
         }
 
     __test_checklist__ = {

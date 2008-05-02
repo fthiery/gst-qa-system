@@ -308,13 +308,13 @@ class CommandLineTesterClient(TesterClient):
             ta = test.arguments
             fa = test.getFullArgumentList()
             for arg in [x for x in fa if ta.has_key(x)]:
-                print stub, "  %s : %s\t\t%s" % (arg, fa[arg], ta[arg])
+                print stub, "  %s : %s\t\t%s" % (arg, fa[arg][0], ta[arg])
             # print results from test
             print stub, "Results"
             tc = test.getCheckList()
             fc = test.getFullCheckList()
             for step,val in tc:
-                print stub, "  %30s:%10s\t\t%s" % (c, val, fc[step])
+                print stub, "  %30s:%10s\t\t%s" % (step, val, fc[step])
 
             infos = test.getExtraInfo()
             if infos:
