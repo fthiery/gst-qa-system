@@ -78,6 +78,9 @@ Non-milestone-specific / Bonus features
  * Fix issue in a 'asv' when one of the values is a list, we currently avoid this
    by removing all values of type 'list'
 
+* Regression testing of GStreamer modules
+ * Currently we use the old gst-media-test system (with all its inconveniences).
+ * Create an easy script to test regressions
 
 DBUS ISSUES
 -----------
