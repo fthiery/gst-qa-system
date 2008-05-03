@@ -30,6 +30,7 @@ import subprocess
 import os
 import tempfile
 import sys
+import imp
 import string
 import gobject
 gobject.threads_init()
@@ -72,13 +73,20 @@ def collectEnvironment(environ, callback):
     """
     resfile, respath = tempfile.mkstemp()
     os.close(resfile)
-    thispath = os.path.abspath(__file__.replace(".pyc", ".py"))
+    thispath = os.path.abspath(__file__)
+    # The compiled module suffix can be ".pyc" or ".pyo":
+    suffixes = [s[0] for s in imp.get_suffixes()
+                if s[2] == imp.PY_COMPILED]
+    for suffix in suffixes:
+        if thispath.endswith(suffix):
+            thispath = thispath[:-len(suffix)] + ".py"
+            break
     pargs = [thispath, respath]
     try:
         debug("spawning subprocess %r", pargs)
         proc = subprocess.Popen(pargs, env=environ)
     except:
-        exception("Spawning remote process failed")
+        exception("Spawning remote process (%s) failed" % (" ".join(pargs),))
         os.remove(respath)
         callback({})
     else:
