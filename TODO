@@ -77,3 +77,15 @@ Non-milestone-specific / Bonus features
 * DBUS
  * Fix issue in a 'asv' when one of the values is a list, we currently avoid this
    by removing all values of type 'list'
+
+
+DBUS ISSUES
+-----------
+
+* the type detection is extremely dumb for integers.
+  Ex : python integers have a maximum range of 2**63-1 on 64bit
+    -> this will be considered by dbus-python as an int
+      -> dbus-python will convert that to an Int32
+       -> BOOM
+  We currently solve this by pre-processing some values to make sure
+   they have the correct type.

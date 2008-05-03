@@ -1052,6 +1052,12 @@ class GStreamerTest(PythonDBusTest):
             self.extraInfo("errors", self._errors)
         if not self._tags == {}:
             debug("Got tags %r", self._tags)
+            for k,v in self._tags.iteritems():
+                if isinstance(v, int):
+                    # make sure that only values < 2**31 (MAX_INT32) are ints
+                    # TODO : this is gonna screw up MASSIVELY with values > 2**63
+                    if v >= 2**31:
+                        self._tags[k] = long(v)
             # FIXME : if the value is a list, the dbus python bindings screw up
             #
             # For the time being we remove the values of type list, but this is REALLY
