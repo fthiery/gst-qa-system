@@ -321,8 +321,8 @@ class CommandLineTesterClient(TesterClient):
                 print stub, "Extra information:"
             for extra in infos:
                 print stub, "  %30s :\t%s" % (extra, infos[extra])
-        if isinstance(test, Scenario):
-            for sub in test.tests:
-                print stub, "Sub Test"
-                self.printSingleTestResult(sub, offset=offset+4)
-            print "\n"
+            if isinstance(test, Scenario):
+                for sub in test.tests:
+                    print stub, "Sub Test"
+                    self.printSingleTestResult(sub, offset=offset+4)
+                print "\n"
