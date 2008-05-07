@@ -51,10 +51,6 @@ class FullGnlFileSourceScenario(Scenario):
         if self.__doneTypeFindTest:
             return True
 
-        # don't carry on if it didn't succeed
-        if not test.getSuccessPercentage() == 100.0:
-            return False
-
         # let's have a look at the streams
         infos = test.getExtraInfo()
         if not 'streams' in infos.keys():
@@ -70,8 +66,13 @@ class FullGnlFileSourceScenario(Scenario):
         if uriduration < 2 * gst.SECOND:
             duration = mstart
 
+        # we can carry on if we have some raw streams
+        upstreams = infos["streams"]
+        streams = self._extractRawStreams(upstreams)
+        if streams == []:
+            return False
+
         # finally, add a GnlFileSourceTest for each stream
-        streams = infos["streams"]
         for stream in streams:
             padname, length, caps = stream
             args = self.arguments.copy()
@@ -81,3 +82,11 @@ class FullGnlFileSourceScenario(Scenario):
             self.addSubTest(GnlFileSourceTest, args)
         self.__doneTypeFindTest = True
         return True
+
+    def _extractRawStreams(self, streams):
+        res = []
+        for stream in streams:
+            padname, length, caps = stream
+            if caps.startswith("audio/x-raw-") or caps.startswith("video/x-raw-"):
+                res.append((padname, length, caps))
+        return res
