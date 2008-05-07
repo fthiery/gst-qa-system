@@ -1173,12 +1173,14 @@ class GStreamerTest(PythonDBusTest):
         debug("Setting pipeline to initial state %r", self.__pipeline_initial_state__)
         gst.log("Setting pipeline to initial state %r" % self.__pipeline_initial_state__)
         res = self.pipeline.set_state(self.__pipeline_initial_state__)
+        gst.log("set_state() returned %r" % res)
         if res == gst.STATE_CHANGE_FAILURE:
             warning("Failed setting the pipeline to the initial state")
             self.stop()
 
     def _busMessageHandlerCb(self, bus, message):
         debug("%s from %r message:%r", self.uuid, message.src, message)
+        gst.log("%s from %r message:%r" % (self.uuid, message.src, message))
         # let's pass it on to subclass to see if they want us to ignore that message
         if self.handleBusMessage(message) == False:
             debug("ignoring message")
