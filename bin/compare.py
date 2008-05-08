@@ -94,13 +94,10 @@ def compare(storage, testrun1, testrun2):
     if not testrun1 in testruns or not testrun2 in testruns:
         print "Give testrun ids aren't available in the given storage file"
         return
-    tests1 = storage.getTestsForTestRun(testrun1)
-    failedtests1 = storage.getTestsForTestRun(testrun1)
+    tests1 = storage.getTestsForTestRun(testrun1, withscenarios=False)
 
-    tests2 = storage.getTestsForTestRun(testrun2)
-    failedtests2 = storage.getTestsForTestRun(testrun2)
+    tests2 = storage.getTestsForTestRun(testrun2, withscenarios=False)
 
-    print len(tests1), len(tests2)
     if len(tests1) == len(tests2):
         print "Both testruns have the same number of tests"
 
@@ -139,8 +136,8 @@ def compare(storage, testrun1, testrun2):
         elif perc1 > perc2:
             regs.append(new)
 
-    print "REGRESSIONS", regs
-    print "IMPROVEMENTS", imps
+    print "REGRESSIONS", len(regs), regs
+    print "IMPROVEMENTS", len(imps), imps
 
     return (newtests, testsgone, imps, regs, newmapping)
 
