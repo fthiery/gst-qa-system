@@ -1,6 +1,6 @@
 # GStreamer QA system
 #
-#       storage.py
+#       storage/storage.py
 #
 # Copyright (c) 2008, Edward Hervey <bilboed@bilboed.com>
 #
@@ -124,7 +124,15 @@ class DataStorage:
         pass
 
     # methods to implement in subclasses
+    def findTestsByArgument(self, testtype, arguments, testrunid=None, monitors=[]):
+        """
+        Return all test ids of type <testtype> and with arguments <arguments>
 
+        arguments is a dictionnary
+        If specified, only tests belonging to the given testrunid will be
+        returned.
+        """
+        raise NotImplementedError
 
 class FileStorage(DataStorage):
     """

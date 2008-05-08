@@ -24,9 +24,11 @@ SQLite based DataStorage
 """
 
 import time
+import string
 from weakref import WeakKeyDictionary
 from gstqa.log import critical, error, warning, debug, info
 from gstqa.storage.storage import DBStorage
+from gstqa.storage.objects import Monitor
 from gstqa.scenario import Scenario
 from gstqa.test import Test
 from gstqa.monitor import Monitor
@@ -664,7 +666,7 @@ class SQLiteStorage(DBStorage):
                 if not ival == None:
                     val = ival
                 elif not tval == None:
-                    val = tval
+                    val = str(tval)
                 else:
                     val = loads(str(bval))
             d[name] = val
@@ -689,7 +691,7 @@ class SQLiteStorage(DBStorage):
                 if not ival == None:
                     val = ival
                 elif not tval == None:
-                    val = tval
+                    val = str(tval)
                 else:
                     val = loads(str(bval))
             d.append((name, val))
@@ -813,9 +815,8 @@ class SQLiteStorage(DBStorage):
         * the extra information (dictionnary)
         * the output files (dictionnary)
         """
-        searchstr = "SELECT testid,type,resultpercentage FROM monitor WHERE id=?"
-        res = self._FetchOne(searchstr, (monitorid, ))
-        if not res:
+        res = self.getMonitorInfo(monitorid)
+        if res == (None, None, None):
             return (None, None, None, None, None, None, None)
         testid,mtype,resperc = res
         args = self._getDict("monitor_arguments_dict", monitorid)
@@ -823,4 +824,86 @@ class SQLiteStorage(DBStorage):
         extras = self._getDict("monitor_extrainfo_dict", monitorid)
         outputfiles = self._getDict("monitor_outputfiles_dict", monitorid, txtonly=True)
         return (testid, mtype, args, results, resperc, extras, outputfiles)
+
+    def getMonitorInfo(self, monitorid):
+        """
+        Returns a tuple with the following info:
+        * the ID of the test on which the monitor was applied
+        * the type of the monitor
+        * the result percentage
+        """
+        searchstr = "SELECT testid,type,resultpercentage FROM monitor WHERE id=?"
+        res = self._FetchOne(searchstr, (monitorid, ))
+        if not res:
+            return (None, None, None)
+        return res
+
+
+    def findTestsByArgument(self, testtype, arguments, testrunid=None, monitorids=[]):
+        searchstr = "SELECT test.id FROM test, test_arguments_dict WHERE test.id=test_arguments_dict.containerid "
+        searchargs = []
+        if not testrunid == None:
+            searchstr += "AND test.testrunid=? "
+            searchargs.append(testrunid)
+        searchstr += "AND test.type=? "
+        searchargs.append(testtype)
+
+        # we'll now recursively search for the compatible tests
+        # we first start to look for all tests matching the first argument
+        # then from those tests, find those that match the second,...
+        # Break out from the loop whenever there's nothing more matching
+
+        res = []
+
+        for key,val in arguments.iteritems():
+            if not res == []:
+                tmpsearch = "AND test.id in (%s) " % string.join([str(x) for x in res], ', ')
+            else:
+                tmpsearch = ""
+            value = val
+            if isinstance(val, int):
+                valstr = "intvalue"
+            elif isinstance(val, basestring):
+                valstr = "txtvalue"
+            else:
+                valstr = "blobvalue"
+                value = sqlite.Binary(dumps(val))
+            tmpsearch += "AND test_arguments_dict.name=? AND test_arguments_dict.%s=?" % valstr
+            tmpargs = searchargs[:]
+            tmpargs.extend([key, value])
+            tmpres = self._FetchAll(searchstr + tmpsearch, tuple(tmpargs))
+            res = []
+            if tmpres == []:
+                break
+            tmp2 = list(zip(*tmpres)[0])
+            # transform this into a unique list
+            for i in tmp2:
+                if not i in res:
+                    res.append(i)
+
+        # finally... make sure that for the monitors that both test
+        # share, they have the same arguments
+        if not monitorids == []:
+            tmp = []
+            monitors = [self.getFullMonitorInfo(x) for x in monitorids]
+            for p in res:
+                similar = True
+                pm = [self.getFullMonitorInfo(x) for x in self.getMonitorsIDForTest(p)]
+
+                samemons = []
+                # for each candidate monitors
+                for tid, mtype, margs, mres, mresperc, mextra, mout in pm:
+                    # for each original monitor
+                    for mon in monitors:
+                        if mon[1] == mtype:
+                            # same type of monitor, now check arguments
+                            samemons.append(((tid, mtype, margs, mres, mresperc, mextra, mout), mon))
+                if not samemons == []:
+                    for cand, mon in samemons:
+                        if not cand[2] ==  mon[2]:
+                            similar = False
+                if similar:
+                    tmp.append(p)
+            res = tmp
+        return res
 
