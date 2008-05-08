@@ -1140,6 +1140,7 @@ class GStreamerTest(PythonDBusTest):
 
     def remoteTearDown(self):
         PythonDBusTest.remoteTearDown(self)
+        gst.log("tearing down")
         # unref pipeline and so forth
         if self.pipeline:
             self.pipeline.set_state(gst.STATE_NULL)
@@ -1170,10 +1171,12 @@ class GStreamerTest(PythonDBusTest):
         # kickstart pipeline to initial state
         PythonDBusTest.remoteTest(self)
         debug("Setting pipeline to initial state %r", self.__pipeline_initial_state__)
+        gst.log("Setting pipeline to initial state %r" % self.__pipeline_initial_state__)
         res = self.pipeline.set_state(self.__pipeline_initial_state__)
         debug("set_state returned %r", res)
         if res == gst.STATE_CHANGE_FAILURE:
             warning("Setting pipeline to initial state failed, stopping test")
+            gst.warning("State change failed, stopping")
             self.stop()
 
     def _busMessageHandlerCb(self, bus, message):
@@ -1197,8 +1200,10 @@ class GStreamerTest(PythonDBusTest):
             elif message.type == gst.MESSAGE_STATE_CHANGED:
                 prev, cur, pending = message.parse_state_changed()
                 if cur == self.__pipeline_initial_state__ and pending == gst.STATE_VOID_PENDING:
+                    gst.log("Reached initial state")
                     if self.pipelineReachedInitialState():
                         debug("Stopping test because we reached initial state")
+                        gst.log("Stopping test because we reached initial state")
                         self.validateStep("reached-initial-state")
                         self.stop()
 
@@ -1235,6 +1240,10 @@ class GStreamerTest(PythonDBusTest):
         # if bin, add current and connect signal
         if isinstance(element, gst.Bin):
             self._watchContainer(element)
+
+    def stop(self):
+        gst.log("stop")
+        return PythonDBusTest.stop(self)
 
     ## Methods that can be overridden by subclasses
 
