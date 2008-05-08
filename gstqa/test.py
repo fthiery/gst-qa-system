@@ -802,6 +802,7 @@ class DBusTest(Test, dbus.service.Object):
     def voidRemoteErrBackHandler(self, exception, caller=None, fatal=True):
         warning("%r : %s", caller, exception)
         if fatal:
+            warning("FATAL : aborting test")
             # a fatal error happened, DIVE DIVE DIVE !
             self.stop()
 
@@ -1170,6 +1171,10 @@ class GStreamerTest(PythonDBusTest):
         PythonDBusTest.remoteTest(self)
         debug("Setting pipeline to initial state %r", self.__pipeline_initial_state__)
         res = self.pipeline.set_state(self.__pipeline_initial_state__)
+        debug("set_state returned %r", res)
+        if res == gst.STATE_CHANGE_FAILURE:
+            warning("Setting pipeline to initial state failed, stopping test")
+            self.stop()
 
     def _busMessageHandlerCb(self, bus, message):
         debug("%s from %r message:%r", self.uuid, message.src, message)
@@ -1181,11 +1186,13 @@ class GStreamerTest(PythonDBusTest):
         if message.type == gst.MESSAGE_ERROR:
             error, dbg = message.parse_error()
             self._errors.append((error.code, error.domain, error.message, dbg))
+            debug("Got an error on the bus, stopping")
             self.stop()
         elif message.type == gst.MESSAGE_TAG:
             self._gotTags(message.parse_tag())
         elif message.src == self.pipeline:
             if message.type == gst.MESSAGE_EOS:
+                debug("Saw EOS, stopping")
                 self.stop()
             elif message.type == gst.MESSAGE_STATE_CHANGED:
                 prev, cur, pending = message.parse_state_changed()
