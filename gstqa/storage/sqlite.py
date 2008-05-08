@@ -28,7 +28,6 @@ import string
 from weakref import WeakKeyDictionary
 from gstqa.log import critical, error, warning, debug, info
 from gstqa.storage.storage import DBStorage
-from gstqa.storage.objects import Monitor
 from gstqa.scenario import Scenario
 from gstqa.test import Test
 from gstqa.monitor import Monitor
