@@ -82,7 +82,8 @@ CREATE TABLE monitor (
 );
 
 CREATE TABLE testclassinfo (
-   type TEXT PRIMARY KEY,
+   id INTEGER PRIMARY KEY,
+   type TEXT,
    parent TEXT,
    description TEXT,
    fulldescription TEXT
@@ -488,7 +489,9 @@ class SQLiteStorage(DBStorage):
             parent = tclass.__base__.__dict__.get("__test_name__")
 
         # insert into db
-        insertstr = "INSERT INTO testclassinfo (type, parent, description, fulldescription) VALUES (?, ?, ?, ?)"
+        insertstr = """INSERT INTO testclassinfo
+        (id, type, parent, description, fulldescription)
+        VALUES (NULL, ?, ?, ?, ?)"""
         tcid = self._ExecuteCommit(insertstr, (ctype, parent, desc, fdesc))
 
         # store the dicts
@@ -782,8 +785,6 @@ class SQLiteStorage(DBStorage):
         tmp = list(zip(*res)[0])
         if not withscenarios:
             scenarios = self.getScenariosForTestRun(testrunid)
-            print tmp
-            print scenarios
             for x in scenarios.keys():
                 tmp.remove(x)
         return tmp
@@ -840,6 +841,27 @@ class SQLiteStorage(DBStorage):
         extras = self._getDict("test_extrainfo_dict", testid)
         outputfiles = self._getDict("test_outputfiles_dict", testid, txtonly=True)
         return (testrunid, ttype, args, results, resperc, extras, outputfiles)
+
+    def getTestClassInfo(self, testtype):
+        searchstr = """SELECT id,parent,description,fulldescription
+        FROM testclassinfo WHERE type=?"""
+        res = self._FetchOne(searchstr, (testtype, ))
+        if not res:
+            return (None, None)
+        tcid, rp, desc, fulldesc = self._FetchOne(searchstr, (testtype, ))
+        args = self._getDict("testclassinfo_arguments_dict", tcid, blobonly=True)
+        checks = self._getDict("testclassinfo_checklist_dict", tcid, txtonly=True)
+        extras = self._getDict("testclassinfo_extrainfo_dict", tcid, txtonly=True)
+        outputfiles = self._getDict("testclassinfo_outputfiles_dict", tcid, txtonly=True)
+        while rp:
+            ptcid, prp, pd, pfd = self._FetchOne(searchstr, (rp, ))
+            args.update(self._getDict("testclassinfo_arguments_dict", ptcid, blobonly=True))
+            checks.update(self._getDict("testclassinfo_checklist_dict", ptcid, txtonly=True))
+            extras.update(self._getDict("testclassinfo_extrainfo_dict", ptcid, txtonly=True))
+            outputfiles.update(self._getDict("testclassinfo_outputfiles_dict", ptcid, txtonly=True))
+            rp = prp
+
+        return (desc, fulldesc, args, checks, extras, outputfiles)
 
     def getMonitorsIDForTest(self, testid):
         """
