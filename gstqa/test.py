@@ -1081,6 +1081,7 @@ class GStreamerTest(PythonDBusTest):
     __test_description__ = """Base class for GStreamer tests"""
     __test_checklist__ = {
         "valid-pipeline" : "The test pipeline was properly created",
+        "pipeline-change-state" : "The initial state_change happened succesfully",
         "reached-initial-state" : "The pipeline reached the initial GstElementState",
         "no-errors-seen" : "No errors were emitted from the pipeline"
         }
@@ -1176,10 +1177,10 @@ class GStreamerTest(PythonDBusTest):
         res = self.pipeline.set_state(self.__pipeline_initial_state__)
         debug("set_state returned %r", res)
         gst.log("set_state() returned %r" % res)
+        self.validateStep("pipeline-change-state", not res == gst.STATE_CHANGE_FAILURE)
         if res == gst.STATE_CHANGE_FAILURE:
             warning("Setting pipeline to initial state failed, stopping test")
             gst.warning("State change failed, stopping")
-            self.validateStep("reached-initial-state", False)
             self.stop()
 
     def _busMessageHandlerCb(self, bus, message):
