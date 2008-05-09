@@ -102,12 +102,12 @@ def printEnvironment(d):
             print "\t% -30s:\t%s" % (key,val)
     print ""
 
-def printTestRun(db, testrunid, failedonly=False):
+def printTestRun(db, testrunid, failedonly=False, hidescenarios=False):
     # let's output everything !
     cid, starttime, stoptime = db.getTestRun(testrunid)
     softname, clientname, clientuser = db.getClientInfoForTestRun(testrunid)
     environ = db.getEnvironmentForTestRun(testrunid)
-    tests = db.getTestsForTestRun(testrunid)
+    tests = db.getTestsForTestRun(testrunid, not hidescenarios)
     print "TestRun #% 3d:" % testrunid
     print "Started:%s\nStopped:%s" % (time.ctime(starttime), time.ctime(stoptime))
     if environ:
@@ -129,6 +129,9 @@ if __name__ == "__main__":
     parser.add_option("-f", "--failed", dest="failed",
                       help="Only show failed tests",
                       action="store_true", default=False)
+    parser.add_option("-x", "--hidescenarios", dest="hidescenarios",
+                      help="Do not show scenarios",
+                      action="store_true", default=False)
     (options, args) = parser.parse_args(sys.argv[1:])
     if len(args) != 1:
         print "You need to specify a database file !"
@@ -147,8 +150,8 @@ if __name__ == "__main__":
                 print "Specified testrunid not available !"
                 parser.print_help()
                 sys.exit()
-            printTestRun(db, options.testrun, options.failed)
+            printTestRun(db, options.testrun, options.failed, options.hidescenarios)
         else:
             for runid in testruns:
-                printTestRun(db,runid,options.failed)
+                printTestRun(db,runid,options.failed, options.hidescenarios)
 
