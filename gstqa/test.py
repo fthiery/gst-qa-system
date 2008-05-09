@@ -1179,6 +1179,7 @@ class GStreamerTest(PythonDBusTest):
         if res == gst.STATE_CHANGE_FAILURE:
             warning("Setting pipeline to initial state failed, stopping test")
             gst.warning("State change failed, stopping")
+            self.validateStep("reached-initial-state", False)
             self.stop()
 
     def _busMessageHandlerCb(self, bus, message):
