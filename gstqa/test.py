@@ -1110,6 +1110,7 @@ class GStreamerTest(PythonDBusTest):
 
     def remoteSetUp(self):
         debug("%s", self.uuid)
+        gst.log("%s" % self.uuid)
         # local variables
         self._errors = []
         self._tags = {}
@@ -1140,7 +1141,7 @@ class GStreamerTest(PythonDBusTest):
 
     def remoteTearDown(self):
         PythonDBusTest.remoteTearDown(self)
-        gst.log("tearing down")
+        gst.log("Tearing Down")
         # unref pipeline and so forth
         if self.pipeline:
             self.pipeline.set_state(gst.STATE_NULL)
@@ -1174,6 +1175,7 @@ class GStreamerTest(PythonDBusTest):
         gst.log("Setting pipeline to initial state %r" % self.__pipeline_initial_state__)
         res = self.pipeline.set_state(self.__pipeline_initial_state__)
         debug("set_state returned %r", res)
+        gst.log("set_state() returned %r" % res)
         if res == gst.STATE_CHANGE_FAILURE:
             warning("Setting pipeline to initial state failed, stopping test")
             gst.warning("State change failed, stopping")
@@ -1181,6 +1183,7 @@ class GStreamerTest(PythonDBusTest):
 
     def _busMessageHandlerCb(self, bus, message):
         debug("%s from %r message:%r", self.uuid, message.src, message)
+        gst.log("%s from %r message:%r" % (self.uuid, message.src, message))
         # let's pass it on to subclass to see if they want us to ignore that message
         if self.handleBusMessage(message) == False:
             debug("ignoring message")
@@ -1242,8 +1245,8 @@ class GStreamerTest(PythonDBusTest):
             self._watchContainer(element)
 
     def stop(self):
-        gst.log("stop")
-        return PythonDBusTest.stop(self)
+        gst.log("Stopping...")
+        PythonDBusTest.stop(self)
 
     ## Methods that can be overridden by subclasses
 

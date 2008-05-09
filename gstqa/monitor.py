@@ -289,7 +289,13 @@ class GstDebugLogMonitor(Monitor):
             warning("stderr is already being used, can't setUp monitor")
             return False
         # set gst_debug to requested level
-        self.test._environ["GST_DEBUG"] = self.arguments.get("debug-level", "*:2")
+        loglevel = self.arguments.get("debug-level", "*:2")
+        self.test._environ["GST_DEBUG"] = loglevel
+        if loglevel.endswith("5"):
+            # multiply timeout by 2
+            if not self.test.setTimeout(self.test.getTimeout() * 2):
+                warning("Couldn't change the timeout !")
+                return False
         # get file for redirection
         self._logfile, self._logfilepath = self.testrun.get_temp_file(nameid="gst-debug-log")
         debug("Got temporary file %s", self._logfilepath)
