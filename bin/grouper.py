@@ -142,7 +142,10 @@ def print_node(node, depth=0):
         # it's a metanode !
         print " " * depth, "MultiNode"
         for node in node.nodes:
-            print " " * depth, "->", node.name, ":", statusnames[node.status]
+            if node.status == None:
+                print " " * depth, "->", node.name
+            else:
+                print " " * depth, "->", node.name, ":", statusnames[node.status]
         print " " * depth, "  Count:", len(node.tests)
     if node.true:
         print_node(node.true, depth+1)
@@ -214,6 +217,8 @@ def find_similarities(group):
     # and at the same time, get rid of the allTrue
     l = [(len(v.getFalseUnvalid()), v) for k,v in group.iteritems() if not group[k].allTrue()]
     l.sort(reverse=True)
+    if l == []:
+        return
     root = _doit(list(zip(*l)[1]))
 
     # With this tree we can prune it to 
