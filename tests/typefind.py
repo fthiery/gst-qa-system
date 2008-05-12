@@ -115,8 +115,7 @@ class TypeFindTest(GStreamerTest):
         debug("length:%s, similar:%r", gst.TIME_ARGS(length), issimilar)
         self.validateStep("stream-duration-identical", issimilar)
         self.validateStep("duration-available", not length == -1)
-        if not length == -1:
-            self.extraInfo("total-uri-duration", length)
+        self.extraInfo("total-uri-duration", length)
         self.validateStep("available-demuxer",
                           not self.mimetype in [s.caps.to_string() for s in self._streams])
 

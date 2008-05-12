@@ -60,6 +60,8 @@ class FullGnlFileSourceScenario(Scenario):
             return False
 
         uriduration = infos['total-uri-duration']
+        if uriduration <= 0:
+            return False
         # pick a duration/media-start which is within the given uri duration
         mstart = uriduration / 2
         duration = gst.SECOND
