@@ -165,7 +165,8 @@ class EncoderMuxerTest(GStreamerTest):
         return p
 
     def remoteTearDown(self):
-        GStreamerTest.remoteTearDown(self)
+        if not GStreamerTest.remoteTearDown(self):
+            return False
         # if output file is non-empty, validate it !
         if self._outFD:
             os.close(self._outFD)
@@ -175,6 +176,7 @@ class EncoderMuxerTest(GStreamerTest):
         else:
             self.setOutputFile("encoded-muxed-file",
                                self._outPath)
+        return True
 
     def pipelineReachedInitialState(self):
         return False
