@@ -301,7 +301,7 @@ class CommandLineTesterClient(TesterClient):
 
     def printSingleTestResult(self, test, offset=0):
         stub = " " * offset
-        print stub, "Test %r is done (Success:%0.1f%%)" % (test, test.getSuccessPercentage())
+        print stub, "Test %r is done (Success:%5.1f%%)" % (test, test.getSuccessPercentage())
         if self._verbose:
             # print out all details from test
             print stub, "Arguments:"

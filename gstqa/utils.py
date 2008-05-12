@@ -32,7 +32,7 @@ def randuuid():
     """
     Generates a random uuid, not guaranteed to be unique.
     """
-    return "%016x" % randint(0, 2**128)
+    return "%032x" % randint(0, 2**128)
 
 def acquire_uuid():
     """
