@@ -30,6 +30,7 @@ import time
 import dbus
 import dbus.gobject_service
 from dbustools import unwrap
+from gstqa.threads import ThreadMaster, CallbackThread
 
 if gst.pygst_version < (0, 10, 9):
     # pygst before 0.10.9 has atexit(gst_deinit), causing segfaults.  Let's
@@ -59,6 +60,17 @@ Base Test Classes
 #           |
 #           +--- CmdLineTest
 #
+# def timeme(mth):
+#     def newone(*args,**kwargs):
+#         t = time.time()
+#         res = mth(*args, **kwargs)
+#         print "method %r took %.6fs" % (mth, time.time() - t)
+#         return res
+#     return newone
+
+def timeme(mth):
+    return mth
+
 
 class Test(gobject.GObject):
     """
@@ -216,6 +228,8 @@ class Test(gobject.GObject):
         self._monitors = []
         self._monitorinstances = []
 
+        self._threads = ThreadMaster()
+
     @classmethod
     def get_file(cls):
         """
@@ -268,7 +282,7 @@ class Test(gobject.GObject):
         if not self.setUp():
             error("Something went wrong during setup !")
             self.stop()
-            return
+            return False
 
         if self.__async_setup__:
             # the subclass will call start() on his own
@@ -276,14 +290,23 @@ class Test(gobject.GObject):
             self._asynctimeouttime = time.time() + self._asynctimeout
             self._asynctimeoutid = gobject.timeout_add(self._asynctimeout * 1000,
                                                        self._asyncSetupTimeoutCb)
-            return
+            return True
 
         # 2. Start it
-        self.start()
-
-        if not self.__async_test__:
+        if self.__async_test__:
+            # spawn a thread
+            self._threads.addThread(CallbackThread,
+                                    self._asyncStartThread)
+        else:
+            self.start()
             # synchronous tests
             self.stop()
+
+        return True
+
+    @timeme
+    def _asyncStartThread(self):
+        self.start()
 
     def setUp(self):
         """
@@ -414,6 +437,8 @@ class Test(gobject.GObject):
         Called by the test itself
         """
         info("uuid:%s, key:%s, value:%r", self.uuid, key, value)
+        if key in self._extraInfo:
+            return
         self._extraInfo[key] = value
         self.emit("extra-info", key, value)
 
@@ -622,6 +647,8 @@ class DBusTest(Test, dbus.service.Object):
             raise Exception("You need to provide at least a bus or bus_address")
         self._bus = bus
         self._bus_address = bus_address
+
+        self._remote_tearing_down = False
 
         if self._isProxy:
             if self._testrun:
@@ -919,7 +946,12 @@ class DBusTest(Test, dbus.service.Object):
         send at the end, should implement this in their subclass and chain up
         to the parent remoteTearDown() at the *beginning of their
         implementation.
+
+        If the parent method returns False, return False straight-away
         """
+        if self._remote_tearing_down:
+            return False
+        self._remote_tearing_down = True
         info("%s remoteTimeoutId:%r", self.uuid, self._remoteTimeoutId)
         # remote the timeout
         if self._remoteTimeoutId:
@@ -927,6 +959,7 @@ class DBusTest(Test, dbus.service.Object):
             self._remoteTimedOut = False
             self._remoteTimeoutId = 0
         self.validateStep("no-timeout", not self._remoteTimedOut)
+        return True
 
     ## Remote DBUS signals
     @dbus.service.signal(dbus_interface="net.gstreamer.Insanity.Test",
@@ -1141,7 +1174,8 @@ class GStreamerTest(PythonDBusTest):
         PythonDBusTest.remoteSetUp(self)
 
     def remoteTearDown(self):
-        PythonDBusTest.remoteTearDown(self)
+        if not PythonDBusTest.remoteTearDown(self):
+            return False
         gst.log("Tearing Down")
         # unref pipeline and so forth
         if self.pipeline:
@@ -1168,6 +1202,7 @@ class GStreamerTest(PythonDBusTest):
                     del self._tags[x]
             self.extraInfo("tags", dbus.Dictionary(self._tags, signature="sv"))
         self.extraInfo("elements-used", self._elements)
+        return True
 
     def remoteTest(self):
         # kickstart pipeline to initial state

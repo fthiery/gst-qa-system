@@ -265,11 +265,11 @@ class TestRun(gobject.GObject):
         test.connect("done", self._singleTestDone)
         test.connect("check", self._singleTestCheck)
 
-        # add instance to running tests
-        self._runninginstances.append(test)
-
         # start test
-        test.run()
+        allok = test.run()
+        if allok:
+            # add instance to running tests
+            self._runninginstances.append(test)
 
         # if we can still create a new test, call ourself again
         if len(self._runninginstances) < self._maxnbtests:
