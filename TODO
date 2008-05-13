@@ -44,9 +44,6 @@ Non-milestone-specific / Bonus features
    remote process for every instance, but instead reuse existing ones (and
    re-spawning new instances if that one crashes).
 
-* Namespace changing
- * Switch to instanity (Insanity / net.gstreamer.Insanity)
-
 * Smarter introspection
  * Make __test_arguments__ have more information :
   * default value
