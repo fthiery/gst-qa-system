@@ -295,8 +295,9 @@ class Test(gobject.GObject):
         # 2. Start it
         if self.__async_test__:
             # spawn a thread
-            self._threads.addThread(CallbackThread,
-                                    self._asyncStartThread)
+            self.start()
+#             self._threads.addThread(CallbackThread,
+#                                     self._asyncStartThread)
         else:
             self.start()
             # synchronous tests
@@ -804,12 +805,14 @@ class DBusTest(Test, dbus.service.Object):
 
     ## Subprocess polling
     def _pollSubProcess(self):
-        info("polling subprocess")
+        info("polling subprocess %r", self.uuid)
         if not self._process:
+            info("process left, stopping looping")
             return False
         res = self._process.poll()
         # None means the process hasn't terminated yet
         if res == None:
+            info("process hasn't stopped yet")
             return True
         # Positive value is the return code of the terminated
         #   process
@@ -1053,7 +1056,8 @@ class DBusTest(Test, dbus.service.Object):
         info("%s our remote counterpart has left", self.uuid)
         # abort if the test hasn't actually finished
         self._remoteInstance = None
-        self.stop()
+        if not self._stopping:
+            self.stop()
 
 class PythonDBusTest(DBusTest):
     """
