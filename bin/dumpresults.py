@@ -48,6 +48,9 @@ def printTestInfo(db, testid, failedonly=False):
     trid, ttype, args, checks, resperc, extras, outputfiles = db.getFullTestInfo(testid)
     if failedonly and resperc == 100.0:
         return
+    if resperc == None:
+        # test didn't end in the database
+        return
     # test number + name
     print "Test #% 3d (%s) Success : %0.1f%%" % (testid, ttype, resperc)
     # arguments
