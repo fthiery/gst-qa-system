@@ -193,12 +193,14 @@ class TypeFindTest(GStreamerTest):
 
     def _newDecodedPadCb(self, dbin, pad, is_last):
         debug("pad:%r , caps:%s, is_last:%r", pad, pad.get_caps().to_string(), is_last)
+        gst.log("pad:%r , caps:%s, is_last:%r" % ( pad, pad.get_caps().to_string(), is_last))
         stream = Stream(pad, caps=pad.get_caps())
         self._connectFakesink(pad, self.pipeline)
         self._streams.append(stream)
 
     def _noMorePadsCb(self, dbin):
         debug("no more pads")
+        gst.log("no more pads")
         if len([stream for stream in self._streams if not stream.raw]):
             debug("we have non-raw streams, stopping")
             # FIXME : add post-checking

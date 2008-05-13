@@ -89,6 +89,8 @@ class FullGnlFileSourceScenario(Scenario):
         res = []
         for stream in streams:
             padname, length, caps = stream
-            if caps.startswith("audio/x-raw-") or caps.startswith("video/x-raw-"):
-                res.append((padname, length, caps))
+            if caps.startswith("audio/x-raw-"):
+                res.append((padname, length, "audio/x-raw-int;audio/x-raw-float"))
+            elif caps.startswith("video/x-raw-"):
+                res.append((padname, length, "video/x-raw-yuv;video/x-raw-rgb"))
         return res

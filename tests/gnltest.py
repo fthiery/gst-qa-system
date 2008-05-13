@@ -29,6 +29,11 @@ from gstqa.test import GStreamerTest
 from gstqa.log import critical, error, warning, debug, info
 import gst
 
+def valtime(someval):
+    if someval == gst.CLOCK_TIME_NONE:
+        return -1
+    return someval
+
 class GnlFileSourceTest(GStreamerTest):
 
     __test_name__ = "gnlfilesource-test"
@@ -79,6 +84,7 @@ class GnlFileSourceTest(GStreamerTest):
         self._duration = self.arguments.get("duration", gst.SECOND)
         self._mstart = self.arguments.get("media-start", 5 * gst.SECOND)
         self._mduration = self.arguments.get("media-duration", self._duration)
+        warning("Got caps-string:%r", self.arguments.get("caps-string", "audio/x-raw-int;audio/x-raw-float"))
         self._caps = gst.Caps(self.arguments.get("caps-string", "audio/x-raw-int;audio/x-raw-float"))
         GStreamerTest.remoteSetUp(self)
 
@@ -107,7 +113,7 @@ class GnlFileSourceTest(GStreamerTest):
         if isinstance(data, gst.Buffer):
             debug("buffer %s", gst.TIME_ARGS(data.timestamp))
             if not self._gotFirstBuffer:
-                self.extraInfo("first-buffer-timestamp", data.timestamp)
+                self.extraInfo("first-buffer-timestamp", valtime(data.timestamp))
                 self.validateStep("correct-initial-buffer", data.timestamp == self._mstart)
                 self.validateStep("first-buffer-after-newsegment", self._gotNewSegment)
                 self._gotFirstBuffer = True
