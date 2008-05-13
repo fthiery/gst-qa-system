@@ -758,7 +758,9 @@ class SQLiteStorage(DBStorage):
         liststr = "SELECT id FROM testrun"
         res = self._FetchAll(liststr)
         debug("Got %d testruns", len(res))
-        return list(zip(*res)[0])
+        if len(res):
+            return list(zip(*res)[0])
+        return []
 
     def getTestRun(self, testrunid):
         debug("testrunid:%d", testrunid)
