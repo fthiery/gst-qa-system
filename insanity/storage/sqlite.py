@@ -65,7 +65,7 @@ CREATE TABLE client (
 CREATE TABLE test (
    id INTEGER PRIMARY KEY,
    testrunid INTEGER,
-   type TEXT,
+   type INTEGER,
    resultpercentage FLOAT
 );
 
@@ -77,7 +77,7 @@ CREATE TABLE subtests (
 CREATE TABLE monitor (
    id INTEGER PRIMARY KEY,
    testid INTEGER,
-   type TEXT,
+   type INTEGER,
    resultpercentage FLOAT
 );
 
@@ -90,7 +90,8 @@ CREATE TABLE testclassinfo (
 );
 
 CREATE TABLE monitorclassinfo (
-   type TEXT PRIMARY KEY,
+   id INTEGER PRIMARY KEY,
+   type TEXT,
    parent TEXT,
    description TEXT
 );
@@ -353,7 +354,7 @@ class SQLiteStorage(DBStorage):
             return None
         # check if the version is the same as the current one
         res = self._FetchOne("SELECT version FROM version")
-        if len(res) < 1:
+        if res == None:
             return None
         return res[0]
 
@@ -633,6 +634,28 @@ class SQLiteStorage(DBStorage):
         self._ExecuteCommit(updatestr, (testrun._stoptime, self.__testrunid))
         debug("updated")
 
+    def _getTestTypeID(self, testtype):
+        """
+        Returns the test.id for the given testtype
+
+        Returns None if there is no information regarding the given testtype
+        """
+        res = self._FetchOne("SELECT id FROM testclassinfo WHERE type=?", (testtype, ))
+        if res == None:
+            return None
+        return res[0]
+
+    def _getMonitorTypeID(self, monitortype):
+        """
+        Returns the monitor.id for the given monitortype
+
+        Returns None if there is no information regarding the given monitortype
+        """
+        res = self._FetchOne("SELECT id FROM monitorclassinfo WHERE type=?", (monitortype, ))
+        if res == None:
+            return None
+        return res[0]
+
     def newTestStarted(self, testrun, test, commit=True):
         self._lock.acquire()
         self._newTestStarted(testrun, test, commit)
@@ -644,9 +667,11 @@ class SQLiteStorage(DBStorage):
         if not self.__testrun == testrun:
             self._startNewTestRun(testrun)
         debug("test:%r", test)
+        self._storeTestClassInfo(test)
+        testtid = self._getTestTypeID(test.__test_name__)
         insertstr = "INSERT INTO test (id, testrunid, type) VALUES (NULL, ?, ?)"
         testid = self._ExecuteCommit(insertstr,
-                                     (self.__testrunid, test.__test_name__),
+                                     (self.__testrunid, testtid),
                                      commit=commit)
         debug("got testid %d", testid)
         self.__tests[test] = testid
@@ -686,7 +711,6 @@ class SQLiteStorage(DBStorage):
         updatestr = "UPDATE test SET resultpercentage=? WHERE id=?"
         resultpercentage = test.getSuccessPercentage()
         self._ExecuteCommit(updatestr, (resultpercentage, tid))
-        self._storeTestClassInfo(test)
 
         # and on to the monitors
         for monitor in test._monitorinstances:
@@ -698,7 +722,10 @@ class SQLiteStorage(DBStorage):
         VALUES (NULL, ?, ?, ?)
         """
         # store monitor
-        mid = self._ExecuteCommit(insertstr, (testid, monitor.__monitor_name__,
+        self._storeMonitorClassInfo(monitor)
+
+        monitortype = self._getMonitorTypeID(monitor.__monitor_name__)
+        mid = self._ExecuteCommit(insertstr, (testid, monitortype,
                                               monitor.getSuccessPercentage()))
         # store related dictionnaries
         self._storeMonitorArgumentsDict(mid, monitor.getArguments())
@@ -706,7 +733,6 @@ class SQLiteStorage(DBStorage):
         self._storeMonitorExtraInfoDict(mid, monitor.getExtraInfo())
         self._storeMonitorOutputFileDict(mid, monitor.getOutputFiles())
         self.con.commit()
-        self._storeMonitorClassInfo(monitor)
 
     # public retrieval API
 
@@ -846,7 +872,10 @@ class SQLiteStorage(DBStorage):
         * the extra information (dictionnary)
         * the output files (dictionnary)
         """
-        searchstr = "SELECT testrunid,type,resultpercentage FROM test WHERE id=?"
+        searchstr = """
+        SELECT test.testrunid,testclassinfo.type,test.resultpercentage
+        FROM test,testclassinfo
+        WHERE test.id=? AND test.type=testclassinfo.id"""
         res = self._FetchOne(searchstr, (testid, ))
         if not res:
             return (None, None, None, None, None, None, None)
@@ -916,7 +945,10 @@ class SQLiteStorage(DBStorage):
         * the type of the monitor
         * the result percentage
         """
-        searchstr = "SELECT testid,type,resultpercentage FROM monitor WHERE id=?"
+        searchstr = """
+        SELECT monitor.testid,monitorclassinfo.type,monitor.resultpercentage
+        FROM monitor,monitorclassinfo
+        WHERE monitor.id=? AND monitorclassinfo.id=monitor.type"""
         res = self._FetchOne(searchstr, (monitorid, ))
         if not res:
             return (None, None, None)
