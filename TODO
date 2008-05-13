@@ -59,6 +59,7 @@ Non-milestone-specific / Bonus features
  * Make sure we use cPickle only for generic (non-gstqa-specific) objects
  * Add convenience functions for merging two DB together (or one in another).
  * Store the test class as an integer and not a name
+ * Use integers as often as possible for dictionnary keys
  * Add methods for updating old-versioned DB
 
 * Tests
