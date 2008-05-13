@@ -296,29 +296,14 @@ class SQLiteStorage(DBStorage):
 
     def _checkForTables(self):
         # return False if the tables aren't created
-        CHECKTABLES = """
-        SELECT name FROM sqlite_master
-        WHERE type='table'
-        ORDER BY name;
-        """
-        tables = [x[0] for x in self.con.execute(CHECKTABLES).fetchall()]
-        if len(tables) == 0:
+        tables = self._getAllTables()
+        if len(tables) == 0 or not "version" in tables:
             return False
-        for tblname in ["version", "testrun", "client",
-                        "test", "subtests", "monitor", "testclassinfo",
-                        "monitorclassinfo",
-                        "testrun_environment_dict",
-                        "test_arguments_dict", "test_checklist_list",
-                        "test_extrainfo_dict", "test_outputfiles_dict",
-                        "monitor_arguments_dict", "monitor_checklist_dict",
-                        "monitor_extrainfo_dict", "monitor_outputfiles_dict",
-                        "testclassinfo_arguments_dict", "testclassinfo_checklist_dict",
-                        "testclassinfo_extrainfo_dict", "testclassinfo_outputfiles_dict",
-                        "monitorclassinfo_arguments_dict", "monitorclassinfo_checklist_dict",
-                        "monitorclassinfo_extrainfo_dict", "monitorclassinfo_outputfiles_dict"
-                        ]:
-            if not tblname in tables:
-                return False
+
+        # FIXME : if ver != DATABASE_VERSION, then update the database
+        ver = self._getDatabaseSchemeVersion()
+        if not ver or ver != DATABASE_VERSION:
+            return False
         return True
 
     def _ExecuteCommit(self, instruction, *args, **kwargs):
@@ -343,6 +328,34 @@ class SQLiteStorage(DBStorage):
         cur = self.con.cursor()
         cur.execute(instruction, *args, **kwargs)
         return cur.fetchone()
+
+    def _getAllTables(self):
+        """
+        Returns the name of all the available tables in the currently
+        loaded database.
+        """
+        CHECKTABLES = """
+        SELECT name FROM sqlite_master
+        WHERE type='table'
+        ORDER BY name;
+        """
+        return [x[0] for x in self.con.execute(CHECKTABLES).fetchall()]
+
+    def _getDatabaseSchemeVersion(self):
+        """
+        Returns the scheme version of the currently loaded databse
+
+        Returns None if there's no properly configured scheme, else
+        returns the version
+        """
+        tables = self._getAllTables()
+        if not "version" in tables:
+            return None
+        # check if the version is the same as the current one
+        res = self._FetchOne("SELECT version FROM version")
+        if len(res) < 1:
+            return None
+        return res[0]
 
     # dictionnary storage methods
     def _conformDict(self, pdict):
