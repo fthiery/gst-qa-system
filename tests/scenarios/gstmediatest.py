@@ -23,8 +23,8 @@
 Scenario simulating the behaviour of the historical gst-media-test scenarios
 """
 
-from gstqa.scenario import Scenario
-from gstqa.monitor import GstDebugLogMonitor
+from insanity.scenario import Scenario
+from insanity.monitor import GstDebugLogMonitor
 
 class GstMediaTestScenario(Scenario):
     """

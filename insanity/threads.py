@@ -27,7 +27,7 @@ Convenience methods and classes for multi-threading
 
 import threading
 import gobject
-from gstqa.log import critical, error, warning, debug, info
+from insanity.log import critical, error, warning, debug, info
 
 class Thread(threading.Thread, gobject.GObject):
     """

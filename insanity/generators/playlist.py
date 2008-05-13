@@ -23,8 +23,8 @@
 Playlist-related generators
 """
 
-from gstqa.generator import Generator
-from gstqa.log import critical, error, warning, debug, info
+from insanity.generator import Generator
+from insanity.log import critical, error, warning, debug, info
 
 # FIXME
 #   Should check to see if we actually have valid URI(s)

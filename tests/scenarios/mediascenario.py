@@ -23,7 +23,7 @@
 Simple media-based scenarios
 """
 
-from gstqa.scenario import ListScenario
+from insanity.scenario import ListScenario
 from tests.ismedia import IsMediaTest
 
 class MediaBarrierScenario(ListScenario):

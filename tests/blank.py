@@ -23,7 +23,7 @@
 Blank QA test for development purposes only
 """
 
-from gstqa.test import GStreamerTest
+from insanity.test import GStreamerTest
 
 class BlankTest(Test):
 

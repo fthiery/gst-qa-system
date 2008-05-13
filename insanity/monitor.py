@@ -47,8 +47,8 @@ import string
 import os
 import os.path
 import subprocess
-from gstqa.test import Test, DBusTest, GStreamerTest
-from gstqa.log import critical, error, warning, debug, info, exception
+from insanity.test import Test, DBusTest, GStreamerTest
+from insanity.log import critical, error, warning, debug, info, exception
 
 class Monitor(object):
     """

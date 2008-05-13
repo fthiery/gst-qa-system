@@ -37,12 +37,12 @@ import string
 import time
 import os.path
 from optparse import OptionParser
-from gstqa.client import CommandLineTesterClient
-from gstqa.scenario import Scenario
-from gstqa.generators.filesystem import FileSystemGenerator, URIFileSystemGenerator
-from gstqa.monitor import GstDebugLogMonitor, ValgrindMemCheckMonitor, GDBMonitor
-from gstqa.testrun import TestRun
-import gstqa.utils as utils
+from insanity.client import CommandLineTesterClient
+from insanity.scenario import Scenario
+from insanity.generators.filesystem import FileSystemGenerator, URIFileSystemGenerator
+from insanity.monitor import GstDebugLogMonitor, ValgrindMemCheckMonitor, GDBMonitor
+from insanity.testrun import TestRun
+import insanity.utils as utils
 from tests.scenarios.gstmediatest import GstMediaTestScenario
 
 class GstMediaTestClient(CommandLineTesterClient):

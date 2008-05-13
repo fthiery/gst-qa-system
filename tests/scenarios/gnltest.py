@@ -23,7 +23,7 @@
 Full gnonlin scenario
 """
 
-from gstqa.scenario import Scenario
+from insanity.scenario import Scenario
 from tests.gnltest import GnlFileSourceTest
 from tests.typefind import TypeFindTest
 import gst

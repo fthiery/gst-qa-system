@@ -46,9 +46,9 @@ import time
 import utils
 utils.scan_for_tests()
 
-from gstqa.testrun import TestRun
-from gstqa.scenario import Scenario
-from gstqa.log import critical, error, warning, debug, info, exception, initLogging
+from insanity.testrun import TestRun
+from insanity.scenario import Scenario
+from insanity.log import critical, error, warning, debug, info, exception, initLogging
 
 initLogging()
 

@@ -26,11 +26,11 @@ SQLite based DataStorage
 import time
 import string
 from weakref import WeakKeyDictionary
-from gstqa.log import critical, error, warning, debug, info
-from gstqa.storage.storage import DBStorage
-from gstqa.scenario import Scenario
-from gstqa.test import Test
-from gstqa.monitor import Monitor
+from insanity.log import critical, error, warning, debug, info
+from insanity.storage.storage import DBStorage
+from insanity.scenario import Scenario
+from insanity.test import Test
+from insanity.monitor import Monitor
 try:
     # In Python 2.5, this is part of the standard library:
     from sqlite3 import dbapi2 as sqlite

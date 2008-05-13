@@ -23,7 +23,7 @@
 Tests using playbin
 """
 
-from gstqa.test import GStreamerTest
+from insanity.test import GStreamerTest
 import gst
 
 class PlaybinTest(GStreamerTest):

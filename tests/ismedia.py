@@ -23,8 +23,8 @@
 Tests to detect if file is a valid media-file that can be handled by GStreamer
 """
 
-from gstqa.test import GStreamerTest
-from gstqa.log import critical, error, warning, debug, info
+from insanity.test import GStreamerTest
+from insanity.log import critical, error, warning, debug, info
 import gst
 
 class IsMediaTest(GStreamerTest):

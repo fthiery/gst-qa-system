@@ -23,7 +23,7 @@
 Series of tests to test encoder behaviour
 """
 
-from gstqa.test import GStreamerTest
+from insanity.test import GStreamerTest
 import gst
 import os
 import os.path

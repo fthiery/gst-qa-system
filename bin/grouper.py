@@ -29,7 +29,7 @@ import sys
 import string
 import time
 from optparse import OptionParser
-from gstqa.storage.sqlite import SQLiteStorage
+from insanity.storage.sqlite import SQLiteStorage
 
 ( TRUE_VALIDATED,
   FALSE_VALIDATED,

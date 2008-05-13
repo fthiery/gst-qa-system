@@ -26,8 +26,8 @@ File system related generators
 import os.path
 from fnmatch import fnmatch
 
-from gstqa.generator import Generator
-from gstqa.log import critical, error, warning, debug, info
+from insanity.generator import Generator
+from insanity.log import critical, error, warning, debug, info
 
 class FileSystemGenerator(Generator):
     """

@@ -40,8 +40,8 @@ import time
 from log import critical, error, warning, debug, info
 from test import Test
 from arguments import Arguments
-import gstqa.environment as environment
-from gstqa.threads import ThreadMaster, CallbackThread
+import insanity.environment as environment
+from insanity.threads import ThreadMaster, CallbackThread
 import dbustools
 import dbus.gobject_service
 import tempfile
@@ -328,7 +328,7 @@ class TestRun(gobject.GObject):
         self._outputdir = os.path.join(self._workingdir, "outputfiles")
         return True
 
-    def get_temp_file(self, nameid='', suffix='', category="gstqa-output"):
+    def get_temp_file(self, nameid='', suffix='', category="insanity-output"):
         """
         Creates a new temporary file in a secure fashion, guaranteeing
         it will be unique and only accessible from this user.

@@ -63,8 +63,8 @@ def list_available_tests():
     * the test description
     * the test class
     """
-    from gstqa.test import Test,DBusTest,PythonDBusTest,GStreamerTest,CmdLineTest
-    from gstqa.scenario import Scenario
+    from insanity.test import Test,DBusTest,PythonDBusTest,GStreamerTest,CmdLineTest
+    from insanity.scenario import Scenario
 
     def get_valid_subclasses(cls):
         res = []
@@ -84,8 +84,8 @@ def list_available_scenarios():
     * the scenario description
     * the scenario class
     """
-    from gstqa.test import Test,DBusTest,PythonDBusTest,GStreamerTest,CmdLineTest
-    from gstqa.scenario import Scenario
+    from insanity.test import Test,DBusTest,PythonDBusTest,GStreamerTest,CmdLineTest
+    from insanity.scenario import Scenario
 
     def get_valid_subclasses(cls):
         res = []

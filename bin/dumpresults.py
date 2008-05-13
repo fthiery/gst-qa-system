@@ -28,7 +28,7 @@ Dumps the results of a test results DB
 import sys
 import time
 from optparse import OptionParser
-from gstqa.storage.sqlite import SQLiteStorage
+from insanity.storage.sqlite import SQLiteStorage
 
 def printTestRunInfo(db, testrunid, verbose=False):
     # id , date, nbtests, client

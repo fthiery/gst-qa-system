@@ -30,7 +30,7 @@ import time
 import dbus
 import dbus.gobject_service
 from dbustools import unwrap
-from gstqa.threads import ThreadMaster, CallbackThread
+from insanity.threads import ThreadMaster, CallbackThread
 
 if gst.pygst_version < (0, 10, 9):
     # pygst before 0.10.9 has atexit(gst_deinit), causing segfaults.  Let's

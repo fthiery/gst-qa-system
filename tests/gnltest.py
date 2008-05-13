@@ -25,8 +25,8 @@ Tests using GNonlin non-linear set of plugins
 
 import gobject
 gobject.threads_init()
-from gstqa.test import GStreamerTest
-from gstqa.log import critical, error, warning, debug, info
+from insanity.test import GStreamerTest
+from insanity.log import critical, error, warning, debug, info
 import gst
 
 def valtime(someval):

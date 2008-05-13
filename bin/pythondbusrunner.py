@@ -42,8 +42,8 @@ import dbus
 import dbus.bus
 import dbus.service
 import imp
-import gstqa
-from gstqa.log import critical, error, warning, debug, info, initLogging, exception
+import insanity
+from insanity.log import critical, error, warning, debug, info, initLogging, exception
 from dbus.mainloop.glib import DBusGMainLoop
 
 initLogging()

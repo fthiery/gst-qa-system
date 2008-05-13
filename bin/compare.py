@@ -28,7 +28,7 @@ Compare two testruns
 import sys
 import time
 from optparse import OptionParser
-from gstqa.storage.sqlite import SQLiteStorage
+from insanity.storage.sqlite import SQLiteStorage
 
 def printTestInfo(db, testid, failedonly=False):
     trid, ttype, args, checks, resperc, extras, outputfiles = db.getFullTestInfo(testid)

@@ -25,8 +25,8 @@ Tests used to search as much information as possible from the given uri
 
 import gobject
 gobject.threads_init()
-from gstqa.log import critical, error, warning, debug, info
-from gstqa.test import GStreamerTest
+from insanity.log import critical, error, warning, debug, info
+from insanity.test import GStreamerTest
 import dbus
 import gst
 
