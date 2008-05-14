@@ -122,3 +122,28 @@ def reverse_dict(adict):
     for k,v in adict.iteritems():
         d[v] = k
     return d
+
+def map_dict(adict, mapdict):
+    """
+    Returns a dictionnary where the keys from adict are replaced
+    by the value mapped in mapdict.
+
+    If a key isn't present in mapdict, the (key,value) is copied
+    in the resulting dictionnary
+    """
+    d = {}
+    for k,v in adict.iteritems():
+        if k in mapdict:
+            d[mapdict[k]] = v
+    return d
+
+def map_list(alist, mapdict):
+    """
+    Same as map_dict, except the first argument and return value are
+    the flattened out tuple-list version : [(key1,val1), (key2, val2)..]
+    """
+    r = []
+    for k,v in alist:
+        if k in mapdict:
+            r.append((mapdict[k], v))
+    return r
