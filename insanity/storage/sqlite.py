@@ -377,7 +377,8 @@ class SQLiteStorage(DBStorage):
             debug("Empty dictionnary, returning")
             return
 
-        insertstr = "INSERT INTO %s (id, containerid, name, %s) VALUES (NULL, ?, ?, ?)"
+        insertstr = """INSERT INTO %s (id, containerid, name, %s)
+        VALUES (NULL, ?, ?, ?)"""
         cur = self.con.cursor()
         for key,value in pdict.iteritems():
             debug("Adding key:%s , value:%r", key, value)
@@ -399,7 +400,8 @@ class SQLiteStorage(DBStorage):
             return
 
         cur = self.con.cursor()
-        insertstr = "INSERT INTO %s (id, containerid, name, %s) VALUES (NULL, ?, ?, ?)"
+        insertstr = """INSERT INTO %s (id, containerid, name, %s)
+        VALUES (NULL, ?, ?, ?)"""
         for key,value in pdict:
             debug("Adding key:%s , value:%r", key, value)
             val = value
@@ -420,7 +422,8 @@ class SQLiteStorage(DBStorage):
             return
 
         cur = self.con.cursor()
-        insertstr = "INSERT INTO %s (id, containerid, name, %s) VALUES (NULL, ?, ?, ?)"
+        insertstr = """INSERT INTO %s (id, containerid, name, %s)
+        VALUES (NULL, ?, ?, ?)"""
         for key,value in pdict:
             debug("Adding key:%s , value:%r", key, value)
             val = value
@@ -487,8 +490,8 @@ class SQLiteStorage(DBStorage):
 
     def _insertTestClassInfo(self, tclass):
         ctype = tclass.__dict__.get("__test_name__")
-        if len(self._FetchAll("SELECT * FROM testclassinfo WHERE type=?",
-                              (ctype, ))) >= 1:
+        searchstr = "SELECT * FROM testclassinfo WHERE type=?"
+        if len(self._FetchAll(searchstr, (ctype, ))) >= 1:
             return False
         # get info
         desc = tclass.__dict__.get("__test_description__")
@@ -532,8 +535,8 @@ class SQLiteStorage(DBStorage):
 
     def _insertMonitorClassInfo(self, tclass):
         ctype = tclass.__dict__.get("__monitor_name__")
-        if len(self._FetchAll("SELECT * FROM monitorclassinfo WHERE type=?",
-                              (ctype, ))) >= 1:
+        searchstr = "SELECT * FROM monitorclassinfo WHERE type=?"
+        if len(self._FetchAll(searchstr, (ctype, ))) >= 1:
             return False
         # get info
         desc = tclass.__dict__.get("__monitor_description__")
@@ -588,8 +591,8 @@ class SQLiteStorage(DBStorage):
             warning("More than one similar entry ???")
             raise Exception("There are more than one client entry with the same information, fix database !")
         else:
-            key = self._ExecuteCommit("INSERT INTO client (id, software, name, user) VALUES (NULL, ?,?,?)",
-                                      (softwarename, clientname, user))
+            insertstr = "INSERT INTO client (id, software, name, user) VALUES (NULL, ?,?,?)"
+            key = self._ExecuteCommit(insertstr, (softwarename, clientname, user))
         debug("got id %d", key)
         # cache the key
         self.__clientid = key
@@ -789,7 +792,10 @@ class SQLiteStorage(DBStorage):
 
     def getClientInfoForTestRun(self, testrunid):
         debug("testrunid:%d", testrunid)
-        liststr = "SELECT client.software,client.name,client.user FROM client,testrun WHERE client.id=testrun.clientid AND testrun.id=?"
+        liststr = """
+        SELECT client.software,client.name,client.user
+        FROM client,testrun
+        WHERE client.id=testrun.clientid AND testrun.id=?"""
         res = self._FetchAll(liststr, (testrunid,))
         return res[0]
 
@@ -803,7 +809,9 @@ class SQLiteStorage(DBStorage):
 
     def getTestRun(self, testrunid):
         debug("testrunid:%d", testrunid)
-        liststr = "SELECT clientid,starttime,stoptime FROM testrun WHERE id=?"
+        liststr = """
+        SELECT clientid,starttime,stoptime
+        FROM testrun WHERE id=?"""
         res = self._FetchAll(liststr, (testrunid, ))
         if len(res) == 0:
             debug("Testrun not available in DB")
@@ -832,7 +840,12 @@ class SQLiteStorage(DBStorage):
 
     def getScenariosForTestRun(self, testrunid):
         debug("testrunid:%d", testrunid)
-        liststr = "SELECT test.id,subtests.testid FROM test INNER JOIN subtests ON test.id=subtests.scenarioid WHERE test.testrunid=?"
+        liststr = """
+        SELECT test.id,subtests.testid
+        FROM test
+        INNER JOIN subtests
+        ON test.id=subtests.scenarioid
+        WHERE test.testrunid=?"""
         res = self._FetchAll(liststr, (testrunid, ))
         if not res:
             return []
@@ -847,7 +860,10 @@ class SQLiteStorage(DBStorage):
 
     def getFailedTestsForTestRun(self, testrunid):
         debug("testrunid:%d", testrunid)
-        liststr = "SELECT id FROM test WHERE testrunid=? and resultpercentage<>100.0"
+        liststr = """
+        SELECT id
+        FROM test
+        WHERE testrunid=? AND resultpercentage<>100.0"""
         res = self._FetchAll(liststr, (testrunid, ))
         if not res:
             return []
@@ -855,7 +871,10 @@ class SQLiteStorage(DBStorage):
 
     def getSucceededTestsForTestRun(self, testrunid):
         debug("testrunid:%d", testrunid)
-        liststr = "SELECT id FROM test WHERE testrunid=? and resultpercentage=100.0"
+        liststr = """
+        SELECT id
+        FROM test
+        WHERE testrunid=? AND resultpercentage=100.0"""
         res = self._FetchAll(liststr, (testrunid, ))
         if not res:
             return []
@@ -956,7 +975,10 @@ class SQLiteStorage(DBStorage):
 
 
     def findTestsByArgument(self, testtype, arguments, testrunid=None, monitorids=[]):
-        searchstr = "SELECT test.id FROM test, test_arguments_dict WHERE test.id=test_arguments_dict.containerid "
+        searchstr = """
+        SELECT test.id
+        FROM test, test_arguments_dict
+        WHERE test.id=test_arguments_dict.containerid """
         searchargs = []
         if not testrunid == None:
             searchstr += "AND test.testrunid=? "
