@@ -547,7 +547,7 @@ class SQLiteStorage(DBStorage):
         # check if we don't already have info for this class
         existstr = "SELECT * FROM testclassinfo WHERE type=?"
         res = self._FetchAll(existstr, (testinstance.__test_name__, ))
-        if len(res) >= 1:
+        if len(res) > 0:
             # type already exists, returning
             return
         # we need an inverted mro (so we can now the parent class)
