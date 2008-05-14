@@ -102,7 +102,7 @@ CREATE TABLE testrun_environment_dict (
    containerid INTEGER,
    name TEXT,
    intvalue INTEGER,
-   txtvalue TXT,
+   txtvalue TEXT,
    blobvalue BLOB
 );
 
@@ -111,7 +111,7 @@ CREATE TABLE test_arguments_dict (
    containerid INTEGER,
    name INTEGER,
    intvalue INTEGER,
-   txtvalue TXT,
+   txtvalue TEXT,
    blobvalue BLOB
 );
 
@@ -127,7 +127,7 @@ CREATE TABLE test_extrainfo_dict (
    containerid INTEGER,
    name INTEGER,
    intvalue INTEGER,
-   txtvalue TXT,
+   txtvalue TEXT,
    blobvalue BLOB
 );
 
@@ -135,7 +135,7 @@ CREATE TABLE test_outputfiles_dict (
    id INTEGER PRIMARY KEY,
    containerid INTEGER,
    name INTEGER,
-   txtvalue TXT
+   txtvalue TEXT
 );
 
 CREATE TABLE monitor_arguments_dict (
@@ -143,7 +143,7 @@ CREATE TABLE monitor_arguments_dict (
    containerid INTEGER,
    name INTEGER,
    intvalue INTEGER,
-   txtvalue TXT,
+   txtvalue TEXT,
    blobvalue BLOB
 );
 
@@ -159,7 +159,7 @@ CREATE TABLE monitor_extrainfo_dict (
    containerid INTEGER,
    name INTEGER,
    intvalue INTEGER,
-   txtvalue TXT,
+   txtvalue TEXT,
    blobvalue BLOB
 );
 
@@ -167,7 +167,7 @@ CREATE TABLE monitor_outputfiles_dict (
    id INTEGER PRIMARY KEY,
    containerid INTEGER,
    name INTEGER,
-   txtvalue TXT
+   txtvalue TEXT
 );
 
 CREATE TABLE testclassinfo_arguments_dict (
@@ -181,49 +181,49 @@ CREATE TABLE testclassinfo_checklist_dict (
    id INTEGER PRIMARY KEY,
    containerid INTEGER,
    name TEXT,
-   txtvalue TXT
+   txtvalue TEXT
 );
 
 CREATE TABLE testclassinfo_extrainfo_dict (
    id INTEGER PRIMARY KEY,
    containerid INTEGER,
    name TEXT,
-   txtvalue TXT
+   txtvalue TEXT
 );
 
 CREATE TABLE testclassinfo_outputfiles_dict (
    id INTEGER PRIMARY KEY,
    containerid INTEGER,
    name TEXT,
-   txtvalue TXT
+   txtvalue TEXT
 );
 
 CREATE TABLE monitorclassinfo_arguments_dict (
    id INTEGER PRIMARY KEY,
    containerid INTEGER,
    name TEXT,
-   txtvalue TXT
+   txtvalue TEXT
 );
 
 CREATE TABLE monitorclassinfo_checklist_dict (
    id INTEGER PRIMARY KEY,
    containerid INTEGER,
    name TEXT,
-   txtvalue TXT
+   txtvalue TEXT
 );
 
 CREATE TABLE monitorclassinfo_extrainfo_dict (
    id INTEGER PRIMARY KEY,
    containerid INTEGER,
    name TEXT,
-   txtvalue TXT
+   txtvalue TEXT
 );
 
 CREATE TABLE monitorclassinfo_outputfiles_dict (
    id INTEGER PRIMARY KEY,
    containerid INTEGER,
    name TEXT,
-   txtvalue TXT
+   txtvalue TEXT
 );
 
 CREATE INDEX test_testrunid_idx ON test(testrunid);
