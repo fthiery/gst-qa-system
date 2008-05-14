@@ -141,7 +141,7 @@ CREATE TABLE test_outputfiles_dict (
 CREATE TABLE monitor_arguments_dict (
    id INTEGER PRIMARY KEY,
    containerid INTEGER,
-   name TEXT,
+   name INTEGER,
    intvalue INTEGER,
    txtvalue TXT,
    blobvalue BLOB
@@ -150,14 +150,14 @@ CREATE TABLE monitor_arguments_dict (
 CREATE TABLE monitor_checklist_dict (
    id INTEGER PRIMARY KEY,
    containerid INTEGER,
-   name TEXT,
+   name INTEGER,
    intvalue INTEGER
 );
 
 CREATE TABLE monitor_extrainfo_dict (
    id INTEGER PRIMARY KEY,
    containerid INTEGER,
-   name TEXT,
+   name INTEGER,
    intvalue INTEGER,
    txtvalue TXT,
    blobvalue BLOB
@@ -166,7 +166,7 @@ CREATE TABLE monitor_extrainfo_dict (
 CREATE TABLE monitor_outputfiles_dict (
    id INTEGER PRIMARY KEY,
    containerid INTEGER,
-   name TEXT,
+   name INTEGER,
    txtvalue TXT
 );
 
@@ -280,6 +280,9 @@ class SQLiteStorage(DBStorage):
         # cache of mappings for testclassinfo
         # { 'testtype' : { 'dictname' : mapping } }
         self.__tcmapping = {}
+        # cache of mappings for testclassinfo
+        # { 'testtype' : { 'dictname' : mapping } }
+        self.__mcmapping = {}
 
     def openDatabase(self):
         debug("opening sqlite db for path '%s'", self.path)
@@ -462,17 +465,25 @@ class SQLiteStorage(DBStorage):
         return self._storeDict("test_outputfiles_dict",
                                testid, map_dict(dict, maps))
 
-    def _storeMonitorArgumentsDict(self, monitorid, dict):
-        return self._storeDict("monitor_arguments_dict", monitorid, dict)
+    def _storeMonitorArgumentsDict(self, monitorid, dict, monitortype):
+        maps = self._getMonitorClassArgumentMapping(monitortype)
+        return self._storeDict("monitor_arguments_dict",
+                               monitorid, map_dict(dict, maps))
 
-    def _storeMonitorCheckListDict(self, monitorid, dict):
-        return self._storeDict("monitor_checklist_dict", monitorid, dict)
+    def _storeMonitorCheckListDict(self, monitorid, dict, monitortype):
+        maps = self._getMonitorClassCheckListMapping(monitortype)
+        return self._storeDict("monitor_checklist_dict",
+                               monitorid, map_dict(dict, maps))
 
-    def _storeMonitorExtraInfoDict(self, monitorid, dict):
-        return self._storeDict("monitor_extrainfo_dict", monitorid, dict)
+    def _storeMonitorExtraInfoDict(self, monitorid, dict, monitortype):
+        maps = self._getMonitorClassExtraInfoMapping(monitortype)
+        return self._storeDict("monitor_extrainfo_dict",
+                               monitorid, map_dict(dict, maps))
 
-    def _storeMonitorOutputFileDict(self, monitorid, dict):
-        return self._storeDict("monitor_outputfiles_dict", monitorid, dict)
+    def _storeMonitorOutputFileDict(self, monitorid, dict, monitortype):
+        maps = self._getMonitorClassOutputFileMapping(monitortype)
+        return self._storeDict("monitor_outputfiles_dict",
+                               monitorid, map_dict(dict, maps))
 
     def _storeTestClassArgumentsDict(self, testclassinfoid, dict):
         return self._storeDict("testclassinfo_arguments_dict", testclassinfoid, dict)
@@ -758,10 +769,14 @@ class SQLiteStorage(DBStorage):
         mid = self._ExecuteCommit(insertstr, (testid, monitortype,
                                               monitor.getSuccessPercentage()))
         # store related dictionnaries
-        self._storeMonitorArgumentsDict(mid, monitor.getArguments())
-        self._storeMonitorCheckListDict(mid, monitor.getCheckList())
-        self._storeMonitorExtraInfoDict(mid, monitor.getExtraInfo())
-        self._storeMonitorOutputFileDict(mid, monitor.getOutputFiles())
+        self._storeMonitorArgumentsDict(mid, monitor.getArguments(),
+                                        monitor.__monitor_name__)
+        self._storeMonitorCheckListDict(mid, monitor.getCheckList(),
+                                        monitor.__monitor_name__)
+        self._storeMonitorExtraInfoDict(mid, monitor.getExtraInfo(),
+                                        monitor.__monitor_name__)
+        self._storeMonitorOutputFileDict(mid, monitor.getOutputFiles(),
+                                         monitor.__monitor_name__)
         self.con.commit()
 
     # public retrieval API
@@ -957,14 +972,11 @@ class SQLiteStorage(DBStorage):
 
         return (desc, fulldesc, args, checks, extras, outputfiles)
 
-    def _getTestClassMapping(self, testtype, dictname):
-        if testtype in self.__tcmapping:
-            if dictname in self.__tcmapping[testtype]:
-                return self.__tcmapping[testtype][dictname]
+    def _getClassMapping(self, classtable, classtype, dictname):
         # returns a dictionnary of name : id mapping for a test's
         # arguments, including the parent class mapping
-        searchstr = "SELECT parent,id FROM testclassinfo WHERE type=?"
-        res = self._FetchOne(searchstr, (testtype, ))
+        searchstr = "SELECT parent,id FROM %s WHERE type=?" % classtable
+        res = self._FetchOne(searchstr, (classtype, ))
         if not res:
             return {}
         rp, tcid = res
@@ -979,10 +991,27 @@ class SQLiteStorage(DBStorage):
             vals = self._FetchAll(mapsearch, (tcid, ))
             maps.extend(vals)
 
+        return dict(maps)
+
+    def _getTestClassMapping(self, testtype, dictname):
+        # Search in the cache first
+        if testtype in self.__tcmapping:
+            if dictname in self.__tcmapping[testtype]:
+                return self.__tcmapping[testtype][dictname]
+        maps = self._getClassMapping("testclassinfo", testtype, dictname)
         if not testtype in self.__tcmapping:
             self.__tcmapping[testtype] = {}
         self.__tcmapping[testtype][dictname] = dict(maps)
-        return dict(maps)
+
+    def _getMonitorClassMapping(self, monitortype, dictname):
+        # Search in the cache first
+        if monitortype in self.__mcmapping:
+            if dictname in self.__mcmapping[monitortype]:
+                return self.__mcmapping[monitortype][dictname]
+        maps = self._getClassMapping("monitorclassinfo", monitortype, dictname)
+        if not monitortype in self.__mcmapping:
+            self.__mcmapping[monitortype] = {}
+        self.__mcmapping[monitortype][dictname] = dict(maps)
 
     def _getTestClassArgumentMapping(self, testtype):
         return self._getTestClassMapping(testtype, "testclassinfo_arguments_dict")
@@ -995,6 +1024,18 @@ class SQLiteStorage(DBStorage):
 
     def _getTestClassOutputFileMapping(self, testtype):
         return self._getTestClassMapping(testtype, "testclassinfo_outputfiles_dict")
+
+    def _getMonitorClassArgumentMapping(self, monitortype):
+        return self._getMonitorClassMapping(monitortype, "monitorclassinfo_arguments_dict")
+
+    def _getMonitorClassCheckListMapping(self, monitortype):
+        return self._getMonitorClassMapping(monitortype, "monitorclassinfo_checklist_dict")
+
+    def _getMonitorClassExtraInfoMapping(self, monitortype):
+        return self._getMonitorClassMapping(monitortype, "monitorclassinfo_extrainfo_dict")
+
+    def _getMonitorClassOutputFileMapping(self, monitortype):
+        return self._getMonitorClassMapping(monitortype, "monitorclassinfo_outputfiles_dict")
 
 
     def getMonitorsIDForTest(self, testid):
@@ -1022,10 +1063,14 @@ class SQLiteStorage(DBStorage):
         if res == (None, None, None):
             return (None, None, None, None, None, None, None)
         testid,mtype,resperc = res
-        args = self._getDict("monitor_arguments_dict", monitorid)
-        results = self._getDict("monitor_checklist_dict", monitorid, intonly=True)
-        extras = self._getDict("monitor_extrainfo_dict", monitorid)
-        outputfiles = self._getDict("monitor_outputfiles_dict", monitorid, txtonly=True)
+        args = map_dict(self._getDict("monitor_arguments_dict", monitorid),
+                        reverse_dict(self._getMonitorClassArgumentMapping(mtype)))
+        results = map_dict(self._getDict("monitor_checklist_dict", monitorid, intonly=True),
+                           reverse_dict(self._getMonitorClassCheckListMapping(mtype)))
+        extras = map_dict(self._getDict("monitor_extrainfo_dict", monitorid),
+                          reverse_dict(self._getMonitorClassExtraInfoMapping(mtype)))
+        outputfiles = map_dict(self._getDict("monitor_outputfiles_dict", monitorid, txtonly=True),
+                               reverse_dict(self._getMonitorClassOutputFileMapping(mtype)))
         return (testid, mtype, args, results, resperc, extras, outputfiles)
 
     def getMonitorInfo(self, monitorid):
