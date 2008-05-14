@@ -111,3 +111,14 @@ def get_test_class(testname):
         if testname == name:
             return cls
     raise ValueError("No Test class available for %s" % testname)
+
+def reverse_dict(adict):
+    """
+    Returns a dictionnary where keys and values are inverted.
+
+    Uniqueness of keys/values isn't checked !
+    """
+    d = {}
+    for k,v in adict.iteritems():
+        d[v] = k
+    return d
