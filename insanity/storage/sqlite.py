@@ -31,6 +31,7 @@ from insanity.storage.storage import DBStorage
 from insanity.scenario import Scenario
 from insanity.test import Test
 from insanity.monitor import Monitor
+from insanity.utils import reverse_dict, map_dict, map_list
 try:
     # In Python 2.5, this is part of the standard library:
     from sqlite3 import dbapi2 as sqlite
@@ -108,7 +109,7 @@ CREATE TABLE testrun_environment_dict (
 CREATE TABLE test_arguments_dict (
    id INTEGER PRIMARY KEY,
    containerid INTEGER,
-   name TEXT,
+   name INTEGER,
    intvalue INTEGER,
    txtvalue TXT,
    blobvalue BLOB
@@ -117,14 +118,14 @@ CREATE TABLE test_arguments_dict (
 CREATE TABLE test_checklist_list (
    id INTEGER PRIMARY KEY,
    containerid INTEGER,
-   name TEXT,
+   name INTEGER,
    intvalue INTEGER
 );
 
 CREATE TABLE test_extrainfo_dict (
    id INTEGER PRIMARY KEY,
    containerid INTEGER,
-   name TEXT,
+   name INTEGER,
    intvalue INTEGER,
    txtvalue TXT,
    blobvalue BLOB
@@ -133,7 +134,7 @@ CREATE TABLE test_extrainfo_dict (
 CREATE TABLE test_outputfiles_dict (
    id INTEGER PRIMARY KEY,
    containerid INTEGER,
-   name TEXT,
+   name INTEGER,
    txtvalue TXT
 );
 
@@ -276,6 +277,9 @@ class SQLiteStorage(DBStorage):
         self.__testrunid = None
         self.__testrun = None
         self.__tests = WeakKeyDictionary()
+        # cache of mappings for testclassinfo
+        # { 'testtype' : { 'dictname' : mapping } }
+        self.__tcmapping = {}
 
     def openDatabase(self):
         debug("opening sqlite db for path '%s'", self.path)
@@ -437,17 +441,26 @@ class SQLiteStorage(DBStorage):
             comstr = insertstr % (dicttable, valstr)
             cur.execute(comstr, (containerid, key, val))
 
-    def _storeTestArgumentsDict(self, testid, dict):
-        return self._storeDict("test_arguments_dict", testid, dict)
+    def _storeTestArgumentsDict(self, testid, dict, testtype):
+        # transform the dictionnary from names to ids
+        maps = self._getTestClassArgumentMapping(testtype)
+        return self._storeDict("test_arguments_dict",
+                               testid, map_dict(dict, maps))
 
-    def _storeTestCheckListList(self, testid, dict):
-        return self._storeList("test_checklist_list", testid, dict)
+    def _storeTestCheckListList(self, testid, dict, testtype):
+        maps = self._getTestClassCheckListMapping(testtype)
+        return self._storeList("test_checklist_list",
+                               testid, map_list(dict, maps))
 
-    def _storeTestExtraInfoDict(self, testid, dict):
-        return self._storeDict("test_extrainfo_dict", testid, dict)
+    def _storeTestExtraInfoDict(self, testid, dict, testtype):
+        maps = self._getTestClassExtraInfoMapping(testtype)
+        return self._storeDict("test_extrainfo_dict",
+                               testid, map_dict(dict, maps))
 
-    def _storeTestOutputFileDict(self, testid, dict):
-        return self._storeDict("test_outputfiles_dict", testid, dict)
+    def _storeTestOutputFileDict(self, testid, dict, testtype):
+        maps = self._getTestClassOutputFileMapping(testtype)
+        return self._storeDict("test_outputfiles_dict",
+                               testid, map_dict(dict, maps))
 
     def _storeMonitorArgumentsDict(self, monitorid, dict):
         return self._storeDict("monitor_arguments_dict", monitorid, dict)
@@ -600,13 +613,17 @@ class SQLiteStorage(DBStorage):
 
     def setClientInfo(self, softwarename, clientname, user, id=None):
         self._lock.acquire()
-        self._setClientInfo(softwarename, clientname, user)
-        self._lock.release()
+        try:
+            self._setClientInfo(softwarename, clientname, user)
+        finally:
+            self._lock.release()
 
     def startNewTestRun(self, testrun):
         self._lock.acquire()
-        self._startNewTestRun(testrun)
-        self._lock.release()
+        try:
+            self._startNewTestRun(testrun)
+        finally:
+            self._lock.release()
 
     def _startNewTestRun(self, testrun):
         # create new testrun entry with client entry
@@ -625,8 +642,10 @@ class SQLiteStorage(DBStorage):
 
     def endTestRun(self, testrun):
         self._lock.acquire()
-        self._endTestRun(testrun)
-        self._lock.release()
+        try:
+            self._endTestRun(testrun)
+        finally:
+            self._lock.release()
 
     def _endTestRun(self, testrun):
         debug("testrun:%r", testrun)
@@ -661,8 +680,10 @@ class SQLiteStorage(DBStorage):
 
     def newTestStarted(self, testrun, test, commit=True):
         self._lock.acquire()
-        self._newTestStarted(testrun, test, commit)
-        self._lock.release()
+        try:
+            self._newTestStarted(testrun, test, commit)
+        finally:
+            self._lock.release()
 
     def _newTestStarted(self, testrun, test, commit=True):
         if not isinstance(test, Test):
@@ -682,8 +703,10 @@ class SQLiteStorage(DBStorage):
 
     def newTestFinished(self, testrun, test):
         self._lock.acquire()
-        self._newTestFinished(testrun, test)
-        self._lock.release()
+        try:
+            self._newTestFinished(testrun, test)
+        finally:
+            self._lock.release()
 
     def _newTestFinished(self, testrun, test):
         if not self.__testrun == testrun:
@@ -704,10 +727,14 @@ class SQLiteStorage(DBStorage):
                                                 self.__tests[test]))
 
         # store the dictionnaries
-        self._storeTestArgumentsDict(tid, test.getArguments())
-        self._storeTestCheckListList(tid, test.getCheckList())
-        self._storeTestExtraInfoDict(tid, test.getExtraInfo())
-        self._storeTestOutputFileDict(tid, test.getOutputFiles())
+        self._storeTestArgumentsDict(tid, test.getArguments(),
+                                     test.__test_name__)
+        self._storeTestCheckListList(tid, test.getCheckList(),
+                                     test.__test_name__)
+        self._storeTestExtraInfoDict(tid, test.getExtraInfo(),
+                                     test.__test_name__)
+        self._storeTestOutputFileDict(tid, test.getOutputFiles(),
+                                      test.__test_name__)
         self.con.commit()
 
         # finally update the test
@@ -899,10 +926,14 @@ class SQLiteStorage(DBStorage):
         if not res:
             return (None, None, None, None, None, None, None)
         testrunid,ttype,resperc = res
-        args = self._getDict("test_arguments_dict", testid)
-        results = self._getList("test_checklist_list", testid, intonly=True)
-        extras = self._getDict("test_extrainfo_dict", testid)
-        outputfiles = self._getDict("test_outputfiles_dict", testid, txtonly=True)
+        args = map_dict(self._getDict("test_arguments_dict", testid),
+                        reverse_dict(self._getTestClassArgumentMapping(ttype)))
+        results = map_list(self._getList("test_checklist_list", testid, intonly=True),
+                           reverse_dict(self._getTestClassCheckListMapping(ttype)))
+        extras = map_dict(self._getDict("test_extrainfo_dict", testid),
+                          reverse_dict(self._getTestClassExtraInfoMapping(ttype)))
+        outputfiles = map_dict(self._getDict("test_outputfiles_dict", testid, txtonly=True),
+                               reverse_dict(self._getTestClassOutputFileMapping(ttype)))
         return (testrunid, ttype, args, results, resperc, extras, outputfiles)
 
     def getTestClassInfo(self, testtype):
@@ -911,7 +942,7 @@ class SQLiteStorage(DBStorage):
         res = self._FetchOne(searchstr, (testtype, ))
         if not res:
             return (None, None)
-        tcid, rp, desc, fulldesc = self._FetchOne(searchstr, (testtype, ))
+        tcid, rp, desc, fulldesc = res
         args = self._getDict("testclassinfo_arguments_dict", tcid, blobonly=True)
         checks = self._getDict("testclassinfo_checklist_dict", tcid, txtonly=True)
         extras = self._getDict("testclassinfo_extrainfo_dict", tcid, txtonly=True)
@@ -925,6 +956,46 @@ class SQLiteStorage(DBStorage):
             rp = prp
 
         return (desc, fulldesc, args, checks, extras, outputfiles)
+
+    def _getTestClassMapping(self, testtype, dictname):
+        if testtype in self.__tcmapping:
+            if dictname in self.__tcmapping[testtype]:
+                return self.__tcmapping[testtype][dictname]
+        # returns a dictionnary of name : id mapping for a test's
+        # arguments, including the parent class mapping
+        searchstr = "SELECT parent,id FROM testclassinfo WHERE type=?"
+        res = self._FetchOne(searchstr, (testtype, ))
+        if not res:
+            return {}
+        rp, tcid = res
+        mapsearch = """
+        SELECT name,id
+        FROM %s
+        WHERE containerid=?""" % dictname
+        maps = self._FetchAll(mapsearch, (tcid, ))
+        while rp:
+            res = self._FetchOne(searchstr, (rp, ))
+            rp, tcid = res
+            vals = self._FetchAll(mapsearch, (tcid, ))
+            maps.extend(vals)
+
+        if not testtype in self.__tcmapping:
+            self.__tcmapping[testtype] = {}
+        self.__tcmapping[testtype][dictname] = dict(maps)
+        return dict(maps)
+
+    def _getTestClassArgumentMapping(self, testtype):
+        return self._getTestClassMapping(testtype, "testclassinfo_arguments_dict")
+
+    def _getTestClassCheckListMapping(self, testtype):
+        return self._getTestClassMapping(testtype, "testclassinfo_checklist_dict")
+
+    def _getTestClassExtraInfoMapping(self, testtype):
+        return self._getTestClassMapping(testtype, "testclassinfo_extrainfo_dict")
+
+    def _getTestClassOutputFileMapping(self, testtype):
+        return self._getTestClassMapping(testtype, "testclassinfo_outputfiles_dict")
+
 
     def getMonitorsIDForTest(self, testid):
         """
