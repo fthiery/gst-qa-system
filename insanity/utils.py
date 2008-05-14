@@ -119,6 +119,8 @@ def reverse_dict(adict):
     Uniqueness of keys/values isn't checked !
     """
     d = {}
+    if not adict:
+        return d
     for k,v in adict.iteritems():
         d[v] = k
     return d
@@ -132,6 +134,8 @@ def map_dict(adict, mapdict):
     in the resulting dictionnary
     """
     d = {}
+    if not mapdict:
+        return d
     for k,v in adict.iteritems():
         if k in mapdict:
             d[mapdict[k]] = v
@@ -143,6 +147,8 @@ def map_list(alist, mapdict):
     the flattened out tuple-list version : [(key1,val1), (key2, val2)..]
     """
     r = []
+    if not mapdict:
+        return r
     for k,v in alist:
         if k in mapdict:
             r.append((mapdict[k], v))
