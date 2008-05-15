@@ -20,7 +20,8 @@ class Client(models.Model):
 class MonitorClassInfo(models.Model):
     id = models.IntegerField(null=True, primary_key=True, blank=True)
     type = models.TextField(blank=True)
-    parent = models.ForeignKey("self", db_column="parent")
+    parent = models.ForeignKey("self", db_column="parent",
+                               related_name="subclass")
     description = models.TextField(blank=True)
     class Meta:
         db_table = 'monitorclassinfo'
@@ -28,7 +29,8 @@ class MonitorClassInfo(models.Model):
 class MonitorClassInfoArgumentsDict(models.Model):
     id = models.IntegerField(null=True, primary_key=True, blank=True)
     containerid = models.ForeignKey(MonitorClassInfo,
-                                    db_column="containerid")
+                                    db_column="containerid",
+                                    related_name="argument")
     name = models.TextField(blank=True)
     txtvalue = models.TextField(blank=True)
     class Meta:
@@ -37,7 +39,8 @@ class MonitorClassInfoArgumentsDict(models.Model):
 class MonitorClassInfoCheckListDict(models.Model):
     id = models.IntegerField(null=True, primary_key=True, blank=True)
     containerid = models.ForeignKey(MonitorClassInfo,
-                                    db_column="containerid")
+                                    db_column="containerid",
+                                    related_name="checklist")
     name = models.TextField(blank=True)
     txtvalue = models.TextField(blank=True)
     class Meta:
@@ -46,7 +49,8 @@ class MonitorClassInfoCheckListDict(models.Model):
 class MonitorClassInfoExtraInfoDict(models.Model):
     id = models.IntegerField(null=True, primary_key=True, blank=True)
     containerid = models.ForeignKey(MonitorClassInfo,
-                                    db_column="containerid")
+                                    db_column="containerid",
+                                    related_name="extrainfo")
     name = models.TextField(blank=True)
     txtvalue = models.TextField(blank=True)
     class Meta:
@@ -55,7 +59,8 @@ class MonitorClassInfoExtraInfoDict(models.Model):
 class MonitorClassInfoOutputFilesDict(models.Model):
     id = models.IntegerField(null=True, primary_key=True, blank=True)
     containerid = models.ForeignKey(MonitorClassInfo,
-                                    db_column="containerid")
+                                    db_column="containerid",
+                                    related_name="outputfiles")
     name = models.TextField(blank=True)
     txtvalue = models.TextField(blank=True)
     class Meta:
@@ -64,7 +69,9 @@ class MonitorClassInfoOutputFilesDict(models.Model):
 class TestClassInfo(models.Model):
     id = models.IntegerField(null=True, primary_key=True, blank=True)
     type = models.TextField(blank=True)
-    parent = models.ForeignKey("self", to_field="type", db_column="parent")
+    parent = models.ForeignKey("self", to_field="type",
+                               db_column="parent",
+                               related_name="subclass")
     description = models.TextField(blank=True)
     fulldescription = models.TextField(blank=True)
     class Meta:
@@ -72,7 +79,9 @@ class TestClassInfo(models.Model):
 
 class TestClassInfoArgumentsDict(models.Model):
     id = models.IntegerField(null=True, primary_key=True, blank=True)
-    containerid = models.IntegerField(null=True, blank=True)
+    containerid = models.ForeignKey(TestClassInfo,
+                                    db_column="containerid",
+                                    related_name="arguments")
     name = models.TextField(blank=True)
     blobvalue = models.TextField(blank=True) # This field type is a guess.
     class Meta:
@@ -80,7 +89,9 @@ class TestClassInfoArgumentsDict(models.Model):
 
 class TestClassInfoCheckListDict(models.Model):
     id = models.IntegerField(null=True, primary_key=True, blank=True)
-    containerid = models.ForeignKey(TestClassInfo, db_column="containerid")
+    containerid = models.ForeignKey(TestClassInfo,
+                                    db_column="containerid",
+                                    related_name="checklist")
     name = models.TextField(blank=True)
     txtvalue = models.TextField(blank=True)
     class Meta:
@@ -88,7 +99,9 @@ class TestClassInfoCheckListDict(models.Model):
 
 class TestClassInfoExtraInfoDict(models.Model):
     id = models.IntegerField(null=True, primary_key=True, blank=True)
-    containerid = models.ForeignKey(TestClassInfo, db_column="containerid")
+    containerid = models.ForeignKey(TestClassInfo,
+                                    db_column="containerid",
+                                    related_name="extrainfos")
     name = models.TextField(blank=True)
     txtvalue = models.TextField(blank=True)
     class Meta:
@@ -96,7 +109,9 @@ class TestClassInfoExtraInfoDict(models.Model):
 
 class TestClassInfoOutputFilesDict(models.Model):
     id = models.IntegerField(null=True, primary_key=True, blank=True)
-    containerid = models.ForeignKey(TestClassInfo, db_column="containerid")
+    containerid = models.ForeignKey(TestClassInfo,
+                                    db_column="containerid",
+                                    related_name="outputfiles")
     name = models.TextField(blank=True)
     txtvalue = models.TextField(blank=True)
     class Meta:
@@ -113,15 +128,16 @@ class TestRun(models.Model):
 class Test(models.Model):
     id = models.IntegerField(null=True, primary_key=True, blank=True)
     testrunid = models.ForeignKey(TestRun, db_column="testrunid")
-    type = models.ForeignKey(TestClassInfo, db_column="type")
+    type = models.ForeignKey(TestClassInfo, db_column="type",
+                             related_name="instances")
     resultpercentage = models.TextField(blank=True) # This field type is a guess.
     class Meta:
         db_table = 'test'
 
-class Subtests(models.Model):
-    testid = models.ForeignKey(Test, db_column="testid",
-                               related_name="parent",
-                               primary_key=True)
+class SubTest(models.Model):
+    testid = models.OneToOneField(Test, db_column="testid",
+                                  related_name="parent",
+                                  primary_key=True)
     scenarioid = models.ForeignKey(Test, db_column="scenarioid",
                                    related_name="subtest")
     class Meta:
@@ -130,14 +146,16 @@ class Subtests(models.Model):
 class Monitor(models.Model):
     id = models.IntegerField(null=True, primary_key=True, blank=True)
     testid = models.ForeignKey(Test, db_column="testid")
-    type = models.ForeignKey(MonitorClassInfo, db_column="type")
+    type = models.ForeignKey(MonitorClassInfo, db_column="type",
+                             related_name="instances")
     resultpercentage = models.TextField(blank=True) # This field type is a guess.
     class Meta:
         db_table = 'monitor'
 
 class MonitorArgumentsDict(models.Model):
     id = models.IntegerField(null=True, primary_key=True, blank=True)
-    containerid = models.ForeignKey(Monitor, db_column="containerid")
+    containerid = models.ForeignKey(Monitor, db_column="containerid",
+                                    related_name="arguments")
     name = models.ForeignKey(MonitorClassInfoArgumentsDict,
                              db_column="name")
     intvalue = models.IntegerField(null=True, blank=True)
@@ -148,7 +166,8 @@ class MonitorArgumentsDict(models.Model):
 
 class MonitorChecklistDict(models.Model):
     id = models.IntegerField(null=True, primary_key=True, blank=True)
-    containerid = models.ForeignKey(Monitor, db_column="containerid")
+    containerid = models.ForeignKey(Monitor, db_column="containerid",
+                                    related_name="checklist")
     name = models.ForeignKey(MonitorClassInfoCheckListDict,
                              db_column="name")
     containerid = models.IntegerField(null=True, blank=True)
@@ -159,7 +178,8 @@ class MonitorChecklistDict(models.Model):
 
 class MonitorExtraInfoDict(models.Model):
     id = models.IntegerField(null=True, primary_key=True, blank=True)
-    containerid = models.ForeignKey(Monitor, db_column="containerid")
+    containerid = models.ForeignKey(Monitor, db_column="containerid",
+                                    related_name="extrainfos")
     name = models.ForeignKey(MonitorClassInfoExtraInfoDict,
                              db_column="name")
     containerid = models.IntegerField(null=True, blank=True)
@@ -172,7 +192,8 @@ class MonitorExtraInfoDict(models.Model):
 
 class MonitorOutputFilesDict(models.Model):
     id = models.IntegerField(null=True, primary_key=True, blank=True)
-    containerid = models.ForeignKey(Monitor, db_column="containerid")
+    containerid = models.ForeignKey(Monitor, db_column="containerid",
+                                    related_name="outputfiles")
     name = models.ForeignKey(MonitorClassInfoOutputFilesDict,
                              db_column="name")
     txtvalue = models.TextField(blank=True)
@@ -181,7 +202,8 @@ class MonitorOutputFilesDict(models.Model):
 
 class TestArgumentsDict(models.Model):
     id = models.IntegerField(null=True, primary_key=True, blank=True)
-    containerid = models.ForeignKey(Test, db_column="containerid")
+    containerid = models.ForeignKey(Test, db_column="containerid",
+                                    related_name="arguments")
     name = models.ForeignKey(TestClassInfoArgumentsDict,
                              db_column="name")
     intvalue = models.IntegerField(null=True, blank=True)
@@ -192,7 +214,8 @@ class TestArgumentsDict(models.Model):
 
 class TestCheckListList(models.Model):
     id = models.IntegerField(null=True, primary_key=True, blank=True)
-    containerid = models.ForeignKey(Test, db_column="containerid")
+    containerid = models.ForeignKey(Test, db_column="containerid",
+                                    related_name="checklist")
     name = models.ForeignKey(TestClassInfoCheckListDict,
                              db_column="name")
     intvalue = models.IntegerField(null=True, blank=True)
@@ -201,7 +224,8 @@ class TestCheckListList(models.Model):
 
 class TestOutputFilesDict(models.Model):
     id = models.IntegerField(null=True, primary_key=True, blank=True)
-    containerid = models.ForeignKey(Test, db_column="containerid")
+    containerid = models.ForeignKey(Test, db_column="containerid",
+                                    related_name="outputfiles")
     name = models.ForeignKey(TestClassInfoOutputFilesDict,
                              db_column="name")
     txtvalue = models.TextField(blank=True)
@@ -210,7 +234,8 @@ class TestOutputFilesDict(models.Model):
 
 class TestExtraInfoDict(models.Model):
     id = models.IntegerField(null=True, primary_key=True, blank=True)
-    containerid = models.ForeignKey(Test, db_column="containerid")
+    containerid = models.ForeignKey(Test, db_column="containerid",
+                                    related_name="extrainfo")
     name = models.ForeignKey(TestClassInfoExtraInfoDict,
                              db_column="name")
     intvalue = models.IntegerField(null=True, blank=True)
@@ -221,7 +246,8 @@ class TestExtraInfoDict(models.Model):
 
 class TestRunEnvironmentDict(models.Model):
     id = models.IntegerField(null=True, primary_key=True, blank=True)
-    containerid = models.ForeignKey(TestRun, db_column="containerid")
+    containerid = models.ForeignKey(TestRun, db_column="containerid",
+                                    related_name="environment")
     name = models.TextField(blank=True)
     intvalue = models.IntegerField(null=True, blank=True)
     txtvalue = models.TextField(blank=True)
