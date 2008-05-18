@@ -25,4 +25,4 @@ Collection of generators
 
 # add module names to __all__ when adding new generator modules
 
-__all__ = ["filesystem"]
+__all__ = ["filesystem", "elements"]

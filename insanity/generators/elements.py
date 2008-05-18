@@ -24,16 +24,22 @@ GstElement-related generators
 """
 
 import string
+import gst
 from insanity.generator import Generator
 from insanity.log import critical, error, warning, debug, info
 
 class ElementGenerator(Generator):
     """
-    Expands to a list of gst.ElementFactory
+    Expands to a list of gst.ElementFactory names that
+    match the given list of Class.
+
+    If no list of Class is specified, then all available
+    gst.ElementFactory available on the system is returned.
     """
 
     __args__ = {
-        "class":"list of Class to filter against"
+        "classes":"list of Class to filter against",
+        "factories":"If set to True, will return objects and not strings"
         }
 
     def _generate(self):
@@ -44,12 +50,16 @@ class ElementGenerator(Generator):
             return True
 
         res = []
-        classes = self.kwargs.get("class", [])
+        classes = self.kwargs.get("classes", [])
+        retfact = self.kwargs.get("factories", False)
         all = gst.registry_get_default().get_feature_list(gst.TYPE_ELEMENT_FACTORY)
         # filter by class
         for fact in all:
             if list_compat(classes, string.split(fact.get_klass(), '/')):
-                res.append(fact)
+                if retfact:
+                    res.append(fact)
+                else:
+                    res.append(fact.get_name())
         return res
 
 class MuxerGenerator(ElementGenerator):
@@ -58,7 +68,7 @@ class MuxerGenerator(ElementGenerator):
     """
 
     def __init__(self, *args, **kwargs):
-        kwargs["class"] = ["Codec", "Muxer"]
+        kwargs["classes"] = ["Codec", "Muxer"]
         ElementGenerator.__init__(self, *args, **kwargs)
 
 class AudioEncoderGenerator(ElementGenerator):
@@ -67,7 +77,7 @@ class AudioEncoderGenerator(ElementGenerator):
     """
 
     def __init__(self, *args, **kwargs):
-        kwargs["class"] = ["Codec", "Encoder", "Audio"]
+        kwargs["classes"] = ["Codec", "Encoder", "Audio"]
         ElementGenerator.__init__(self, *args, **kwargs)
 
 class VideoEncoderGenerator(ElementGenerator):
@@ -76,7 +86,7 @@ class VideoEncoderGenerator(ElementGenerator):
     """
 
     def __init__(self, *args, **kwargs):
-        kwargs["class"] = ["Codec", "Encoder"]
+        kwargs["classes"] = ["Codec", "Encoder"]
         ElementGenerator.__init__(self, *args, **kwargs)
 
     def _generate(self):
@@ -107,7 +117,7 @@ class EncoderMuxerGenerator(Generator):
     The contents of the tuple are gst.ElementFactory.
 
     If the muxer can handle raw formats, the adequate encoder
-    field it will contain the 'identity' gst.ElementFactory.
+    field will contain 'identity'.
 
     If the 'single_streams' argument is set to True, then the
     returned list will also contain combinations with only one
@@ -118,7 +128,8 @@ class EncoderMuxerGenerator(Generator):
         "muxer":"Name of the Muxer to filter the results against",
         "audio_encoder":"Name of the Audio Encoder to filter the results against",
         "video_encoder":"Name of the Video Encoder to filter the results against",
-        "single_streams":"Also returns single-encoder combinations if True"
+        "single_streams":"Also returns single-encoder combinations if True",
+        "factories":"Returns object and not names if set to True"
         }
 
     def _generate(self):
@@ -126,25 +137,26 @@ class EncoderMuxerGenerator(Generator):
         aencname = self.kwargs.get("audio_encoder", None)
         vencname = self.kwargs.get("video_encoder", None)
         singlestreams = self.kwargs.get("single_streams", False)
+        retfact = self.kwargs.get("factories", False)
 
-        muxer = gst.element_factory_find(muxername)
-        aenc = gst.element_factory_find(aencname)
-        venc = gst.element_factory_find(vencname)
+        muxer = muxername and gst.element_factory_find(muxername)
+        aenc = aencname and gst.element_factory_find(aencname)
+        venc = vencname and gst.element_factory_find(vencname)
 
         if muxer:
             allmuxers = [muxer]
         else:
-            allmuxers = MuxerGenerator().generate()
+            allmuxers = MuxerGenerator(factories=True).generate()
 
         if aenc:
             allaencs = [aenc]
         else:
-            allaencs = AudioEncoderGenerator().generate()
+            allaencs = AudioEncoderGenerator(factories=True).generate()
 
         if venc:
             allvencs = [venc]
         else:
-            allvencs = VideoEncoderGenerator().generate()
+            allvencs = VideoEncoderGenerator(factories=True).generate()
 
         def can_sink_caps(muxer, ocaps):
             sinkcaps = [x.get_caps() for x in muxer.get_static_pad_templates() if x.direction == gst.PAD_SINK]
@@ -157,32 +169,54 @@ class EncoderMuxerGenerator(Generator):
             res = []
             for encoder in encoders:
                 for caps in [x.get_caps() for x in encoder.get_static_pad_templates() if x.direction == gst.PAD_SRC]:
-                    if my_can_sink_caps(muxer, caps):
+                    if can_sink_caps(muxer, caps):
                         res.append(encoder)
                         break
             return res
 
-
         res = []
+        # reduce allmuxers to those intersecting with the encoders
         for mux in allmuxers:
             # get the compatible encoders, without forgetting the
             # raw pads
             compatvenc = encoders_muxer_compatible(allvencs, mux)
             compataenc = encoders_muxer_compatible(allaencs, mux)
-            if can_sink_caps(mux, gst.Caps("audio/x-raw-int;audio/x-raw-float")):
+
+            # skip muxers than don't accept the specified encoders
+            if vencname and not gst.element_factory_find(vencname) in compatvenc:
+                continue
+            if aencname and not gst.element_factory_find(aencname) in compataenc:
+                continue
+
+            if not aencname and can_sink_caps(mux, gst.Caps("audio/x-raw-int;audio/x-raw-float")):
                 compataenc.append(gst.element_factory_find("identity"))
-            if can_sink_caps(mux, gst.Caps("video/x-raw-rgb;video/x-raw-yuv")):
+            if not vencname and can_sink_caps(mux, gst.Caps("video/x-raw-rgb;video/x-raw-yuv")):
                 compatvenc.append(gst.element_factory_find("identity"))
 
             # and now produce the tuples
             for venc in compatvenc:
                 for aenc in compataenc:
-                    res.append((aenc, venc, mux))
+                    if retfact:
+                        res.append((aenc, venc, mux))
+                    else:
+                        res.append((aenc.get_name(),
+                                    venc.get_name(),
+                                    mux.get_name()))
 
             if singlestreams:
-                for venc in compatvenc:
-                    res.append((None, venc, mux))
-                for aenc in compataenc:
-                    res.append((aenc, None, mux))
+                if not aencname:
+                    for venc in compatvenc:
+                        if retfact:
+                            res.append((None, venc, mux))
+                        else:
+                            res.append((None, venc.get_name(),
+                                        mux.get_name()))
+                if not vencname:
+                    for aenc in compataenc:
+                        if retfact:
+                            res.append((aenc, None, mux))
+                        else:
+                            res.append((aenc.get_name(), None,
+                                        mux.get_name()))
 
         return res
