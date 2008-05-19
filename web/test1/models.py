@@ -17,6 +17,13 @@ class Client(models.Model):
     class Meta:
         db_table = 'client'
 
+    class Admin:
+        pass
+
+    def __str__(self):
+        return "Client #%d [%s/%s/%s]" % (self.id, self.software, self.name,
+                                          self.user)
+
 class MonitorClassInfo(models.Model):
     id = models.IntegerField(null=True, primary_key=True, blank=True)
     type = models.TextField(blank=True)
