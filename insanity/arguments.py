@@ -36,6 +36,10 @@ class Arguments:
     Those arguments can either be :
     * static arguments (ex: int, list, string, etc...), or
     * dynamic arguments (currently only generators).
+
+    If a dynamic arguments produces multiple return values, you need
+    to name that argument as the coma-separated concatenation of the
+    individual arguments. Ex : "arg1,arg2,arg3"
     """
 
     def __init__(self, *args, **kwargs):
@@ -75,7 +79,13 @@ class Arguments:
             for key in self.genlist:
                 info("key")
                 gen, idx, length = self.generators[key]
-                res[key] = gen[idx]
+                # split generator name
+                keys = key.split(",")
+                if len(keys):
+                    for i in range(len(keys)):
+                        res[keys[i]] = gen[idx][i]
+                else:
+                    res[keys[0]] = gen[idx]
             # update values
             self.updateGeneratorsPosition()
         # update global idx
