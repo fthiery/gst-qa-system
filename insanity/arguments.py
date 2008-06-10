@@ -81,7 +81,7 @@ class Arguments:
                 gen, idx, length = self.generators[key]
                 # split generator name
                 keys = key.split(",")
-                if len(keys):
+                if len(keys) > 1:
                     for i in range(len(keys)):
                         res[keys[i]] = gen[idx][i]
                 else:
