@@ -1,0 +1,9 @@
+{% if latest_runs %}
+    <ul>
+    {% for run in latest_runs %}
+        <li>TestRun #{{ run.id }}</li>
+    {% endfor %}
+    </ul>
+{% else %}
+    <p>No Test Runs are available.</p>
+{% endif %}
