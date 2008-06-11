@@ -922,7 +922,7 @@ class SQLiteStorage(DBStorage):
             return []
         return list(zip(*res)[0])
 
-    def getFullTestInfo(self, testid):
+    def getFullTestInfo(self, testid, rawinfo=False):
         """
         Returns a tuple with the following info:
         * the testrun id in which it was executed
@@ -932,23 +932,37 @@ class SQLiteStorage(DBStorage):
         * the result percentage
         * the extra information (dictionnary)
         * the output files (dictionnary)
+
+        If rawinfo is set to True, then the keys of the following
+        dictionnaries will be integer identifiers (and not strings):
+        * arguments, results, extra information, output files
+        Also, the testtype will be the testclass ID (and not a string)
         """
-        searchstr = """
-        SELECT test.testrunid,testclassinfo.type,test.resultpercentage
-        FROM test,testclassinfo
-        WHERE test.id=? AND test.type=testclassinfo.id"""
+        if not rawinfo:
+            searchstr = """
+            SELECT test.testrunid,testclassinfo.type,test.resultpercentage
+            FROM test,testclassinfo
+            WHERE test.id=? AND test.type=testclassinfo.id"""
+        else:
+            searchstr = """
+            SELECT test.testrunid,test.type,test.resultpercentage
+            FROM test
+            WHERE test.id=?"""
         res = self._FetchOne(searchstr, (testid, ))
         if not res:
             return (None, None, None, None, None, None, None)
         testrunid,ttype,resperc = res
-        args = map_dict(self._getDict("test_arguments_dict", testid),
-                        reverse_dict(self._getTestClassArgumentMapping(ttype)))
-        results = map_list(self._getList("test_checklist_list", testid, intonly=True),
-                           reverse_dict(self._getTestClassCheckListMapping(ttype)))
-        extras = map_dict(self._getDict("test_extrainfo_dict", testid),
-                          reverse_dict(self._getTestClassExtraInfoMapping(ttype)))
-        outputfiles = map_dict(self._getDict("test_outputfiles_dict", testid, txtonly=True),
-                               reverse_dict(self._getTestClassOutputFileMapping(ttype)))
+        args = self._getDict("test_arguments_dict", testid)
+        results = self._getList("test_checklist_list", testid, intonly=True)
+        extras = self._getDict("test_extrainfo_dict", testid)
+        outputfiles = self._getDict("test_outputfiles_dict", testid, txtonly=True)
+        if not rawinfo:
+            args = map_dict(args, reverse_dict(self._getTestClassArgumentMapping(ttype)))
+            results = map_list(results, reverse_dict(self._getTestClassCheckListMapping(ttype)))
+            extras = map_dict(extras,
+                              reverse_dict(self._getTestClassExtraInfoMapping(ttype)))
+            outputfiles = map_dict(outputfiles,
+                                   reverse_dict(self._getTestClassOutputFileMapping(ttype)))
         return (testrunid, ttype, args, results, resperc, extras, outputfiles)
 
     def getTestClassInfo(self, testtype):
