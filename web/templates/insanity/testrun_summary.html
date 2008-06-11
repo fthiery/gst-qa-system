@@ -1,1 +1,7 @@
 <b>TestRun #{{ testrun.id }}</b>
+<br>
+<ul>
+{% for test in testrun.test_set.all %}
+  <li><a href={{ test.get_absolute_url }}>Test</a> #{{ test.id }} [{{ test.type.type }}] Success:{{test.resultpercentage}}%</li>
+{% endfor %}
+</ul>

@@ -1,0 +1,24 @@
+<b>Test #{{ test.id }}</b><br>
+URL : [{{test.get_absolute_url}}]<br>
+TestRun : {{test.testrunid}} <br>
+test type : {{test.type.type}} <br>
+Success rate : {{test.resultpercentage}}% <br>
+Arguments:<br>
+{% for arg in test.arguments.all %}
+  {{arg.name.name}}:{{arg.value}}<br>
+{% endfor %}
+<br>
+CheckList:<br>
+{% for check in test.checklist.all %}
+  {{check.name.name}}:{{check.value}}<br>
+{% endfor %}
+<br>
+OutputFiles:<br>
+{% for outf in test.outputfiles.all %}
+  {{outf.name.name}}:{{outf.value}}<br>
+{% endfor %}
+<br>
+ExtraInfo:<br>
+{% for extra in test.extrainfo.all %}
+  {{extra.name.name}}:{{extra.value}}<br>
+{% endfor %}
