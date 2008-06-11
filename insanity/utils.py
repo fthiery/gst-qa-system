@@ -25,6 +25,7 @@ Miscellaneous utility functions and classes
 """
 
 from random import randint
+import bz2
 
 __uuids = []
 
@@ -153,3 +154,19 @@ def map_list(alist, mapdict):
         if k in mapdict:
             r.append((mapdict[k], v))
     return r
+
+def compress_file(original, compfile):
+    """
+    Takes the contents of 'original' and compresses it into the new file
+    'compfile' using BZ2.
+    """
+    f = open(original, "r")
+    out = bz2.BZ2File(compfile, "w")
+    # reading 8kbytes at a time, might want to increase it later
+    buf = f.read(8192)
+    while buf:
+        out.write(buf)
+        buf = f.read(8192)
+
+    f.close()
+    out.close()
