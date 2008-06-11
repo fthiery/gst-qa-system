@@ -1,5 +1,7 @@
 import time
+from cPickle import dumps, loads
 from django.db import models
+from django.db.models import permalink
 
 class Client(models.Model):
     id = models.IntegerField(null=True, primary_key=True, blank=True)
@@ -31,7 +33,8 @@ class MonitorClassInfoArgumentsDict(models.Model):
                                     db_column="containerid",
                                     related_name="argument")
     name = models.TextField(blank=True)
-    txtvalue = models.TextField(blank=True)
+    value = models.TextField(blank=True,
+                             db_column="txtvalue")
     class Meta:
         db_table = 'monitorclassinfo_arguments_dict'
 
@@ -41,7 +44,8 @@ class MonitorClassInfoCheckListDict(models.Model):
                                     db_column="containerid",
                                     related_name="checklist")
     name = models.TextField(blank=True)
-    txtvalue = models.TextField(blank=True)
+    value = models.TextField(blank=True,
+                             db_column="txtvalue")
     class Meta:
         db_table = 'monitorclassinfo_checklist_dict'
 
@@ -51,7 +55,8 @@ class MonitorClassInfoExtraInfoDict(models.Model):
                                     db_column="containerid",
                                     related_name="extrainfo")
     name = models.TextField(blank=True)
-    txtvalue = models.TextField(blank=True)
+    value = models.TextField(blank=True,
+                             db_column="txtvalue")
     class Meta:
         db_table = 'monitorclassinfo_extrainfo_dict'
 
@@ -61,7 +66,8 @@ class MonitorClassInfoOutputFilesDict(models.Model):
                                     db_column="containerid",
                                     related_name="outputfiles")
     name = models.TextField(blank=True)
-    txtvalue = models.TextField(blank=True)
+    value = models.TextField(blank=True,
+                             db_column="txtvalue")
     class Meta:
         db_table = 'monitorclassinfo_outputfiles_dict'
 
@@ -83,6 +89,11 @@ class TestClassInfoArgumentsDict(models.Model):
                                     related_name="arguments")
     name = models.TextField(blank=True)
     blobvalue = models.TextField(blank=True) # This field type is a guess.
+
+    def _get_value(self):
+        return loads(str(self.blobvalue))
+    value = property(_get_value)
+
     class Meta:
         db_table = 'testclassinfo_arguments_dict'
 
@@ -92,7 +103,8 @@ class TestClassInfoCheckListDict(models.Model):
                                     db_column="containerid",
                                     related_name="checklist")
     name = models.TextField(blank=True)
-    txtvalue = models.TextField(blank=True)
+    value = models.TextField(blank=True,
+                             db_column="txtvalue")
     class Meta:
         db_table = 'testclassinfo_checklist_dict'
 
@@ -102,7 +114,7 @@ class TestClassInfoExtraInfoDict(models.Model):
                                     db_column="containerid",
                                     related_name="extrainfos")
     name = models.TextField(blank=True)
-    txtvalue = models.TextField(blank=True)
+    value = models.TextField(blank=True, db_column="txtvalue")
     class Meta:
         db_table = 'testclassinfo_extrainfo_dict'
 
@@ -112,7 +124,7 @@ class TestClassInfoOutputFilesDict(models.Model):
                                     db_column="containerid",
                                     related_name="outputfiles")
     name = models.TextField(blank=True)
-    txtvalue = models.TextField(blank=True)
+    value = models.TextField(blank=True, db_column="txtvalue")
     class Meta:
         db_table = 'testclassinfo_outputfiles_dict'
 
@@ -124,6 +136,10 @@ class TestRun(models.Model):
     class Meta:
         db_table = 'testrun'
 
+    def get_absolute_url(self):
+        return ('web.insanity.views.testrun_summary', [str(self.id)])
+    get_absolute_url = permalink(get_absolute_url)
+
     def __str__(self):
         return "Testrun #%d [%s]" % (self.id, time.ctime(self.starttime))
 
@@ -133,6 +149,11 @@ class Test(models.Model):
     type = models.ForeignKey(TestClassInfo, db_column="type",
                              related_name="instances")
     resultpercentage = models.TextField(blank=True) # This field type is a guess.
+
+    def get_absolute_url(self):
+        return ('web.insanity.views.test_summary', [str(self.id)])
+    get_absolute_url = permalink(get_absolute_url)
+
     class Meta:
         db_table = 'test'
 
@@ -163,6 +184,16 @@ class MonitorArgumentsDict(models.Model):
     intvalue = models.IntegerField(null=True, blank=True)
     txtvalue = models.TextField(blank=True)
     blobvalue = models.TextField(blank=True) # This field type is a guess.
+
+    def _get_value(self):
+        # our magic to figure out the type of the value
+        if not self.intvalue == None:
+            return self.intvalue
+        if not self.txtvalue == None:
+            return self.txtvalue
+        return loads(str(self.blobvalue))
+    value = property(_get_value)
+
     class Meta:
         db_table = 'monitor_arguments_dict'
 
@@ -174,7 +205,8 @@ class MonitorChecklistDict(models.Model):
                              db_column="name")
     containerid = models.IntegerField(null=True, blank=True)
     name = models.IntegerField(null=True, blank=True)
-    intvalue = models.IntegerField(null=True, blank=True)
+    value = models.IntegerField(null=True, blank=True,
+                                db_column="intvalue")
     class Meta:
         db_table = 'monitor_checklist_dict'
 
@@ -189,6 +221,16 @@ class MonitorExtraInfoDict(models.Model):
     intvalue = models.IntegerField(null=True, blank=True)
     txtvalue = models.TextField(blank=True)
     blobvalue = models.TextField(blank=True) # This field type is a guess.
+
+    def _get_value(self):
+        # our magic to figure out the type of the value
+        if not self.intvalue == None:
+            return self.intvalue
+        if not self.txtvalue == None:
+            return self.txtvalue
+        return loads(str(self.blobvalue))
+    value = property(_get_value)
+
     class Meta:
         db_table = 'monitor_extrainfo_dict'
 
@@ -198,7 +240,7 @@ class MonitorOutputFilesDict(models.Model):
                                     related_name="outputfiles")
     name = models.ForeignKey(MonitorClassInfoOutputFilesDict,
                              db_column="name")
-    txtvalue = models.TextField(blank=True)
+    value = models.TextField(blank=True, db_column="txtvalue")
     class Meta:
         db_table = 'monitor_outputfiles_dict'
 
@@ -211,6 +253,16 @@ class TestArgumentsDict(models.Model):
     intvalue = models.IntegerField(null=True, blank=True)
     txtvalue = models.TextField(blank=True)
     blobvalue = models.TextField(blank=True) # This field type is a guess.
+
+    def _get_value(self):
+        # our magic to figure out the type of the value
+        if not self.intvalue == None:
+            return self.intvalue
+        if not self.txtvalue == None:
+            return self.txtvalue
+        return loads(str(self.blobvalue))
+    value = property(_get_value)
+
     class Meta:
         db_table = 'test_arguments_dict'
 
@@ -220,7 +272,8 @@ class TestCheckListList(models.Model):
                                     related_name="checklist")
     name = models.ForeignKey(TestClassInfoCheckListDict,
                              db_column="name")
-    intvalue = models.IntegerField(null=True, blank=True)
+    value = models.IntegerField(null=True, blank=True,
+                                db_column="intvalue")
     class Meta:
         db_table = 'test_checklist_list'
 
@@ -230,7 +283,7 @@ class TestOutputFilesDict(models.Model):
                                     related_name="outputfiles")
     name = models.ForeignKey(TestClassInfoOutputFilesDict,
                              db_column="name")
-    txtvalue = models.TextField(blank=True)
+    value = models.TextField(blank=True, db_column="txtvalue")
     class Meta:
         db_table = 'test_outputfiles_dict'
 
@@ -243,6 +296,16 @@ class TestExtraInfoDict(models.Model):
     intvalue = models.IntegerField(null=True, blank=True)
     txtvalue = models.TextField(blank=True)
     blobvalue = models.TextField(blank=True) # This field type is a guess.
+
+    def _get_value(self):
+        # our magic to figure out the type of the value
+        if not self.intvalue == None:
+            return self.intvalue
+        if not self.txtvalue == None:
+            return self.txtvalue
+        return loads(str(self.blobvalue))
+    value = property(_get_value)
+
     class Meta:
         db_table = 'test_extrainfo_dict'
 
@@ -254,6 +317,16 @@ class TestRunEnvironmentDict(models.Model):
     intvalue = models.IntegerField(null=True, blank=True)
     txtvalue = models.TextField(blank=True)
     blobvalue = models.TextField(blank=True) # This field type is a guess.
+
+    def _get_value(self):
+        # our magic to figure out the type of the value
+        if not self.intvalue == None:
+            return self.intvalue
+        if not self.txtvalue == None:
+            return self.txtvalue
+        return loads(str(self.blobvalue))
+    value = property(_get_value)
+
     class Meta:
         db_table = 'testrun_environment_dict'
 
