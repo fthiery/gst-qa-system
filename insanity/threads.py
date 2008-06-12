@@ -105,35 +105,35 @@ class ActionQueueThread(threading.Thread):
 
     def run(self):
         # do something
-        warning("Starting in proces...")
+        debug("Starting in proces...")
         self._lock.acquire()
         while True:
-            warning("queue:%d _exit:%r _abort:%r",
+            debug("queue:%d _exit:%r _abort:%r",
                     len(self._queue), self._exit,
                     self._abort)
             if self._abort:
-                warning("aborting")
+                debug("aborting")
                 self._lock.release()
                 return
 
             while len(self._queue) == 0:
-                warning("queue:%d _exit:%r _abort:%r",
+                debug("queue:%d _exit:%r _abort:%r",
                         len(self._queue), self._exit,
                         self._abort)
                 if self._exit:
                     self._lock.release()
                     return
-                warning("waiting for cond")
+                debug("waiting for cond")
                 self._lock.wait()
-                warning("cond was triggered")
+                debug("cond was triggered")
                 if self._abort:
                     self._lock.release()
                     return
             method, args, kwargs = self._queue.pop(0)
             self._lock.release()
-            warning("about to call %r", method)
+            debug("about to call %r", method)
             method(*args, **kwargs)
-            warning("Finished calling %r, re-acquiring lock",
+            debug("Finished calling %r, re-acquiring lock",
                     method)
             self._lock.acquire()
 
@@ -149,17 +149,17 @@ class ActionQueueThread(threading.Thread):
         Returns True if the action was queued, else False.
         """
         res = False
-        warning("about to queue %r", method)
+        debug("about to queue %r", method)
         self._lock.acquire()
-        warning("Got lock to queue, _abort:%r, _exit:%r",
+        debug("Got lock to queue, _abort:%r, _exit:%r",
                 self._abort, self._exit)
         if not self._abort and not self._exit:
             self._queue.append((method, args, kwargs))
             self._lock.notify()
             res = True
-        warning("about to release lock")
+        debug("about to release lock")
         self._lock.release()
-        warning("lock released, result:%r", res)
+        debug("lock released, result:%r", res)
         return res
 
     def queueFinalAction(self, method, *args, **kwargs):
@@ -167,18 +167,18 @@ class ActionQueueThread(threading.Thread):
         Set a last action to be called.
         """
         res = False
-        warning("about to queue %r", method)
+        debug("about to queue %r", method)
         self._lock.acquire()
-        warning("Got lock to queue, _abort:%r, _exit:%r",
+        debug("Got lock to queue, _abort:%r, _exit:%r",
                 self._abort, self._exit)
         if not self._abort and not self._exit:
             self._queue.append((method, args, kwargs))
             res = True
         self._exit = True
         self._lock.notify()
-        warning("about to release lock")
+        debug("about to release lock")
         self._lock.release()
-        warning("lock released, result:%r", res)
+        debug("lock released, result:%r", res)
         return res
 
 
