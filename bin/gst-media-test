@@ -62,7 +62,7 @@ def create_testrun(files, testscripts, recursive=True, topdir=None,
                    extreme=False, valgrinding=False,
                    debuglevel=2, debuglevel2=5,
                    acceptlist=[], rejectlist=[],
-                   maxnbtests=2):
+                   maxnbtests=2, rerun=True):
     """
     Takes the parameters of gst-media-test and creates a TestRun object
     """
@@ -98,12 +98,17 @@ def create_testrun(files, testscripts, recursive=True, topdir=None,
         topdir = os.path.abspath(topdir)
     testrun = TestRun(maxnbtests=maxnbtests, workingdir=topdir)
     for test in tests:
-        testrun.addTest(GstMediaTestScenario,
-                        arguments = { "uri" : generator1,
-                                      "subtest-class": test,
-                                      "debug-level-1":str(debuglevel),
-                                      "debug-level-2":str(debuglevel2) },
-                        monitors = monitors)
+        if rerun:
+            testrun.addTest(GstMediaTestScenario,
+                            arguments = { "uri" : generator1,
+                                          "subtest-class": test,
+                                          "debug-level-1":str(debuglevel),
+                                          "debug-level-2":str(debuglevel2) },
+                            monitors = monitors)
+        else:
+            testrun.addTest(test,
+                            arguments = { "uri" : generator1 },
+                            monitors = monitors)
 
     return testrun
 
@@ -167,6 +172,9 @@ if __name__ == "__main__":
                       default=None, metavar="EXTENSIONS")
     parser.add_option("-S", "--simultaneous", dest="maxnbtests",
                       type="int", default=1, help="Maximum number of simultaneous tests (default:1)")
+    parser.add_option("-l", "--no-reruns", dest="rerun",
+                      action="store_false", default=True,
+                      help="Don't rerun test with higher debugging if it failed")
     (options, args) = parser.parse_args(sys.argv[1:])
     files = options.files
     tests = options.tests
@@ -203,6 +211,7 @@ if __name__ == "__main__":
                                  debuglevel2=options.debuglevel2,
                                  acceptlist=acceptlist,
                                  rejectlist=rejectlist,
-                                 maxnbtests=options.maxnbtests)
+                                 maxnbtests=options.maxnbtests,
+                                 rerun=options.rerun)
         tester = GstMediaTestClient(testrun, verbose=options.verbose)
         tester.run()
