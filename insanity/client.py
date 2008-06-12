@@ -113,9 +113,16 @@ class TesterClient(dbus.service.Object):
         Stop the client
         """
         debug("Quitting...")
+        if not self._running:
+            debug("we were already quitting")
+            return
         self._running = False
         if self._current:
             self._current.abort()
+        self._storage.shutDown(self._exit)
+
+    def _exit(self):
+        debug("Really quitting")
         dbustools.kill_private_dbus()
         # TODO : maybe we need to abort/cleanup some other things
         # like the DataStorage ?

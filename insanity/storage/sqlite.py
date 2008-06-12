@@ -25,6 +25,7 @@ SQLite based DataStorage
 
 import time
 import string
+import threading
 from weakref import WeakKeyDictionary
 from insanity.log import critical, error, warning, debug, info
 from insanity.storage.storage import DBStorage
@@ -32,6 +33,7 @@ from insanity.scenario import Scenario
 from insanity.test import Test
 from insanity.monitor import Monitor
 from insanity.utils import reverse_dict, map_dict, map_list
+from insanity.threads import ActionQueueThread
 try:
     # In Python 2.5, this is part of the standard library:
     from sqlite3 import dbapi2 as sqlite
@@ -265,13 +267,13 @@ DATA_TYPE_BLOB = 2
 # FIXME / WARNING
 # The current implementation only supports handling of one testrun at a time !
 #
-
 class SQLiteStorage(DBStorage):
     """
     Stores data in a sqlite db
     """
 
     def __init__(self, *args, **kwargs):
+        self._lock = threading.Lock()
         DBStorage.__init__(self, *args, **kwargs)
         self.__clientid = None
         self.__testrunid = None
@@ -283,6 +285,8 @@ class SQLiteStorage(DBStorage):
         # cache of mappings for testclassinfo
         # { 'testtype' : { 'dictname' : mapping } }
         self.__mcmapping = {}
+        self._actionThread = ActionQueueThread()
+        self._actionThread.start()
 
     def openDatabase(self):
         debug("opening sqlite db for path '%s'", self.path)
@@ -302,6 +306,11 @@ class SQLiteStorage(DBStorage):
                             (DATABASE_VERSION, int(time.time())))
         debug("Tables properly created")
 
+    def shutDown(self, callback, *args, **kwargs):
+        """ Shut down the database, the callback will be called when it's finished
+        processing pending actions. """
+        self._actionThread.queueFinalAction(callback, *args, **kwargs)
+
     def _checkForTables(self):
         # return False if the tables aren't created
         tables = self._getAllTables()
@@ -319,23 +328,31 @@ class SQLiteStorage(DBStorage):
         # returns the last row id
         commit = kwargs.pop("commit", True)
         debug("%s args:%r kwargs:%r", instruction, args, kwargs)
+        self._lock.acquire()
         cur = self.con.cursor()
         cur.execute(instruction, *args, **kwargs)
         if commit:
             self.con.commit()
+        self._lock.release()
         return cur.lastrowid
 
     def _FetchAll(self, instruction, *args, **kwargs):
         # Convenience function to fetch all results
+        self._lock.acquire()
         cur = self.con.cursor()
         cur.execute(instruction, *args, **kwargs)
-        return cur.fetchall()
+        res = cur.fetchall()
+        self._lock.release()
+        return res
 
     def _FetchOne(self, instruction, *args, **kwargs):
         # Convenience function to fetch all results
+        self._lock.acquire()
         cur = self.con.cursor()
         cur.execute(instruction, *args, **kwargs)
-        return cur.fetchone()
+        res = cur.fetchone()
+        self._lock.release()
+        return res
 
     def _getAllTables(self):
         """
@@ -386,6 +403,7 @@ class SQLiteStorage(DBStorage):
 
         insertstr = """INSERT INTO %s (id, containerid, name, %s)
         VALUES (NULL, ?, ?, ?)"""
+        self._lock.acquire()
         cur = self.con.cursor()
         for key,value in pdict.iteritems():
             debug("Adding key:%s , value:%r", key, value)
@@ -399,6 +417,7 @@ class SQLiteStorage(DBStorage):
                 val = sqlite.Binary(dumps(value))
             comstr = insertstr % (dicttable, valstr)
             cur.execute(comstr, (containerid, key, val))
+        self._lock.release()
 
     def _storeList(self, dicttable, containerid, pdict):
         if not pdict:
@@ -406,6 +425,7 @@ class SQLiteStorage(DBStorage):
             debug("Empty list, returning")
             return
 
+        self._lock.acquire()
         cur = self.con.cursor()
         insertstr = """INSERT INTO %s (id, containerid, name, %s)
         VALUES (NULL, ?, ?, ?)"""
@@ -421,6 +441,7 @@ class SQLiteStorage(DBStorage):
                 val = sqlite.Binary(dumps(value))
             comstr = insertstr % (dicttable, valstr)
             cur.execute(comstr, (containerid, key, val))
+        self._lock.release()
 
     def _storeList(self, dicttable, containerid, pdict):
         if not pdict:
@@ -428,6 +449,7 @@ class SQLiteStorage(DBStorage):
             debug("Empty list, returning")
             return
 
+        self._lock.acquire()
         cur = self.con.cursor()
         insertstr = """INSERT INTO %s (id, containerid, name, %s)
         VALUES (NULL, ?, ?, ?)"""
@@ -443,6 +465,7 @@ class SQLiteStorage(DBStorage):
                 val = sqlite.Binary(dumps(value))
             comstr = insertstr % (dicttable, valstr)
             cur.execute(comstr, (containerid, key, val))
+        self._lock.release()
 
     def _storeTestArgumentsDict(self, testid, dict, testtype):
         # transform the dictionnary from names to ids
@@ -542,7 +565,6 @@ class SQLiteStorage(DBStorage):
         self._storeTestClassCheckListDict(tcid, checklist)
         self._storeTestClassExtraInfoDict(tcid, extrainfo)
         self._storeTestClassOutputFileDict(tcid, outputfiles)
-        self.con.commit()
         return True
 
     def _storeTestClassInfo(self, testinstance):
@@ -584,7 +606,6 @@ class SQLiteStorage(DBStorage):
         self._storeMonitorClassCheckListDict(tcid, checklist)
         self._storeMonitorClassExtraInfoDict(tcid, extrainfo)
         self._storeMonitorClassOutputFileDict(tcid, outputfiles)
-        self.con.commit()
         return True
 
     def _storeMonitorClassInfo(self, monitorinstance):
@@ -625,18 +646,12 @@ class SQLiteStorage(DBStorage):
         return key
 
     def setClientInfo(self, softwarename, clientname, user, id=None):
-        self._lock.acquire()
-        try:
-            self._setClientInfo(softwarename, clientname, user)
-        finally:
-            self._lock.release()
+        self._actionThread.queueAction(self._setClientInfo, softwarename,
+                                       clientname, user)
 
     def startNewTestRun(self, testrun):
-        self._lock.acquire()
-        try:
-            self._startNewTestRun(testrun)
-        finally:
-            self._lock.release()
+        self._actionThread.queueAction(self._startNewTestRun,
+                                       testrun)
 
     def _startNewTestRun(self, testrun):
         # create new testrun entry with client entry
@@ -654,11 +669,8 @@ class SQLiteStorage(DBStorage):
         debug("Got testrun id %d", self.__testrunid)
 
     def endTestRun(self, testrun):
-        self._lock.acquire()
-        try:
-            self._endTestRun(testrun)
-        finally:
-            self._lock.release()
+        self._actionThread.queueAction(self._endTestRun,
+                                       testrun)
 
     def _endTestRun(self, testrun):
         debug("testrun:%r", testrun)
@@ -692,11 +704,8 @@ class SQLiteStorage(DBStorage):
         return res[0]
 
     def newTestStarted(self, testrun, test, commit=True):
-        self._lock.acquire()
-        try:
-            self._newTestStarted(testrun, test, commit)
-        finally:
-            self._lock.release()
+        self._actionThread.queueAction(self._newTestStarted,
+                                       testrun, test, commit)
 
     def _newTestStarted(self, testrun, test, commit=True):
         if not isinstance(test, Test):
@@ -715,11 +724,8 @@ class SQLiteStorage(DBStorage):
 
 
     def newTestFinished(self, testrun, test):
-        self._lock.acquire()
-        try:
-            self._newTestFinished(testrun, test)
-        finally:
-            self._lock.release()
+        self._actionThread.queueAction(self._newTestFinished,
+                                       testrun, test)
 
     def _newTestFinished(self, testrun, test):
         if not self.__testrun == testrun:
@@ -748,7 +754,6 @@ class SQLiteStorage(DBStorage):
                                      test.__test_name__)
         self._storeTestOutputFileDict(tid, test.getOutputFiles(),
                                       test.__test_name__)
-        self.con.commit()
 
         # finally update the test
         updatestr = "UPDATE test SET resultpercentage=? WHERE id=?"
@@ -764,6 +769,7 @@ class SQLiteStorage(DBStorage):
         INSERT INTO monitor (id, testid, type, resultpercentage)
         VALUES (NULL, ?, ?, ?)
         """
+        debug("monitor:%r:%d", monitor, testid)
         # store monitor
         self._storeMonitorClassInfo(monitor)
 
@@ -779,7 +785,6 @@ class SQLiteStorage(DBStorage):
                                         monitor.__monitor_name__)
         self._storeMonitorOutputFileDict(mid, monitor.getOutputFiles(),
                                          monitor.__monitor_name__)
-        self.con.commit()
 
     # public retrieval API
 
