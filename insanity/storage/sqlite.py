@@ -892,7 +892,7 @@ class SQLiteStorage(DBStorage):
         WHERE test.testrunid=?"""
         res = self._FetchAll(liststr, (testrunid, ))
         if not res:
-            return []
+            return {}
         # make list unique
         d = {}
         for scenarioid, subtestid in res:
