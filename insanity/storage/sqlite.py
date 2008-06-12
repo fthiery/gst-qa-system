@@ -513,13 +513,15 @@ class SQLiteStorage(DBStorage):
         return self._storeDict("testrun_environment_dict", testrunid, dict)
 
     def _insertTestClassInfo(self, tclass):
-        ctype = tclass.__dict__.get("__test_name__")
+        ctype = tclass.__dict__.get("__test_name__").strip()
         searchstr = "SELECT * FROM testclassinfo WHERE type=?"
         if len(self._FetchAll(searchstr, (ctype, ))) >= 1:
             return False
         # get info
-        desc = tclass.__dict__.get("__test_description__")
+        desc = tclass.__dict__.get("__test_description__").strip()
         fdesc = tclass.__dict__.get("__test_full_description__")
+        if fdesc:
+            fdesc.strip()
         args = tclass.__dict__.get("__test_arguments__")
         checklist = tclass.__dict__.get("__test_checklist__")
         extrainfo = tclass.__dict__.get("__test_extra_infos__")
@@ -527,7 +529,7 @@ class SQLiteStorage(DBStorage):
         if tclass == Test:
             parent = None
         else:
-            parent = tclass.__base__.__dict__.get("__test_name__")
+            parent = tclass.__base__.__dict__.get("__test_name__").strip()
 
         # insert into db
         insertstr = """INSERT INTO testclassinfo
@@ -558,12 +560,12 @@ class SQLiteStorage(DBStorage):
                 break
 
     def _insertMonitorClassInfo(self, tclass):
-        ctype = tclass.__dict__.get("__monitor_name__")
+        ctype = tclass.__dict__.get("__monitor_name__").strip()
         searchstr = "SELECT * FROM monitorclassinfo WHERE type=?"
         if len(self._FetchAll(searchstr, (ctype, ))) >= 1:
             return False
         # get info
-        desc = tclass.__dict__.get("__monitor_description__")
+        desc = tclass.__dict__.get("__monitor_description__").strip()
         args = tclass.__dict__.get("__monitor_arguments__")
         checklist = tclass.__dict__.get("__monitor_checklist__")
         extrainfo = tclass.__dict__.get("__monitor_extra_infos__")
@@ -571,7 +573,7 @@ class SQLiteStorage(DBStorage):
         if tclass == Monitor:
             parent = None
         else:
-            parent = tclass.__base__.__dict__.get("__monitor_name__")
+            parent = tclass.__base__.__dict__.get("__monitor_name__").strip()
 
         # insert into db
         insertstr = "INSERT INTO monitorclassinfo (type, parent, description) VALUES (?, ?, ?)"
