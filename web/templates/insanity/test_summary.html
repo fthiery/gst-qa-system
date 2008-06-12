@@ -3,6 +3,13 @@ URL : [{{test.get_absolute_url}}]<br>
 TestRun : <a href={{test.testrunid.get_absolute_url}}>{{test.testrunid}}</a> <br>
 test type : {{test.type.type}} <br>
 Success rate : {{test.resultpercentage}}% <br>
+Is Scenario : {{test.is_scenario}} <br>
+{% if test.is_scenario %}
+Subtests: <br>
+   {% for subtest in test.subtest.all %}
+      * Test <a href={{subtest.testid.get_absolute_url}}>#{{ subtest.testid.id }}</a><br>
+   {% endfor %}
+{% endif %}
 Arguments:<br>
 {% for arg in test.arguments.all %}
   {{arg.name.name}}:{{arg.value}}<br>

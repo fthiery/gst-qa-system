@@ -154,6 +154,9 @@ class Test(models.Model):
         return ('web.insanity.views.test_summary', [str(self.id)])
     get_absolute_url = permalink(get_absolute_url)
 
+    def is_scenario(self):
+        return bool(self.subtest.count())
+
     class Meta:
         db_table = 'test'
 
@@ -260,7 +263,11 @@ class TestArgumentsDict(models.Model):
             return self.intvalue
         if not self.txtvalue == None:
             return self.txtvalue
-        return loads(str(self.blobvalue))
+        try:
+            val = loads(str(self.blobvalue))
+        except:
+            val = "Error getting value"
+        return val
     value = property(_get_value)
 
     class Meta:
