@@ -1,6 +1,6 @@
 <b>Test #{{ test.id }}</b><br>
 URL : [{{test.get_absolute_url}}]<br>
-TestRun : {{test.testrunid}} <br>
+TestRun : <a href={{test.testrunid.get_absolute_url}}>{{test.testrunid}}</a> <br>
 test type : {{test.type.type}} <br>
 Success rate : {{test.resultpercentage}}% <br>
 Arguments:<br>
