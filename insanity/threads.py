@@ -27,6 +27,7 @@ Convenience methods and classes for multi-threading
 
 import threading
 import gobject
+import traceback
 from insanity.log import critical, error, warning, debug, info
 
 class Thread(threading.Thread, gobject.GObject):
@@ -131,10 +132,15 @@ class ActionQueueThread(threading.Thread):
                     return
             method, args, kwargs = self._queue.pop(0)
             self._lock.release()
-            debug("about to call %r", method)
-            method(*args, **kwargs)
-            debug("Finished calling %r, re-acquiring lock",
-                    method)
+            try:
+                debug("about to call %r", method)
+                method(*args, **kwargs)
+            except:
+                error("There was a problem calling %r", method)
+                error(traceback.format_exc())
+            finally:
+                debug("Finished calling %r, re-acquiring lock",
+                      method)
             self._lock.acquire()
 
     def abort(self):
