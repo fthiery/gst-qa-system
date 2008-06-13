@@ -272,7 +272,7 @@ class SQLiteStorage(DBStorage):
     Stores data in a sqlite db
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, async=True, *args, **kwargs):
         self._lock = threading.Lock()
         DBStorage.__init__(self, *args, **kwargs)
         self.__clientid = None
@@ -285,8 +285,10 @@ class SQLiteStorage(DBStorage):
         # cache of mappings for testclassinfo
         # { 'testtype' : { 'dictname' : mapping } }
         self.__mcmapping = {}
-        self._actionThread = ActionQueueThread()
-        self._actionThread.start()
+        self._async = async
+        if self._async:
+            self._actionThread = ActionQueueThread()
+            self._actionThread.start()
 
     def openDatabase(self):
         debug("opening sqlite db for path '%s'", self.path)
@@ -309,7 +311,10 @@ class SQLiteStorage(DBStorage):
     def shutDown(self, callback, *args, **kwargs):
         """ Shut down the database, the callback will be called when it's finished
         processing pending actions. """
-        self._actionThread.queueFinalAction(callback, *args, **kwargs)
+        if self._async:
+            self._actionThread.queueFinalAction(callback, *args, **kwargs)
+        else:
+            callback(*args, **kwargs)
 
     def _checkForTables(self):
         # return False if the tables aren't created
@@ -646,12 +651,18 @@ class SQLiteStorage(DBStorage):
         return key
 
     def setClientInfo(self, softwarename, clientname, user, id=None):
-        self._actionThread.queueAction(self._setClientInfo, softwarename,
-                                       clientname, user)
+        if self._async:
+            self._actionThread.queueAction(self._setClientInfo, softwarename,
+                                           clientname, user)
+        else:
+            self._setClientInfo(softwarename, clientname, user)
 
     def startNewTestRun(self, testrun):
-        self._actionThread.queueAction(self._startNewTestRun,
-                                       testrun)
+        if self._async:
+            self._actionThread.queueAction(self._startNewTestRun,
+                                           testrun)
+        else:
+            self._startNewTestRun(testrun)
 
     def _startNewTestRun(self, testrun):
         # create new testrun entry with client entry
@@ -669,8 +680,11 @@ class SQLiteStorage(DBStorage):
         debug("Got testrun id %d", self.__testrunid)
 
     def endTestRun(self, testrun):
-        self._actionThread.queueAction(self._endTestRun,
-                                       testrun)
+        if self._async:
+            self._actionThread.queueAction(self._endTestRun,
+                                           testrun)
+        else:
+            self._endTestRun(testrun)
 
     def _endTestRun(self, testrun):
         debug("testrun:%r", testrun)
@@ -704,8 +718,11 @@ class SQLiteStorage(DBStorage):
         return res[0]
 
     def newTestStarted(self, testrun, test, commit=True):
-        self._actionThread.queueAction(self._newTestStarted,
-                                       testrun, test, commit)
+        if self._async:
+            self._actionThread.queueAction(self._newTestStarted,
+                                           testrun, test, commit)
+        else:
+            self._newTestStarted(testrun, test, commit)
 
     def _newTestStarted(self, testrun, test, commit=True):
         if not isinstance(test, Test):
@@ -724,8 +741,11 @@ class SQLiteStorage(DBStorage):
 
 
     def newTestFinished(self, testrun, test):
-        self._actionThread.queueAction(self._newTestFinished,
-                                       testrun, test)
+        if self._async:
+            self._actionThread.queueAction(self._newTestFinished,
+                                           testrun, test)
+        else:
+            self._newTestFinished(testrun, test)
 
     def _newTestFinished(self, testrun, test):
         if not self.__testrun == testrun:

@@ -147,7 +147,7 @@ if __name__ == "__main__":
         print "Usage : compare.py <testrundbfile> <testrunid> <testrunid>"
         sys.exit(0)
     initLogging()
-    db = SQLiteStorage(sys.argv[1])
+    db = SQLiteStorage(sys.argv[1], async=False)
     # the last two arguments are the testrunid to compare
     a,b = [int(x) for x in sys.argv[-2:]]
     new, gone, imps, regs, mapping = compare(db, a, b)
