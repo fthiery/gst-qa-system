@@ -10,7 +10,7 @@ Test is a Scenario.<br>
 Subtests:
 <ul>
    {% for subtest in test.subtest.all %}
-      <li>Test <a href={{subtest.testid.get_absolute_url}}>#{{ subtest.testid.id }}</a></li>
+      <li>Test <a href={{subtest.testid.get_absolute_url}}>#{{ subtest.testid.id }}</a> Success:{{subtest.testid.resultpercentage}}%</li>
    {% endfor %}
 </ul>
 {% endif %}{% endif %}
