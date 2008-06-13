@@ -15,6 +15,10 @@ Subtests:
 </ul>
 {% endif %}{% endif %}
 
+{% if test.is_subtest %}
+Container: <a href={{test.parent.scenarioid.get_absolute_url}}>{{ test.parent.scenarioid.id }}</a><br>
+{% endif %}
+
 {% if test.arguments.count %}
 Arguments:
 <ul>

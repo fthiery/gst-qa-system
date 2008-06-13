@@ -155,7 +155,10 @@ class Test(models.Model):
     get_absolute_url = permalink(get_absolute_url)
 
     def is_scenario(self):
-        return bool(self.subtest.count())
+        return bool(SubTest.objects.filter(scenarioid=self.id))
+
+    def is_subtest(self):
+        return bool(SubTest.objects.filter(testid=self.id))
 
     class Meta:
         db_table = 'test'
@@ -266,7 +269,7 @@ class TestArgumentsDict(models.Model):
         try:
             val = loads(str(self.blobvalue))
         except:
-            val = "Error getting value"
+            val = "Non-pickleable value, fix test"
         return val
     value = property(_get_value)
 
