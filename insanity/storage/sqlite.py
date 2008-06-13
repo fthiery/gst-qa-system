@@ -570,16 +570,18 @@ class SQLiteStorage(DBStorage):
         self._storeTestClassCheckListDict(tcid, checklist)
         self._storeTestClassExtraInfoDict(tcid, extrainfo)
         self._storeTestClassOutputFileDict(tcid, outputfiles)
+        debug("done adding class info for %s [%d]", ctype, tcid)
         return True
 
     def _storeTestClassInfo(self, testinstance):
         # check if we don't already have info for this class
+        debug("test name: %s", testinstance.__test_name__)
         existstr = "SELECT * FROM testclassinfo WHERE type=?"
         res = self._FetchAll(existstr, (testinstance.__test_name__, ))
         if len(res) > 0:
             # type already exists, returning
             return
-        # we need an inverted mro (so we can now the parent class)
+        # we need an inverted mro (so we can know the parent class)
         for cl in testinstance.__class__.mro():
             if not self._insertTestClassInfo(cl):
                 break
@@ -748,14 +750,18 @@ class SQLiteStorage(DBStorage):
             self._newTestFinished(testrun, test)
 
     def _newTestFinished(self, testrun, test):
+        debug("testrun:%r, test:%r", testrun, test)
         if not self.__testrun == testrun:
+            debug("different testrun, starting new one")
             self._startNewTestRun(testrun)
         if not self.__tests.has_key(test):
+            debug("we don't have test yet, starting that one")
             self._newTestStarted(testrun, test, commit=False)
         tid = self.__tests[test]
         debug("test:%r:%d", test, tid)
         # if it's a scenario, fill up the subtests
         if isinstance(test, Scenario):
+            debug("test is a scenario, adding subtests")
             sublist = []
             for sub in test.tests:
                 self._newTestFinished(testrun, sub)
@@ -764,6 +770,7 @@ class SQLiteStorage(DBStorage):
             for sub in test.tests:
                 self._ExecuteCommit(insertstr, (self.__tests[sub],
                                                 self.__tests[test]))
+            debug("done adding subtests")
 
         # store the dictionnaries
         self._storeTestArgumentsDict(tid, test.getArguments(),
@@ -783,6 +790,7 @@ class SQLiteStorage(DBStorage):
         # and on to the monitors
         for monitor in test._monitorinstances:
             self._storeMonitor(monitor, tid)
+        debug("done adding information for test %d", tid)
 
     def _storeMonitor(self, monitor, testid):
         insertstr = """
@@ -1043,6 +1051,7 @@ class SQLiteStorage(DBStorage):
         if not testtype in self.__tcmapping:
             self.__tcmapping[testtype] = {}
         self.__tcmapping[testtype][dictname] = dict(maps)
+        return self.__tcmapping[testtype][dictname]
 
     def _getMonitorClassMapping(self, monitortype, dictname):
         # Search in the cache first
@@ -1053,6 +1062,7 @@ class SQLiteStorage(DBStorage):
         if not monitortype in self.__mcmapping:
             self.__mcmapping[monitortype] = {}
         self.__mcmapping[monitortype][dictname] = dict(maps)
+        return self.__mcmapping[monitortype][dictname]
 
     def _getTestClassArgumentMapping(self, testtype):
         return self._getTestClassMapping(testtype, "testclassinfo_arguments_dict")
