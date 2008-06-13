@@ -4,7 +4,8 @@ from django.http import HttpResponse
 import time
 
 def index(request):
-    latest_runs = TestRun.objects.all()[:5]
+    nbruns = request.GET.get("nbruns", 5)
+    latest_runs = TestRun.objects.all()[:int(nbruns)]
     return render_to_response("insanity/index.html", {"latest_runs":latest_runs})
 
 def testrun_summary(request, testrun_id):
