@@ -270,6 +270,12 @@ DATA_TYPE_BLOB = 2
 class SQLiteStorage(DBStorage):
     """
     Stores data in a sqlite db
+
+    The 'async' setting will allow all writes to be serialized in a separate thread,
+    allowing the testing to carry on.
+
+    If you are only using the database for reading information, you should use
+    async=False and only use the storage object from one thread.
     """
 
     def __init__(self, async=True, *args, **kwargs):
