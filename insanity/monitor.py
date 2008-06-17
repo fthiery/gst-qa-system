@@ -314,7 +314,7 @@ class GstDebugLogMonitor(Monitor):
             os.remove(self._logfilepath)
         else:
             if self.arguments.get("compress-logs", True):
-                res = self._logfilepath + ".bz2"
+                res = self._logfilepath + ".gz"
                 debug("compressing debug log to %s",res)
                 compress_file(self._logfilepath, res)
                 os.remove(self._logfilepath)
