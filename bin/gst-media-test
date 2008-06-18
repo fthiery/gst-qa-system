@@ -92,6 +92,8 @@ def create_testrun(files, testscripts, recursive=True, topdir=None,
         suppfile = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gst.supp")
         monitors.append((ValgrindMemCheckMonitor,
                          {"suppression-files":suppfile}))
+    if not rerun:
+        monitors.append((GstDebugLogMonitor, {"debug-level":str(debuglevel)}))
 
     # get the full path for topdir
     if topdir:
