@@ -1,7 +1,23 @@
 import time
+import string
 from cPickle import dumps, loads
 from django.db import models
 from django.db.models import permalink
+from django.db import connection
+
+class CustomSQLInterface:
+
+    def _fetchAll(self, instruction, *args, **kwargs):
+        cur = connection.cursor()
+        cur.execute(instruction, *args, **kwargs)
+        res = cur.fetchall()
+        return res
+
+    def _fetchOne(self, instruction, *args, **kwargs):
+        cur = connection.cursor()
+        cur.execute(instruction, *args, **kwargs)
+        res = cur.fetchone()
+        return res
 
 class Client(models.Model):
     id = models.IntegerField(null=True, primary_key=True, blank=True)
@@ -128,7 +144,7 @@ class TestClassInfoOutputFilesDict(models.Model):
     class Meta:
         db_table = 'testclassinfo_outputfiles_dict'
 
-class TestRun(models.Model):
+class TestRun(models.Model, CustomSQLInterface):
     id = models.IntegerField(null=True, primary_key=True, blank=True)
     clientid = models.ForeignKey(Client, db_column="clientid")
     starttime = models.IntegerField(null=True, blank=True)
@@ -139,6 +155,76 @@ class TestRun(models.Model):
     def get_absolute_url(self):
         return ('web.insanity.views.testrun_summary', [str(self.id)])
     get_absolute_url = permalink(get_absolute_url)
+
+    def find_test_similar_args(self, atest):
+        """Returns tests which have the similar arguments as atest"""
+        # this query is too complex to do with DJango code
+        # if somebody can convert it to django code, you're welcome
+        res = [x.id for x in self.test_set.filter(type__id=atest.type.id)]
+        searchstr = """
+        SELECT test.id
+        FROM test, test_arguments_dict
+        WHERE test.id=test_arguments_dict.containerid 
+        """
+
+        for arg in atest.arguments.all():
+            tmpsearch = "AND test.id in (%s) " % string.join([str(x) for x in res], ', ')
+            tmpsearch += "AND test_arguments_dict.name=%s "
+            if arg.txtvalue:
+                tmpsearch += "AND test_arguments_dict.txtvalue=%s "
+                val = arg.txtvalue
+            elif arg.intvalue:
+                tmpsearch += "AND test_arguments_dict.intvalue=%s "
+                val = arg.intvalue
+            else:
+                tmpsearch += "AND test_arguments_dict.blobvalue=%s "
+                val = arg.blobvalue
+            tmpres = self._fetchAll(searchstr+tmpsearch,
+                                    [arg.name.id, val])
+            res = []
+            if tmpres == []:
+                break
+            tmp2 = list(zip(*tmpres)[0])
+            for i in tmp2:
+                if not i in res:
+                    res.append(i)
+
+        return [Test.objects.get(pk=i) for i in res]
+
+    def compare(self, other):
+        """
+        Compares the tests from self and the tests from other.
+
+        Returns a tuple of 5 values:
+        * list of tests in other which are not in self
+        * list of tests in self which are not in other
+        * list of tests in self which have improved compared to the one in other
+        * list of tests in self which have regressed compared to the one in other
+        * a dictionnary mapping of:
+          * test from self
+          * corresponding test from other
+        """
+        if not isinstance(other, TestRun):
+            raise TypeError
+        newmapping = {}
+        oldinnew = []
+        newtests = []
+
+        before = time.time()
+        for othert in other.test_set.all():
+            anc = self.find_test_similar_args(othert)
+            if anc == []:
+                newtests.append(othert)
+            else:
+                newmapping[othert] = anc
+                oldinnew.extend(anc)
+        med = time.time()
+        testsgone = [x for x in self.test_set.all() if not x in oldinnew]
+
+        after = time.time()
+        print "it took %.2fs/%.2fs to find similar tests" % (med - before,
+                                                             after - before)
+        return newmapping
 
     def __str__(self):
         return "Testrun #%d [%s]" % (self.id, time.ctime(self.starttime))
@@ -155,13 +241,17 @@ class Test(models.Model):
     get_absolute_url = permalink(get_absolute_url)
 
     def is_scenario(self):
-        return bool(SubTest.objects.filter(scenarioid=self.id))
+        return bool(SubTest.objects.filter(scenarioid=self.id).count())
 
-    def is_subtest(self):
-        return bool(SubTest.objects.filter(testid=self.id))
+    def _is_subtest(self):
+        return bool(SubTest.objects.filter(testid=self.id).count())
+    is_subtest = property(_is_subtest)
 
     class Meta:
         db_table = 'test'
+
+    def __str__(self):
+        return "%s:%s" % (self.type.type, self.id)
 
 class SubTest(models.Model):
     testid = models.OneToOneField(Test, db_column="testid",
@@ -202,6 +292,10 @@ class MonitorArgumentsDict(models.Model):
 
     class Meta:
         db_table = 'monitor_arguments_dict'
+
+    def __str__(self):
+        return "%s:%s" % (self.name.name, self.value)
+
 
 class MonitorChecklistDict(models.Model):
     id = models.IntegerField(null=True, primary_key=True, blank=True)
@@ -275,6 +369,9 @@ class TestArgumentsDict(models.Model):
 
     class Meta:
         db_table = 'test_arguments_dict'
+
+    def __str__(self):
+        return "%s:%s" % (self.name.name, self.value)
 
 class TestCheckListList(models.Model):
     id = models.IntegerField(null=True, primary_key=True, blank=True)
