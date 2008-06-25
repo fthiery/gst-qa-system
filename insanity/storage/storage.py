@@ -22,45 +22,12 @@
 """
 Classes and methods related to storing/retrieving results/data/...
 """
-import threading
-
-class DataStorageThread(threading.Thread):
-    """
-    Thread for adding data in the database
-    """
-
-    def __init__(self, paths, callback):
-        Thread.__init__(self)
-        gst.log("New PathWalker for %s" % paths)
-        self.paths = paths
-        self.callback = callback
-        self.stopme = threading.Event()
-
-    def process(self):
-        for folder in self.paths:
-            gst.log("folder %s" % folder)
-            if folder.startswith("file://"):
-                folder = folder[len("file://"):]
-            for path, dirs, files in os.walk(folder):
-                if self.stopme.isSet():
-                    return
-                uriList = []
-                for afile in files:
-                    uriList.append("file://%s" % os.path.join(path, afile))
-                if uriList:
-                    self.callback(uriList)
-
-    def abort(self):
-        self.stopme.set()
-
-
 class DataStorage:
     """
     Base class for storing data
     """
     def __init__(self):
         self.setUp()
-        self._lock = threading.Lock()
 
     def setUp(self):
         raise NotImplementedError

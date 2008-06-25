@@ -25,6 +25,7 @@ SQLite based DataStorage
 
 import time
 import string
+import threading
 from weakref import WeakKeyDictionary
 from insanity.log import critical, error, warning, debug, info
 from insanity.storage.storage import DBStorage
@@ -32,6 +33,7 @@ from insanity.scenario import Scenario
 from insanity.test import Test
 from insanity.monitor import Monitor
 from insanity.utils import reverse_dict, map_dict, map_list
+from insanity.threads import ActionQueueThread
 try:
     # In Python 2.5, this is part of the standard library:
     from sqlite3 import dbapi2 as sqlite
@@ -265,13 +267,19 @@ DATA_TYPE_BLOB = 2
 # FIXME / WARNING
 # The current implementation only supports handling of one testrun at a time !
 #
-
 class SQLiteStorage(DBStorage):
     """
     Stores data in a sqlite db
+
+    The 'async' setting will allow all writes to be serialized in a separate thread,
+    allowing the testing to carry on.
+
+    If you are only using the database for reading information, you should use
+    async=False and only use the storage object from one thread.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, async=True, *args, **kwargs):
+        self._lock = threading.Lock()
         DBStorage.__init__(self, *args, **kwargs)
         self.__clientid = None
         self.__testrunid = None
@@ -283,6 +291,10 @@ class SQLiteStorage(DBStorage):
         # cache of mappings for testclassinfo
         # { 'testtype' : { 'dictname' : mapping } }
         self.__mcmapping = {}
+        self._async = async
+        if self._async:
+            self._actionThread = ActionQueueThread()
+            self._actionThread.start()
 
     def openDatabase(self):
         debug("opening sqlite db for path '%s'", self.path)
@@ -302,6 +314,14 @@ class SQLiteStorage(DBStorage):
                             (DATABASE_VERSION, int(time.time())))
         debug("Tables properly created")
 
+    def shutDown(self, callback, *args, **kwargs):
+        """ Shut down the database, the callback will be called when it's finished
+        processing pending actions. """
+        if self._async:
+            self._actionThread.queueFinalAction(callback, *args, **kwargs)
+        else:
+            callback(*args, **kwargs)
+
     def _checkForTables(self):
         # return False if the tables aren't created
         tables = self._getAllTables()
@@ -319,23 +339,31 @@ class SQLiteStorage(DBStorage):
         # returns the last row id
         commit = kwargs.pop("commit", True)
         debug("%s args:%r kwargs:%r", instruction, args, kwargs)
+        self._lock.acquire()
         cur = self.con.cursor()
         cur.execute(instruction, *args, **kwargs)
         if commit:
             self.con.commit()
+        self._lock.release()
         return cur.lastrowid
 
     def _FetchAll(self, instruction, *args, **kwargs):
         # Convenience function to fetch all results
+        self._lock.acquire()
         cur = self.con.cursor()
         cur.execute(instruction, *args, **kwargs)
-        return cur.fetchall()
+        res = cur.fetchall()
+        self._lock.release()
+        return res
 
     def _FetchOne(self, instruction, *args, **kwargs):
         # Convenience function to fetch all results
+        self._lock.acquire()
         cur = self.con.cursor()
         cur.execute(instruction, *args, **kwargs)
-        return cur.fetchone()
+        res = cur.fetchone()
+        self._lock.release()
+        return res
 
     def _getAllTables(self):
         """
@@ -386,6 +414,7 @@ class SQLiteStorage(DBStorage):
 
         insertstr = """INSERT INTO %s (id, containerid, name, %s)
         VALUES (NULL, ?, ?, ?)"""
+        self._lock.acquire()
         cur = self.con.cursor()
         for key,value in pdict.iteritems():
             debug("Adding key:%s , value:%r", key, value)
@@ -399,6 +428,7 @@ class SQLiteStorage(DBStorage):
                 val = sqlite.Binary(dumps(value))
             comstr = insertstr % (dicttable, valstr)
             cur.execute(comstr, (containerid, key, val))
+        self._lock.release()
 
     def _storeList(self, dicttable, containerid, pdict):
         if not pdict:
@@ -406,6 +436,7 @@ class SQLiteStorage(DBStorage):
             debug("Empty list, returning")
             return
 
+        self._lock.acquire()
         cur = self.con.cursor()
         insertstr = """INSERT INTO %s (id, containerid, name, %s)
         VALUES (NULL, ?, ?, ?)"""
@@ -421,6 +452,7 @@ class SQLiteStorage(DBStorage):
                 val = sqlite.Binary(dumps(value))
             comstr = insertstr % (dicttable, valstr)
             cur.execute(comstr, (containerid, key, val))
+        self._lock.release()
 
     def _storeList(self, dicttable, containerid, pdict):
         if not pdict:
@@ -428,6 +460,7 @@ class SQLiteStorage(DBStorage):
             debug("Empty list, returning")
             return
 
+        self._lock.acquire()
         cur = self.con.cursor()
         insertstr = """INSERT INTO %s (id, containerid, name, %s)
         VALUES (NULL, ?, ?, ?)"""
@@ -443,6 +476,7 @@ class SQLiteStorage(DBStorage):
                 val = sqlite.Binary(dumps(value))
             comstr = insertstr % (dicttable, valstr)
             cur.execute(comstr, (containerid, key, val))
+        self._lock.release()
 
     def _storeTestArgumentsDict(self, testid, dict, testtype):
         # transform the dictionnary from names to ids
@@ -542,17 +576,18 @@ class SQLiteStorage(DBStorage):
         self._storeTestClassCheckListDict(tcid, checklist)
         self._storeTestClassExtraInfoDict(tcid, extrainfo)
         self._storeTestClassOutputFileDict(tcid, outputfiles)
-        self.con.commit()
+        debug("done adding class info for %s [%d]", ctype, tcid)
         return True
 
     def _storeTestClassInfo(self, testinstance):
         # check if we don't already have info for this class
+        debug("test name: %s", testinstance.__test_name__)
         existstr = "SELECT * FROM testclassinfo WHERE type=?"
         res = self._FetchAll(existstr, (testinstance.__test_name__, ))
         if len(res) > 0:
             # type already exists, returning
             return
-        # we need an inverted mro (so we can now the parent class)
+        # we need an inverted mro (so we can know the parent class)
         for cl in testinstance.__class__.mro():
             if not self._insertTestClassInfo(cl):
                 break
@@ -584,7 +619,6 @@ class SQLiteStorage(DBStorage):
         self._storeMonitorClassCheckListDict(tcid, checklist)
         self._storeMonitorClassExtraInfoDict(tcid, extrainfo)
         self._storeMonitorClassOutputFileDict(tcid, outputfiles)
-        self.con.commit()
         return True
 
     def _storeMonitorClassInfo(self, monitorinstance):
@@ -625,18 +659,18 @@ class SQLiteStorage(DBStorage):
         return key
 
     def setClientInfo(self, softwarename, clientname, user, id=None):
-        self._lock.acquire()
-        try:
+        if self._async:
+            self._actionThread.queueAction(self._setClientInfo, softwarename,
+                                           clientname, user)
+        else:
             self._setClientInfo(softwarename, clientname, user)
-        finally:
-            self._lock.release()
 
     def startNewTestRun(self, testrun):
-        self._lock.acquire()
-        try:
+        if self._async:
+            self._actionThread.queueAction(self._startNewTestRun,
+                                           testrun)
+        else:
             self._startNewTestRun(testrun)
-        finally:
-            self._lock.release()
 
     def _startNewTestRun(self, testrun):
         # create new testrun entry with client entry
@@ -654,11 +688,11 @@ class SQLiteStorage(DBStorage):
         debug("Got testrun id %d", self.__testrunid)
 
     def endTestRun(self, testrun):
-        self._lock.acquire()
-        try:
+        if self._async:
+            self._actionThread.queueAction(self._endTestRun,
+                                           testrun)
+        else:
             self._endTestRun(testrun)
-        finally:
-            self._lock.release()
 
     def _endTestRun(self, testrun):
         debug("testrun:%r", testrun)
@@ -692,11 +726,11 @@ class SQLiteStorage(DBStorage):
         return res[0]
 
     def newTestStarted(self, testrun, test, commit=True):
-        self._lock.acquire()
-        try:
+        if self._async:
+            self._actionThread.queueAction(self._newTestStarted,
+                                           testrun, test, commit)
+        else:
             self._newTestStarted(testrun, test, commit)
-        finally:
-            self._lock.release()
 
     def _newTestStarted(self, testrun, test, commit=True):
         if not isinstance(test, Test):
@@ -715,21 +749,25 @@ class SQLiteStorage(DBStorage):
 
 
     def newTestFinished(self, testrun, test):
-        self._lock.acquire()
-        try:
+        if self._async:
+            self._actionThread.queueAction(self._newTestFinished,
+                                           testrun, test)
+        else:
             self._newTestFinished(testrun, test)
-        finally:
-            self._lock.release()
 
     def _newTestFinished(self, testrun, test):
+        debug("testrun:%r, test:%r", testrun, test)
         if not self.__testrun == testrun:
+            debug("different testrun, starting new one")
             self._startNewTestRun(testrun)
         if not self.__tests.has_key(test):
+            debug("we don't have test yet, starting that one")
             self._newTestStarted(testrun, test, commit=False)
         tid = self.__tests[test]
         debug("test:%r:%d", test, tid)
         # if it's a scenario, fill up the subtests
         if isinstance(test, Scenario):
+            debug("test is a scenario, adding subtests")
             sublist = []
             for sub in test.tests:
                 self._newTestFinished(testrun, sub)
@@ -738,6 +776,7 @@ class SQLiteStorage(DBStorage):
             for sub in test.tests:
                 self._ExecuteCommit(insertstr, (self.__tests[sub],
                                                 self.__tests[test]))
+            debug("done adding subtests")
 
         # store the dictionnaries
         self._storeTestArgumentsDict(tid, test.getArguments(),
@@ -748,7 +787,6 @@ class SQLiteStorage(DBStorage):
                                      test.__test_name__)
         self._storeTestOutputFileDict(tid, test.getOutputFiles(),
                                       test.__test_name__)
-        self.con.commit()
 
         # finally update the test
         updatestr = "UPDATE test SET resultpercentage=? WHERE id=?"
@@ -758,12 +796,14 @@ class SQLiteStorage(DBStorage):
         # and on to the monitors
         for monitor in test._monitorinstances:
             self._storeMonitor(monitor, tid)
+        debug("done adding information for test %d", tid)
 
     def _storeMonitor(self, monitor, testid):
         insertstr = """
         INSERT INTO monitor (id, testid, type, resultpercentage)
         VALUES (NULL, ?, ?, ?)
         """
+        debug("monitor:%r:%d", monitor, testid)
         # store monitor
         self._storeMonitorClassInfo(monitor)
 
@@ -779,7 +819,6 @@ class SQLiteStorage(DBStorage):
                                         monitor.__monitor_name__)
         self._storeMonitorOutputFileDict(mid, monitor.getOutputFiles(),
                                          monitor.__monitor_name__)
-        self.con.commit()
 
     # public retrieval API
 
@@ -892,7 +931,7 @@ class SQLiteStorage(DBStorage):
         WHERE test.testrunid=?"""
         res = self._FetchAll(liststr, (testrunid, ))
         if not res:
-            return []
+            return {}
         # make list unique
         d = {}
         for scenarioid, subtestid in res:
@@ -1018,6 +1057,7 @@ class SQLiteStorage(DBStorage):
         if not testtype in self.__tcmapping:
             self.__tcmapping[testtype] = {}
         self.__tcmapping[testtype][dictname] = dict(maps)
+        return self.__tcmapping[testtype][dictname]
 
     def _getMonitorClassMapping(self, monitortype, dictname):
         # Search in the cache first
@@ -1028,6 +1068,7 @@ class SQLiteStorage(DBStorage):
         if not monitortype in self.__mcmapping:
             self.__mcmapping[monitortype] = {}
         self.__mcmapping[monitortype][dictname] = dict(maps)
+        return self.__mcmapping[monitortype][dictname]
 
     def _getTestClassArgumentMapping(self, testtype):
         return self._getTestClassMapping(testtype, "testclassinfo_arguments_dict")

@@ -41,7 +41,6 @@ from log import critical, error, warning, debug, info
 from test import Test
 from arguments import Arguments
 import insanity.environment as environment
-from insanity.threads import ThreadMaster, CallbackThread
 import dbustools
 import dbus.gobject_service
 import tempfile
@@ -94,7 +93,6 @@ class TestRun(gobject.GObject):
         self._setupPrivateBus()
         self._tests = [] # list of (test, arguments, monitors)
         self._storage = None
-        self._threads = ThreadMaster()
         self._currenttest = None
         self._currentmonitors = None
         self._currentarguments = None
@@ -206,17 +204,13 @@ class TestRun(gobject.GObject):
         self._environment = resdict
         self.emit("start")
         self._starttime = int(time.time())
-        self._threads.addThread(CallbackThread,
-                                self._storage.startNewTestRun,
-                                self)
-        gobject.idle_add(self._runNextBatch)
+        self._storage.startNewTestRun(self)
+        self._runNextBatch()
 
     def _singleTestStart(self, test):
         info("test %r started", test)
         self.emit("single-test-start", test)
-        self._threads.addThread(CallbackThread,
-                                self._storage.newTestStarted,
-                                self, test)
+        self._storage.newTestStarted(self, test)
 
     def _singleTestDone(self, test):
         info("Done with test %r , success rate %02f%%",
@@ -225,10 +219,8 @@ class TestRun(gobject.GObject):
         # FIXME : Improvement : disconnect all signals from that test
         if test in self._runninginstances:
             self._runninginstances.remove(test)
-        self._threads.addThread(CallbackThread,
-                                self._storage.newTestFinished,
-                                self, test)
-        gobject.idle_add(self._runNext)
+        self._storage.newTestFinished(self, test)
+        self._runNext()
 
     def _singleTestCheck(self, test, check, validate):
         pass
@@ -271,6 +263,7 @@ class TestRun(gobject.GObject):
             # add instance to running tests
             self._runninginstances.append(test)
 
+        warning("Just added a test %d/%d", len(self._runninginstances), self._maxnbtests)
         # if we can still create a new test, call ourself again
         if len(self._runninginstances) < self._maxnbtests:
             warning("still more test to run (current:%d/max:%d)",
@@ -284,8 +277,6 @@ class TestRun(gobject.GObject):
             # if nothing left, stop
             info("No more tests batch to run, we're done")
             self._stoptime = int(time.time())
-            # in theory this will block until the storage lock is released
-            # which should be once all threads have finished writing
             self._storage.endTestRun(self)
             self._running = False
             self.emit("done")

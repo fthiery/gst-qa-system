@@ -10,10 +10,14 @@ Test is a Scenario.<br>
 Subtests:
 <ul>
    {% for subtest in test.subtest.all %}
-      <li>Test <a href={{subtest.testid.get_absolute_url}}>#{{ subtest.testid.id }}</a></li>
+      <li>Test <a href={{subtest.testid.get_absolute_url}}>#{{ subtest.testid.id }}</a> Success:{{subtest.testid.resultpercentage}}%</li>
    {% endfor %}
 </ul>
 {% endif %}{% endif %}
+
+{% if test.is_subtest %}
+Container: <a href={{test.parent.scenarioid.get_absolute_url}}>{{ test.parent.scenarioid.id }}</a><br>
+{% endif %}
 
 {% if test.arguments.count %}
 Arguments:

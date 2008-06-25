@@ -29,6 +29,7 @@ import sys
 import time
 from optparse import OptionParser
 from insanity.storage.sqlite import SQLiteStorage
+from insanity.log import initLogging
 
 def printTestRunInfo(db, testrunid, verbose=False):
     # id , date, nbtests, client
@@ -140,7 +141,8 @@ if __name__ == "__main__":
         print "You need to specify a database file !"
         parser.print_help()
         sys.exit()
-    db = SQLiteStorage(path=args[0])
+    initLogging()
+    db = SQLiteStorage(path=args[0], async=False)
     if options.list:
         # list all available test rus
         testruns = db.listTestRuns()

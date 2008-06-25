@@ -1,13 +1,37 @@
-GStreamer QA System
--------------------
+Insanity, a GStreamer QA System
+-------------------------------
+
+The source code and documentation contained within is LGPL.
+
+This work was sponsored by Nokia.
+
+Philosophy
+----------
+
+   Insanity is a collection of several parts:
+
+   * the insanity python module (insanity/) containing:
+     * base classes for tests and scenarios
+     * logic for running the tests
+     * database support for storing results
+     * base classes for applications
+   * A series of tests and scenarios (tests/)
+   * Some command-line tools (bin/)
+   * A django web interface (web/)
+     * /!\ Still under development
 
 
-Pre-milestone 1 README
+Provided tools
+--------------
+  To run all these tools, you need to have the location of the
+  insanity module in your python path.
+    Ex : PYTHONPATH=/full/path/to/top/directory:$PYTHONPATH
 
-
-To run:
-
-PYTHONPATH=/full/path/to/top/directory:$PYTHONPATH bin/gst-media-test
+ * gst-media-test : simulates the same behaviour as the historical
+                    GStreamer media-test
+ * dumpresults.py : provides visualisation of the database contents
+ * compare.py : Compares two test runs
+ * grouper.py : Groups the results of a testrun for easier reporting.
 
 
 Inline documentation
@@ -24,9 +48,4 @@ Database support
 ----------------
 
   Currently the data is stored in a sqlite file.
-
-  WARNING WARNING WARNING : Until milestone 1 is released, the database
-  schema might change without possibilities to update the previously existing
-  one.
-  Milestone 1 will contain updating facilities to transfer existing databases
-  to the modified schemas.
+  The default filename is 'testrun.db' in the current directory.

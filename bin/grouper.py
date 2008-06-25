@@ -261,7 +261,7 @@ if __name__ == "__main__":
     if len(sys.argv) < 3:
         print "Usage : compare.py <testrundbfile> <testrunid>"
         sys.exit(0)
-    db = SQLiteStorage(sys.argv[1])
+    db = SQLiteStorage(path=sys.argv[1], async=False)
     # the last two arguments are the testrunid to compare
     trid = int(sys.argv[2])
     res = group_tests(db, trid)

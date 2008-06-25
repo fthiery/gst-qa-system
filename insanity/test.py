@@ -1057,12 +1057,17 @@ class DBusTest(Test, dbus.service.Object):
         debug("%s retval:%r", self.uuid, retval)
         if retval:
             delay = time.time() - self._subprocessconnecttime
-            self.extraInfo("remote-instance-creation-delay", delay)
-            self.validateStep("remote-instance-created")
             rname = "net.gstreamer.Insanity.Test.Test%s" % self.uuid
             rpath = "/net/gstreamer/Insanity/Test/Test%s" % self.uuid
             # remote instance was successfully created, let's get it
-            remoteObj = self._bus.get_object(rname, rpath)
+            try:
+                remoteObj = self._bus.get_object(rname, rpath)
+            except:
+                warning("Couldn't get the remote instance for test %r", self.uuid)
+                self.stop()
+                return
+            self.extraInfo("remote-instance-creation-delay", delay)
+            self.validateStep("remote-instance-created")
             self._remoteInstance = dbus.Interface(remoteObj,
                                                   "net.gstreamer.Insanity.Test")
             self._remoteInstance.connect_to_signal("remoteReadySignal",
