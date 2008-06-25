@@ -1280,10 +1280,10 @@ class GStreamerTest(PythonDBusTest):
                 prev, cur, pending = message.parse_state_changed()
                 if cur == self.__pipeline_initial_state__ and pending == gst.STATE_VOID_PENDING:
                     gst.log("Reached initial state")
+                    self.validateStep("reached-initial-state")
                     if self.pipelineReachedInitialState():
                         debug("Stopping test because we reached initial state")
                         gst.log("Stopping test because we reached initial state")
-                        self.validateStep("reached-initial-state")
                         self.stop()
 
     def _gotTags(self, tags):
