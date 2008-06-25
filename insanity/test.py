@@ -195,7 +195,7 @@ class Test(gobject.GObject):
         }
 
     def __init__(self, testrun=None, uuid=None, timeout=None,
-                 asynctimeout=None, outputfiles={},
+                 asynctimeout=None,
                  *args, **kwargs):
         gobject.GObject.__init__(self)
         self._timeout = timeout or self.__test_timeout__
@@ -214,21 +214,22 @@ class Test(gobject.GObject):
         self._extraInfo = {}
         self._testrun = testrun
 
-        self._outputfiles = outputfiles
-        # creating default file names
-        if self._testrun:
-            for ofname,desc in self.getFullOutputFilesList().iteritems():
-                if not ofname in self._outputfiles:
-                    ofd, opath = self._testrun.get_temp_file(nameid=ofname)
-                    debug("created temp file name '%s' for outputfile '%s'",
-                          opath, ofname)
-                    self._outputfiles[ofname] = opath
-
         if uuid == None:
             self.uuid = utils.acquire_uuid()
         else:
             self.uuid = uuid
         self.arguments["uuid"] = self.uuid
+
+        self._outputfiles = kwargs.get("outputfiles", {})
+        # creating default file names
+        if self._testrun:
+            for ofname,desc in self.getFullOutputFilesList().iteritems():
+                if not ofname in self._outputfiles:
+                    ofd, opath = self._testrun.get_temp_file(nameid=ofname)
+                    debug("created temp file name '%s' for outputfile '%s' [%s]",
+                          opath, ofname, self.uuid)
+                    self._outputfiles[ofname] = opath
+                    os.close(ofd)
 
         self._asynctimeoutid = 0
         self._testtimeoutid = 0
@@ -261,7 +262,7 @@ class Test(gobject.GObject):
     def __repr__(self):
         if self.uuid:
             return "< %s uuid:%s >" % (self.__class__.__name__, self.uuid)
-        return "< %s id:%p >" % (self.__class__.__name__, id(self))
+        return "< %s id:%r >" % (self.__class__.__name__, id(self))
 
     def _populateChecklist(self):
         """ fill the instance checklist with default values """
@@ -1040,11 +1041,11 @@ class DBusTest(Test, dbus.service.Object):
         remoteRunner = dbus.Interface(remoteRunnerObject,
                                       "net.gstreamer.Insanity.RemotePythonRunner")
         debug("Got remote iface %r" % remoteRunner)
-        args = self.arguments
+        args = self.arguments.copy()
         args["bus_address"] = self._bus_address
         args["timeout"] = self._timeout
         if self._outputfiles:
-            args["outputfiles"] = self._outputfiles
+            args["outputfiles"] = self.getOutputFiles()
         debug("Creating remote instance with arguments %r", args)
         remoteRunner.createTestInstance(self.get_file(),
                                         self.__module__,
