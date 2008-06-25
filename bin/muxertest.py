@@ -14,7 +14,7 @@ class EncoderMuxerClient(CommandLineTesterClient):
 
     def __init__(self, muxer=None, aenc=None, venc=None,
                  maxnbtests=1):
-        CommandLineTesterClient.__init__(self, verbose=True,
+        CommandLineTesterClient.__init__(self,
                                          singlerun=True)
         gen = EncoderMuxerGenerator(muxer=muxer,
                                     audio_encoder=aenc,
