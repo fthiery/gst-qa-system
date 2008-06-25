@@ -159,7 +159,7 @@ class EncoderMuxerGenerator(Generator):
             allvencs = VideoEncoderGenerator(factories=True).generate()
 
         def can_sink_caps(muxer, ocaps):
-            sinkcaps = [x.get_caps() for x in muxer.get_static_pad_templates() if x.direction == gst.PAD_SINK]
+            sinkcaps = [x.get_caps() for x in muxer.get_static_pad_templates() if x.direction == gst.PAD_SINK and not x.get_caps().is_any()]
             for x in sinkcaps:
                 if not x.intersect(ocaps).is_empty():
                     return True
