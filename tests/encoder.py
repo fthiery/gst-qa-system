@@ -96,6 +96,10 @@ class EncoderMuxerTest(GStreamerTest):
                           None )
         }
 
+    __test_checklist__ = {
+        "muxer-can-use-encoders":"The muxer is able to use the given encoders"
+        }
+
     __test_output_files__ = {
         "encoded-muxed-file":"Output of the encoding/muxer combination"
         }
@@ -146,29 +150,42 @@ class EncoderMuxerTest(GStreamerTest):
         p.add(self._muxer, filesink)
         self._muxer.link(filesink)
 
-        # FIXME : source ! encoder needs to be linked asynchronously because
-        # the composition/source will create the source pad dynamically
-        # audio source + capsfilter + encoder
         if self._encodeAudio:
             self._audioSource = make_audio_test_source(duration=self._mediaDuration)
-            self._audioEncoder = gst.element_factory_make(self._audioFact)
+            enc = gst.element_factory_make(self._audioFact)
+            self._audioEncoder = gst.element_factory_make("audioresample")
+            aconv = gst.element_factory_make("audioconvert")
             vq = gst.element_factory_make("queue", "audioqueue")
-            p.add(self._audioSource, self._audioEncoder, vq)
-            gst.element_link_many(self._audioEncoder, vq, self._muxer)
+            p.add(self._audioSource, self._audioEncoder, aconv, enc, vq)
+            gst.element_link_many(self._audioEncoder, aconv, enc, vq)
+            cptpad = self._muxer.get_compatible_pad(vq.get_pad("src"),
+                                                    enc.get_pad("src").get_caps())
+            if cptpad == None:
+                self.validateStep("muxer-can-use-encoders", False)
+                return None
+            gst.debug("Using pad %r for audio encoder" % cptpad)
+            vq.get_pad("src").link(cptpad)
             self._audioSource.connect("pad-added",
                                       self._audioSourcePadAdded)
 
-        # video source + capsfilter + encoder
         if self._encodeVideo:
             self._videoSource = make_video_test_source(duration=self._mediaDuration)
             enc = gst.element_factory_make(self._videoFact)
             self._videoEncoder = gst.element_factory_make("ffmpegcolorspace")
             vq = gst.element_factory_make("queue", "videoqueue")
             p.add(self._videoSource, self._videoEncoder, enc, vq)
-            gst.element_link_many(self._videoEncoder, enc, vq, self._muxer)
+            gst.element_link_many(self._videoEncoder, enc, vq)
+            cptpad = self._muxer.get_compatible_pad(vq.get_pad("src"),
+                                                    enc.get_pad("src").get_caps())
+            if cptpad == None:
+                self.validateStep("muxer-can-use-encoders", False)
+                return None
+            gst.debug("Using pad %r for video encoder" % cptpad)
+            vq.get_pad("src").link(cptpad)
             self._videoSource.connect("pad-added",
                                       self._videoSourcePadAdded)
 
+        self.validateStep("muxer-can-use-encoders")
         return p
 
     def _audioSourcePadAdded(self, audioSource, pad):
