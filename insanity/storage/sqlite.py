@@ -1090,7 +1090,7 @@ class SQLiteStorage(DBStorage):
         return res
 
 
-    def findTestsByArgument(self, testtype, arguments, testrunid=None, monitorids=[]):
+    def findTestsByArgument(self, testtype, arguments, testrunid=None, monitorids=None):
         searchstr = """
         SELECT test.id
         FROM test, test_arguments_dict
@@ -1137,7 +1137,7 @@ class SQLiteStorage(DBStorage):
 
         # finally... make sure that for the monitors that both test
         # share, they have the same arguments
-        if not monitorids == []:
+        if not monitorids == None:
             tmp = []
             monitors = [self.getFullMonitorInfo(x) for x in monitorids]
             for p in res:

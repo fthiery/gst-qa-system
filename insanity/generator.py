@@ -32,7 +32,7 @@ Generators expand some arguments into a dictionnary of arguments.
 # * chaining generators output
 #   i.e. pass the output of FileSystemGenerator to PlaylistGenerator
 
-from log import critical, error, warning, debug, info
+from insanity.log import critical, error, warning, debug, info
 
 class Generator:
     """

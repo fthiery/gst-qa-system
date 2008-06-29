@@ -39,13 +39,13 @@ gobject.threads_init()
 import dbus
 import dbus.service
 import dbus.mainloop.glib
-import dbustools
 import time
 
 # import all tests and scenarios
-import utils
+import insanity.utils as utils
 utils.scan_for_tests()
 
+import insaity.dbustools as dbustools
 from insanity.testrun import TestRun
 from insanity.scenario import Scenario
 from insanity.log import critical, error, warning, debug, info, exception, initLogging
@@ -131,7 +131,7 @@ class TesterClient(dbus.service.Object):
             pass
         if storage == None:
             # Yes, default is sqlitestorage !
-            from storage.sqlite import SQLiteStorage
+            from insanity.storage.sqlite import SQLiteStorage
             storage = SQLiteStorage(path="testrun.db")
         self._storage = storage
         # give client info, this can always be modified later on

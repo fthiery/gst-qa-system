@@ -86,12 +86,12 @@ class ThreadMaster(gobject.GObject):
         gobject.GObject.__init__(self)
         self.threads = []
 
-    def addThread(self, threadClass, *args):
+    def addThread(self, threadclass, *args):
         # IDEA : We might need a limit of concurrent threads ?
         # ... or some priorities ?
         # FIXME : we should only accept subclasses of our Thread class
-        debug("Adding thread of type %r" % threadClass)
-        thread = threadClass(*args)
+        debug("Adding thread of type %r" % threadclass)
+        thread = threadclass(*args)
         thread.connect("done", self._threadDoneCb)
         self.threads.append(thread)
         debug("starting it...")

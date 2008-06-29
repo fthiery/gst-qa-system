@@ -20,8 +20,8 @@
 # Boston, MA 02111-1307, USA.
 
 import gobject
-from test import Test
-from log import critical, error, warning, debug, info, exception
+from insanity.test import Test
+from insanity.log import critical, error, warning, debug, info, exception
 
 class Scenario(Test):
     """
@@ -115,7 +115,7 @@ class Scenario(Test):
 
     # overridable methods
 
-    def addSubTest(self, testclass, arguments, monitors=[], position=-1):
+    def addSubTest(self, testclass, arguments, monitors=None, position=-1):
         """
         testclass : a testclass to run next, can be a Scenario
         arguments : dictionnary of arguments
@@ -155,7 +155,7 @@ class Scenario(Test):
             d.update(sub.getArguments())
         return d
 
-    def addMonitor(self, monitor, monitorargs={}):
+    def addMonitor(self, monitor, monitorargs=None):
         # the subtests will do the check for validity
         self._monitors.append((monitor, monitorargs))
 

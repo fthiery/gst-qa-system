@@ -47,14 +47,14 @@ def get_gstreamer_env_variables(mainpath=None, gstcorepath=None, gstbasepath=Non
     ldlibs = []
     ppath = []
     if mainpath:
-        gstcorepath=os.path.join(mainpath, "gstreamer")
-        gstbasepath=os.path.join(mainpath, "gst-plugins-base")
-        gstgoodpath=os.path.join(mainpath, "gst-plugins-good")
-        gstbadpath=os.path.join(mainpath, "gst-plugins-bad")
-        gstuglypath=os.path.join(mainpath, "gst-plugins-ugly")
-        gstffmpegpath=os.path.join(mainpath, "gst-ffmpeg")
-        gstpythonpath=os.path.join(mainpath, "gst-python")
-        gnonlinpath=os.path.join(mainpath, "gnonlin")
+        gstcorepath = os.path.join(mainpath, "gstreamer")
+        gstbasepath = os.path.join(mainpath, "gst-plugins-base")
+        gstgoodpath = os.path.join(mainpath, "gst-plugins-good")
+        gstbadpath = os.path.join(mainpath, "gst-plugins-bad")
+        gstuglypath = os.path.join(mainpath, "gst-plugins-ugly")
+        gstffmpegpath = os.path.join(mainpath, "gst-ffmpeg")
+        gstpythonpath = os.path.join(mainpath, "gst-python")
+        gnonlinpath = os.path.join(mainpath, "gnonlin")
 
     # libraries
     if gstbadpath:
@@ -85,8 +85,8 @@ def get_gstreamer_env_variables(mainpath=None, gstcorepath=None, gstbasepath=Non
         ppath.append(gstbadpath)
     if gstuglypath:
         ppath.append(gstuglypath)
-    if gstffmpegpatch:
-        ppath.append(gstffmpegpatch)
+    if gstffmpegpath:
+        ppath.append(gstffmpegpath)
     if gnonlinpath:
         ppath.append(gnonlinpath)
 

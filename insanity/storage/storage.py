@@ -22,37 +22,6 @@
 """
 Classes and methods related to storing/retrieving results/data/...
 """
-import threading
-
-class DataStorageThread(threading.Thread):
-    """
-    Thread for adding data in the database
-    """
-
-    def __init__(self, paths, callback):
-        Thread.__init__(self)
-        gst.log("New PathWalker for %s" % paths)
-        self.paths = paths
-        self.callback = callback
-        self.stopme = threading.Event()
-
-    def process(self):
-        for folder in self.paths:
-            gst.log("folder %s" % folder)
-            if folder.startswith("file://"):
-                folder = folder[len("file://"):]
-            for path, dirs, files in os.walk(folder):
-                if self.stopme.isSet():
-                    return
-                uriList = []
-                for afile in files:
-                    uriList.append("file://%s" % os.path.join(path, afile))
-                if uriList:
-                    self.callback(uriList)
-
-    def abort(self):
-        self.stopme.set()
-
 
 class DataStorage:
     """
@@ -124,7 +93,7 @@ class DataStorage:
         pass
 
     # methods to implement in subclasses
-    def findTestsByArgument(self, testtype, arguments, testrunid=None, monitors=[]):
+    def findTestsByArgument(self, testtype, arguments, testrunid=None, monitors=None):
         """
         Return all test ids of type <testtype> and with arguments <arguments>
 
@@ -142,7 +111,7 @@ class FileStorage(DataStorage):
     """
 
     def __init__(self, path, *args, **kwargs):
-        self.path=path
+        self.path = path
         DataStorage.__init__(self, *args, **kwargs)
 
 class NetworkStorage(DataStorage):

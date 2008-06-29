@@ -40,7 +40,7 @@ import tempfile
 import subprocess
 import os
 import signal
-from log import critical, error, warning, debug, info
+from insanity.log import critical, error, warning, debug, info
 
 private_bus = None
 private_bus_address = None

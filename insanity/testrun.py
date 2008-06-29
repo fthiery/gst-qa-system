@@ -37,15 +37,15 @@ Access to the TestRun from test instances will be possible via DBus IPC.
 
 import gobject
 import time
-from log import critical, error, warning, debug, info
-from test import Test
-from arguments import Arguments
-import insanity.environment as environment
-from insanity.threads import ThreadMaster, CallbackThread
-import dbustools
 import dbus.gobject_service
 import tempfile
 import os
+from insanity.log import critical, error, warning, debug, info
+from insanity.test import Test
+from insanity.arguments import Arguments
+import insanity.environment as environment
+from insanity.threads import ThreadMaster, CallbackThread
+import insanity.dbustools as dbustools
 
 ##
 ## TODO/FIXME
@@ -84,7 +84,7 @@ class TestRun(gobject.GObject):
                                  (gobject.TYPE_STRING, ))
         }
 
-    def __init__(self, maxnbtests=1, workingdir=None, env={}):
+    def __init__(self, maxnbtests=1, workingdir=None, env=None):
         """
         maxnbtests : Maximum number of tests to run simultaneously in each batch.
         workingdir : Working directory (default : getcwd() + /workingdir/)
@@ -107,7 +107,8 @@ class TestRun(gobject.GObject):
         # _environ are the environment variables (env)
         self._environment = {}
         self._env = os.environ.copy()
-        self._env.update(env)
+        if env:
+            self._env.update(env)
         self._workingdir = workingdir or os.path.join(os.getcwd(), "workingdir")
         self._outputdir = os.path.join(self._workingdir, "outputfiles")
         self._running = False
@@ -138,7 +139,7 @@ class TestRun(gobject.GObject):
     def setStorage(self, storage):
         self._storage = storage
 
-    def addTest(self, test, arguments, monitors=[]):
+    def addTest(self, test, arguments, monitors=None):
         """
         Adds test with the given arguments (or generator) and monitors
         to the list of tests to be run
@@ -258,8 +259,9 @@ class TestRun(gobject.GObject):
         test = testclass(testrun=self, bus=self._bus,
                          bus_address=self._bus_address,
                          **kwargs)
-        for monitor in monitors:
-            test.addMonitor(*monitor)
+        if monitors:
+            for monitor in monitors:
+                test.addMonitor(*monitor)
 
         test.connect("start", self._singleTestStart)
         test.connect("done", self._singleTestDone)
@@ -361,12 +363,12 @@ class ListTestRun(TestRun):
     the same argument has completed successfully.
     """
 
-    def __init__(self, tests, arguments, monitors=[], *args, **kwargs):
+    def __init__(self, tests, arguments, monitors=None, *args, **kwargs):
         TestRun.__init__(self, *args, **kwargs)
         for test in tests:
             self.addTest(test, arguments, monitors)
 
-def single_test_run(test, arguments=[], monitors=[]):
+def single_test_run(test, arguments=[], monitors=None):
     """
     Convenience function to create a TestRun for a single test
     """

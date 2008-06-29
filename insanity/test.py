@@ -29,8 +29,10 @@ import signal
 import time
 import dbus
 import dbus.gobject_service
-from dbustools import unwrap
+from insanity.dbustools import unwrap
 from insanity.threads import ThreadMaster, CallbackThread
+from insanity.log import critical, error, warning, debug, info, exception
+import insanity.utils as utils
 
 if gst.pygst_version < (0, 10, 9):
     # pygst before 0.10.9 has atexit(gst_deinit), causing segfaults.  Let's
@@ -38,9 +40,6 @@ if gst.pygst_version < (0, 10, 9):
     def exit(status=0):
         os._exit(status)
     sys.exit = exit
-
-from log import critical, error, warning, debug, info, exception
-import utils
 
 """
 Base Test Classes
@@ -330,6 +329,8 @@ class Test(gobject.GObject):
 
     def _setUpMonitors(self):
         for monitor, monitorarg in self._monitors:
+            if monitorarg == None:
+                monitorarg = {}
             instance = monitor(self._testrun, self, **monitorarg)
             if not instance.setUp():
                 return False
@@ -582,7 +583,7 @@ class Test(gobject.GObject):
         self._asynctimeout = timeout
         return True
 
-    def addMonitor(self, monitor, monitorargs={}):
+    def addMonitor(self, monitor, monitorargs=None):
         """
         Add a monitor to this test instance.
 
@@ -629,7 +630,7 @@ class DBusTest(Test, dbus.service.Object):
     __metaclass__ = dbus.gobject_service.ExportedGObjectType
 
     def __init__(self, bus=None, bus_address="", proxy=True,
-                 env={}, *args, **kwargs):
+                 env=None, *args, **kwargs):
         """
         bus is the private DBusConnection used for testing.
         bus_address is the address of the private DBusConnection used for testing.
@@ -665,7 +666,7 @@ class DBusTest(Test, dbus.service.Object):
             self._stdout = None
             self._stderr = None
             self._preargs = []
-            self._environ = env
+            self._environ = env or {}
             self._environ.update(os.environ.copy())
             self._subprocessspawntime = 0
             self._subprocessconnecttime = 0
@@ -1131,7 +1132,7 @@ class GStreamerTest(PythonDBusTest):
     # Initial pipeline state, subclasses can override this
     __pipeline_initial_state__ = gst.STATE_PLAYING
 
-    def __init__(self, env={}, *args, **kwargs):
+    def __init__(self, env=None, *args, **kwargs):
         # We don't want the tests to update the registry because:
         # * it will make the tests start up faster
         # * the tests accros testrun should be using the same registry/plugins

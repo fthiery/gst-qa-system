@@ -23,10 +23,10 @@
 Arguments classes for tests
 """
 
-from log import critical, error, warning, debug, info
-from generator import Generator
+from insanity.log import critical, error, warning, debug, info
+from insanity.generator import Generator
 
-class Arguments:
+class Arguments(object):
     """
     Iterable argument lists.
 
