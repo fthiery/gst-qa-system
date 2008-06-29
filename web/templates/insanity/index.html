@@ -1,0 +1,9 @@
+{% if latest_runs %}
+    <ul>
+    {% for run in latest_runs %}
+        <li>TestRun <a href={{run.get_absolute_url}}>#{{ run.id }}</a>, {{run.test_set.count}} test{{run.test_set.count|pluralize}}</li>
+    {% endfor %}
+    </ul>
+{% else %}
+    <p>No Test Runs are available.</p>
+{% endif %}

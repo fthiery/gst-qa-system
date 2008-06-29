@@ -29,7 +29,6 @@ class DataStorage:
     """
     def __init__(self):
         self.setUp()
-        self._lock = threading.Lock()
 
     def setUp(self):
         raise NotImplementedError

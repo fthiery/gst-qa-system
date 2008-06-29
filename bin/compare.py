@@ -29,6 +29,7 @@ import sys
 import time
 from optparse import OptionParser
 from insanity.storage.sqlite import SQLiteStorage
+from insanity.log import initLogging
 
 def printTestInfo(db, testid, failedonly=False):
     trid, ttype, args, checks, resperc, extras, outputfiles = db.getFullTestInfo(testid)
@@ -106,7 +107,7 @@ def compare(storage, testrun1, testrun2):
     newtests = []
 
     for newid in tests2:
-        tid, ttype, args, results, resperc, extras, outputfiles = storage.getFullTestInfo(newid)
+        tid, ttype, args, results, resperc, extras, outputfiles = storage.getFullTestInfo(newid, rawinfo=True)
         monitors = storage.getMonitorsIDForTest(newid)
         ancestors = storage.findTestsByArgument(ttype, args, testrun1, monitors)
         if ancestors == []:
@@ -145,7 +146,8 @@ if __name__ == "__main__":
     if len(sys.argv) < 4:
         print "Usage : compare.py <testrundbfile> <testrunid> <testrunid>"
         sys.exit(0)
-    db = SQLiteStorage(sys.argv[1])
+    initLogging()
+    db = SQLiteStorage(path=sys.argv[1], async=False)
     # the last two arguments are the testrunid to compare
     a,b = [int(x) for x in sys.argv[-2:]]
     new, gone, imps, regs, mapping = compare(db, a, b)

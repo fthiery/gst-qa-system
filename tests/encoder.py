@@ -24,6 +24,7 @@ Series of tests to test encoder behaviour
 """
 
 from insanity.test import GStreamerTest
+from insanity.log import critical, error, warning, debug, info, exception
 import gst
 import os
 import os.path
@@ -73,10 +74,10 @@ class EncoderMuxerTest(GStreamerTest):
                          False,
                          None),
         "video-caps": ("caps to use when generating the raw video stream to be encoded",
-                       gst.caps_new_any(),
+                       "ANY",
                        None),
         "audio-caps": ("caps to use when generating the raw audio stream to be encoded",
-                       gst.caps_new_any(),
+                       "ANY",
                        None),
         "video-encoder-factory": ("Name of the gst.ElementFactory to use to encode the video stream",
                                   None,
@@ -93,6 +94,10 @@ class EncoderMuxerTest(GStreamerTest):
         "media-offset": ( "Initial buffer timestamp",
                           0,
                           None )
+        }
+
+    __test_checklist__ = {
+        "muxer-can-use-encoders":"The muxer is able to use the given encoders"
         }
 
     __test_output_files__ = {
@@ -114,7 +119,14 @@ class EncoderMuxerTest(GStreamerTest):
         self._audioCaps = self.arguments.get("audio-caps")
         self._muxerFact = self.arguments.get("muxer-factory")
         self._mediaDuration = self.arguments.get("media-duration", 20 * gst.SECOND)
-        self._outFD, self._outPath = self.testrun.get_temp_file(nameid="encodmux-file")
+        self._audioSource = None
+        self._videoSource = None
+        self._audioEncoder = None
+        self._videoEncoder = None
+        self._muxer = None
+        debug("about to get outputfile")
+        self._outPath = self._outputfiles["encoded-muxed-file"]
+        debug("got outputfile %s", self._outPath)
         GStreamerTest.remoteSetUp(self)
 
     def createPipeline(self):
@@ -130,53 +142,71 @@ class EncoderMuxerTest(GStreamerTest):
 
         # muxer and filesink
         if self._muxerFact:
-            muxer = gst.element_factory_make(self._muxerFact, "muxer")
+            self._muxer = gst.element_factory_make(self._muxerFact, "muxer")
         else:
-            muxer = gst.element_factory_make("identity", "muxer")
+            self._muxer = gst.element_factory_make("identity", "muxer")
         filesink = gst.element_factory_make("filesink")
         filesink.props.location = self._outPath
-        p.add(muxer, filesink)
-        muxer.link(filesink)
+        p.add(self._muxer, filesink)
+        self._muxer.link(filesink)
 
-        # audio source + capsfilter + encoder
         if self._encodeAudio:
-            audiosrc = make_audio_test_source(duration=self._mediaDuration)
-            enc = gst.element_factory_make(self._videoFact)
-            vq = gst.element_factory_make("queue", "videoqueue")
-            p.add(audiosrc, enc, vq)
-            if self._audioCaps:
-                audiosrc.link(enc, gst.Caps(self._audioCaps))
-            else:
-                audiosrc.link(enc)
-            gst.element_link_many(enc, vq, muxer)
+            self._audioSource = make_audio_test_source(duration=self._mediaDuration)
+            enc = gst.element_factory_make(self._audioFact)
+            self._audioEncoder = gst.element_factory_make("audioresample")
+            aconv = gst.element_factory_make("audioconvert")
+            vq = gst.element_factory_make("queue", "audioqueue")
+            p.add(self._audioSource, self._audioEncoder, aconv, enc, vq)
+            gst.element_link_many(self._audioEncoder, aconv, enc, vq)
+            cptpad = self._muxer.get_compatible_pad(vq.get_pad("src"),
+                                                    enc.get_pad("src").get_caps())
+            if cptpad == None:
+                self.validateStep("muxer-can-use-encoders", False)
+                return None
+            gst.debug("Using pad %r for audio encoder" % cptpad)
+            vq.get_pad("src").link(cptpad)
+            self._audioSource.connect("pad-added",
+                                      self._audioSourcePadAdded)
 
-        # video source + capsfilter + encoder
         if self._encodeVideo:
-            videosrc = make_video_test_source(duration=self._mediaDuration)
+            self._videoSource = make_video_test_source(duration=self._mediaDuration)
             enc = gst.element_factory_make(self._videoFact)
+            self._videoEncoder = gst.element_factory_make("ffmpegcolorspace")
             vq = gst.element_factory_make("queue", "videoqueue")
-            p.add(videosrc, enc, vq)
-            if self._videoCaps:
-                videosrc.link(enc, gst.Caps(self._videoCaps))
-            else:
-                videosrc.link(enc)
-            gst.element_link_many(enc, vq, muxer)
+            p.add(self._videoSource, self._videoEncoder, enc, vq)
+            gst.element_link_many(self._videoEncoder, enc, vq)
+            cptpad = self._muxer.get_compatible_pad(vq.get_pad("src"),
+                                                    enc.get_pad("src").get_caps())
+            if cptpad == None:
+                self.validateStep("muxer-can-use-encoders", False)
+                return None
+            gst.debug("Using pad %r for video encoder" % cptpad)
+            vq.get_pad("src").link(cptpad)
+            self._videoSource.connect("pad-added",
+                                      self._videoSourcePadAdded)
 
+        self.validateStep("muxer-can-use-encoders")
         return p
 
-    def remoteTearDown(self):
-        if not GStreamerTest.remoteTearDown(self):
-            return False
-        # if output file is non-empty, validate it !
-        if self._outFD:
-            os.close(self._outFD)
-        if not os.path.getsize(self._outPath):
-            warning("output file is empty, not signaling")
-            os.remove(self._outPath)
-        else:
-            self.setOutputFile("encoded-muxed-file",
-                               self._outPath)
-        return True
+    def _audioSourcePadAdded(self, audioSource, pad):
+        debug("pad %r, audioCaps:%r", pad, self._audioCaps)
+        try:
+            if self._audioCaps:
+                self._audioSource.link(self._audioEncoder, gst.Caps(self._audioCaps))
+            else:
+                self._audioSource.link(self._audioEncoder)
+        finally:
+            debug("done")
+
+    def _videoSourcePadAdded(self, videoSource, pad):
+        debug("pad %r, videoCaps:%r", pad, self._videoCaps)
+        try:
+            if self._videoCaps:
+                self._videoSource.link(self._videoEncoder, gst.Caps(self._videoCaps))
+            else:
+                self._videoSource.link(self._videoEncoder)
+        finally:
+            debug("done")
 
     def pipelineReachedInitialState(self):
         return False

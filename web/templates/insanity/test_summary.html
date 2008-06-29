@@ -1,0 +1,56 @@
+<b>Test #{{ test.id }}</b><br>
+URL : [{{test.get_absolute_url}}]<br>
+TestRun : <a href={{test.testrunid.get_absolute_url}}>{{test.testrunid}}</a> <br>
+test type : {{test.type.type}} <br>
+Success rate : {{test.resultpercentage}}% <br>
+
+{% if test.is_scenario %}
+Test is a Scenario.<br>
+{% if test.subtest.count %}
+Subtests:
+<ul>
+   {% for subtest in test.subtest.all %}
+      <li>Test <a href={{subtest.testid.get_absolute_url}}>#{{ subtest.testid.id }}</a> Success:{{subtest.testid.resultpercentage}}%</li>
+   {% endfor %}
+</ul>
+{% endif %}{% endif %}
+
+{% if test.is_subtest %}
+Container: <a href={{test.parent.scenarioid.get_absolute_url}}>{{ test.parent.scenarioid.id }}</a><br>
+{% endif %}
+
+{% if test.arguments.count %}
+Arguments:
+<ul>
+{% for arg in test.arguments.all %}
+  <li>{{arg.name.name}}:{{arg.value}}</li>
+{% endfor %}
+</ul>
+{% endif %}
+
+{% if test.checklist.count %}
+CheckList:
+<ul>
+{% for check in test.checklist.all %}
+  <li>{{check.name.name}}:{{check.value}}</li>
+{% endfor %}
+</ul>
+{% endif %}
+
+{% if test.outputfiles.count %}
+OutputFiles:
+<ul>
+{% for outf in test.outputfiles.all %}
+  <li>{{outf.name.name}}:{{outf.value}}</li>
+{% endfor %}
+</ul>
+{% endif %}
+
+{% if test.extrainfo.count %}
+ExtraInfo:
+<ul>
+{% for extra in test.extrainfo.all %}
+  <li>{{extra.name.name}}:{{extra.value}}</il>
+{% endfor %}
+</ul>
+{% endif %}

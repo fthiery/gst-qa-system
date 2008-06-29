@@ -146,6 +146,13 @@ class Test(gobject.GObject):
     __test_output_files__ = { }
     """
     Dictionnary of output files this test can produce
+
+    key : short name of the output file
+    value : description of the contents of the output file
+
+    Temporary names will be automatically created at initialization for use by
+    subtests, or can be overridden by setting specific names as the 'outputfiles'
+    __init__() argument.
     """
 
     # Set to True if your setUp doesn't happen synchronously
@@ -163,7 +170,7 @@ class Test(gobject.GObject):
     # Set to False if you test() method returns immediatly
     __async_test__ = True
     """
-    Indicates if this test runs asynchronously 
+    Indicates if this test runs asynchronously
     """
 
     __gsignals__ = {
@@ -187,7 +194,8 @@ class Test(gobject.GObject):
         }
 
     def __init__(self, testrun=None, uuid=None, timeout=None,
-                 asynctimeout=None, *args, **kwargs):
+                 asynctimeout=None,
+                 *args, **kwargs):
         gobject.GObject.__init__(self)
         self._timeout = timeout or self.__test_timeout__
         self._asynctimeout = asynctimeout or self.__async_setup_timeout__
@@ -203,14 +211,24 @@ class Test(gobject.GObject):
         # initialize checklist to False
         self._populateChecklist()
         self._extraInfo = {}
-        self._outputfiles = {}
-
         self._testrun = testrun
+
         if uuid == None:
             self.uuid = utils.acquire_uuid()
         else:
             self.uuid = uuid
         self.arguments["uuid"] = self.uuid
+
+        self._outputfiles = kwargs.get("outputfiles", {})
+        # creating default file names
+        if self._testrun:
+            for ofname,desc in self.getFullOutputFilesList().iteritems():
+                if not ofname in self._outputfiles:
+                    ofd, opath = self._testrun.get_temp_file(nameid=ofname)
+                    debug("created temp file name '%s' for outputfile '%s' [%s]",
+                          opath, ofname, self.uuid)
+                    self._outputfiles[ofname] = opath
+                    os.close(ofd)
 
         self._asynctimeoutid = 0
         self._testtimeoutid = 0
@@ -243,7 +261,7 @@ class Test(gobject.GObject):
     def __repr__(self):
         if self.uuid:
             return "< %s uuid:%s >" % (self.__class__.__name__, self.uuid)
-        return "< %s id:%p >" % (self.__class__.__name__, id(self))
+        return "< %s id:%r >" % (self.__class__.__name__, id(self))
 
     def _populateChecklist(self):
         """ fill the instance checklist with default values """
@@ -342,7 +360,7 @@ class Test(gobject.GObject):
         Clear test
 
         If you implement this method, you need to chain up to the
-        parent class' setUp() at the END of your method.
+        parent class' tearDown() at the END of your method.
 
         Your teardown MUST happen in a synchronous fashion.
         """
@@ -352,6 +370,15 @@ class Test(gobject.GObject):
         if self._testtimeoutid:
             gobject.source_remove(self._testtimeoutid)
             self._testtimeoutid = 0
+        for ofname,fname in list(self._outputfiles.iteritems()):
+            if os.path.exists(fname):
+                if not os.path.getsize(fname):
+                    debug("removing empty file from outputfiles dictionnary")
+                    os.remove(fname)
+                    del self._outputfiles[ofname]
+            else:
+                debug("removing unexistent file from outputfiles dictionnary")
+                del self._outputfiles[ofname]
 
     def stop(self):
         """
@@ -1015,9 +1042,11 @@ class DBusTest(Test, dbus.service.Object):
         remoteRunner = dbus.Interface(remoteRunnerObject,
                                       "net.gstreamer.Insanity.RemotePythonRunner")
         debug("Got remote iface %r" % remoteRunner)
-        args = self.arguments
+        args = self.arguments.copy()
         args["bus_address"] = self._bus_address
         args["timeout"] = self._timeout
+        if self._outputfiles:
+            args["outputfiles"] = self.getOutputFiles()
         debug("Creating remote instance with arguments %r", args)
         remoteRunner.createTestInstance(self.get_file(),
                                         self.__module__,
@@ -1030,12 +1059,17 @@ class DBusTest(Test, dbus.service.Object):
         debug("%s retval:%r", self.uuid, retval)
         if retval:
             delay = time.time() - self._subprocessconnecttime
-            self.extraInfo("remote-instance-creation-delay", delay)
-            self.validateStep("remote-instance-created")
             rname = "net.gstreamer.Insanity.Test.Test%s" % self.uuid
             rpath = "/net/gstreamer/Insanity/Test/Test%s" % self.uuid
             # remote instance was successfully created, let's get it
-            remoteObj = self._bus.get_object(rname, rpath)
+            try:
+                remoteObj = self._bus.get_object(rname, rpath)
+            except:
+                warning("Couldn't get the remote instance for test %r", self.uuid)
+                self.stop()
+                return
+            self.extraInfo("remote-instance-creation-delay", delay)
+            self.validateStep("remote-instance-created")
             self._remoteInstance = dbus.Interface(remoteObj,
                                                   "net.gstreamer.Insanity.Test")
             self._remoteInstance.connect_to_signal("remoteReadySignal",
@@ -1137,9 +1171,10 @@ class GStreamerTest(PythonDBusTest):
         # * it will make the tests start up faster
         # * the tests accros testrun should be using the same registry/plugins
         #
-        # This feature is only available since 0.10.29.1 (24th April 2008) in
+        # This feature is only available since 0.10.19.1 (24th April 2008) in
         # GStreamer core
         env["GST_REGISTRY_UPDATE"] = "no"
+        self.pipeline = None
         PythonDBusTest.__init__(self, env=env, *args, **kwargs)
 
     def setUp(self):
@@ -1164,7 +1199,7 @@ class GStreamerTest(PythonDBusTest):
         finally:
             self.validateStep("valid-pipeline", not self.pipeline == None)
             if self.pipeline == None:
-                self.stop()
+                self.remoteStop()
                 return
 
         self._elements = [(self.pipeline.get_name(),
@@ -1206,7 +1241,8 @@ class GStreamerTest(PythonDBusTest):
                 for x in listval:
                     del self._tags[x]
             self.extraInfo("tags", dbus.Dictionary(self._tags, signature="sv"))
-        self.extraInfo("elements-used", self._elements)
+        if not self._elements == []:
+            self.extraInfo("elements-used", self._elements)
         return True
 
     def remoteTest(self):
@@ -1246,10 +1282,10 @@ class GStreamerTest(PythonDBusTest):
                 prev, cur, pending = message.parse_state_changed()
                 if cur == self.__pipeline_initial_state__ and pending == gst.STATE_VOID_PENDING:
                     gst.log("Reached initial state")
+                    self.validateStep("reached-initial-state")
                     if self.pipelineReachedInitialState():
                         debug("Stopping test because we reached initial state")
                         gst.log("Stopping test because we reached initial state")
-                        self.validateStep("reached-initial-state")
                         self.stop()
 
     def _gotTags(self, tags):

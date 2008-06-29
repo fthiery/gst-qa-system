@@ -27,6 +27,7 @@ Convenience methods and classes for multi-threading
 
 import threading
 import gobject
+import traceback
 from insanity.log import critical, error, warning, debug, info
 
 class Thread(threading.Thread, gobject.GObject):
@@ -77,9 +78,119 @@ class CallbackThread(Thread):
 
 gobject.type_register(CallbackThread)
 
+class ActionQueueThread(threading.Thread):
+    """
+    Thread for serializing actions.
+
+    Actions can be added in queueAction()
+
+    If you no longer wish to use this thread, add a
+    notifier callback by using queueFinalAction().
+    The thread will exit after calling that final action.
+
+    If you wish to abort the thread, just call abort() and
+    the Thread will return as soon as possible.
+    """
+
+    def __init__(self):
+        threading.Thread.__init__(self)
+        self._lock = threading.Condition()
+        # if set to True, the thread will exit even though
+        # there are remaining actions
+        self._abort = False
+        # if set to True, the thread will exit when there's
+        # no longer any actions in the queue.
+        self._exit = False
+        # list of callables with arguments/kwargs
+        self._queue = []
+
+    def run(self):
+        # do something
+        debug("Starting in proces...")
+        self._lock.acquire()
+        while True:
+            debug("queue:%d _exit:%r _abort:%r",
+                    len(self._queue), self._exit,
+                    self._abort)
+            if self._abort:
+                debug("aborting")
+                self._lock.release()
+                return
+
+            while len(self._queue) == 0:
+                debug("queue:%d _exit:%r _abort:%r",
+                        len(self._queue), self._exit,
+                        self._abort)
+                if self._exit:
+                    self._lock.release()
+                    return
+                debug("waiting for cond")
+                self._lock.wait()
+                debug("cond was triggered")
+                if self._abort:
+                    self._lock.release()
+                    return
+            method, args, kwargs = self._queue.pop(0)
+            self._lock.release()
+            try:
+                debug("about to call %r", method)
+                method(*args, **kwargs)
+            except:
+                error("There was a problem calling %r", method)
+                error(traceback.format_exc())
+            finally:
+                debug("Finished calling %r, re-acquiring lock",
+                      method)
+            self._lock.acquire()
+
+    def abort(self):
+        self._lock.acquire()
+        self._abort = True
+        self._lock.notify()
+        self._lock.release()
+
+    def queueAction(self, method, *args, **kwargs):
+        """
+        Queue an action.
+        Returns True if the action was queued, else False.
+        """
+        res = False
+        debug("about to queue %r", method)
+        self._lock.acquire()
+        debug("Got lock to queue, _abort:%r, _exit:%r",
+                self._abort, self._exit)
+        if not self._abort and not self._exit:
+            self._queue.append((method, args, kwargs))
+            self._lock.notify()
+            res = True
+        debug("about to release lock")
+        self._lock.release()
+        debug("lock released, result:%r", res)
+        return res
+
+    def queueFinalAction(self, method, *args, **kwargs):
+        """
+        Set a last action to be called.
+        """
+        res = False
+        debug("about to queue %r", method)
+        self._lock.acquire()
+        debug("Got lock to queue, _abort:%r, _exit:%r",
+                self._abort, self._exit)
+        if not self._abort and not self._exit:
+            self._queue.append((method, args, kwargs))
+            res = True
+        self._exit = True
+        self._lock.notify()
+        debug("about to release lock")
+        self._lock.release()
+        debug("lock released, result:%r", res)
+        return res
+
+
 class ThreadMaster(gobject.GObject):
     """
-    Controls all thread existing in pitivi
+    Controls all thread
     """
 
     def __init__(self):
@@ -113,4 +224,5 @@ class ThreadMaster(gobject.GObject):
                     joinedthreads += 1
                 except:
                     warning("what happened ??")
+
 

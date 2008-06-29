@@ -1,0 +1,12 @@
+<b>TestRun #{{ testrun.id }}</b>
+<br>
+<ul>
+{% if not testrun.stoptime %}
+  TestRun is not finished !!!
+{% endif %}
+{% for test in testrun.test_set.all %}
+  {% if not toplevel_only or not test.is_subtest %}
+  <li><a href={{ test.get_absolute_url }}>Test</a> #{{ test.id }} [{{ test.type.type }}] Success:{{test.resultpercentage}}%</li>
+  {% endif %}
+{% endfor %}
+</ul>

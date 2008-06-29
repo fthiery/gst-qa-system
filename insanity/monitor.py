@@ -49,6 +49,7 @@ import os.path
 import subprocess
 from insanity.test import Test, DBusTest, GStreamerTest
 from insanity.log import critical, error, warning, debug, info, exception
+from insanity.utils import compress_file
 
 class Monitor(object):
     """
@@ -275,7 +276,8 @@ class GstDebugLogMonitor(Monitor):
     __monitor_name__ = "gst-debug-log-monitor"
     __monitor_description__ = "Logs GStreamer debug activity"
     __monitor_arguments__ = {
-        "debug-level" : "GST_DEBUG value (defaults to '*:2')"
+        "debug-level" : "GST_DEBUG value (defaults to '*:2')",
+        "compress-logs" : "Whether the resulting log should be compressed (default:True)"
         }
     __monitor_output_files__ = {
         "gst-log-file" : "file containing the GST_DEBUG log"
@@ -311,6 +313,12 @@ class GstDebugLogMonitor(Monitor):
             debug("log file is empty, removing it")
             os.remove(self._logfilepath)
         else:
+            if self.arguments.get("compress-logs", True):
+                res = self._logfilepath + ".gz"
+                debug("compressing debug log to %s",res)
+                compress_file(self._logfilepath, res)
+                os.remove(self._logfilepath)
+                self._logfilepath = res
             # else report it
             self.setOutputFile("gst-log-file", self._logfilepath)
 
