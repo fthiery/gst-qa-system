@@ -60,10 +60,10 @@ def initLogging():
         info("Logging was already setup, returning")
         return
 
-    maj,min,mic,nm,cvs = sys.version_info
+    majv, minv = sys.version_info[:2]
 
-    debuformat = "%(asctime)s  0x%(thread)x  %(levelname)10s  %(filename)s:%(lineno)d:"
-    if (maj,min) >= (2,5):
+    debugformat = "%(asctime)s  0x%(thread)x  %(levelname)10s  %(filename)s:%(lineno)d:"
+    if (majv, minv) >= (2, 5):
         debugformat += "%(funcName)s: %(message)s"
     else:
         debugformat += ": %(message)s"
@@ -79,6 +79,6 @@ def initLogging():
             debuglevel = levels[insdeb - 1]
 
     # basicConfig
-    basicConfig(level=debuglevel,format=debugformat)
+    basicConfig(level = debuglevel, format = debugformat)
     info("Logging is now properly setup")
     __logging_setup__ = False

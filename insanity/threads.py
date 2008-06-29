@@ -28,7 +28,7 @@ Convenience methods and classes for multi-threading
 import threading
 import gobject
 import traceback
-from insanity.log import critical, error, warning, debug, info
+from insanity.log import error, warning, debug
 
 class Thread(threading.Thread, gobject.GObject):
     """

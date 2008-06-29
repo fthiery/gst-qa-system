@@ -23,7 +23,7 @@
 Arguments classes for tests
 """
 
-from insanity.log import critical, error, warning, debug, info
+from insanity.log import debug, info
 from insanity.generator import Generator
 
 class Arguments(object):
@@ -42,7 +42,7 @@ class Arguments(object):
     individual arguments. Ex : "arg1,arg2,arg3"
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs):
         self.args = kwargs
         # split out static args from generators
         # generators : (generator, curidx, length)
@@ -78,7 +78,7 @@ class Arguments(object):
             # extend with current generator values
             for key in self.genlist:
                 info("key")
-                gen, idx, length = self.generators[key]
+                gen, idx = self.generators[key][:2]
                 # split generator name
                 keys = key.split(",")
                 if len(keys) > 1:
@@ -94,9 +94,9 @@ class Arguments(object):
 
     def updateGeneratorsPosition(self):
         for key in self.genlist:
-            gen, idx, length = self.generators[key]
             # update the position of this generator
-            self.generators[key][1] = (self.generators[key][1] + 1) % self.generators[key][2]
+            apos = (self.generators[key][1] + 1) % self.generators[key][2]
+            self.generators[key][1] = apos
             # if we didn't go over, break, else continue to update next one
             if self.generators[key][1]:
                 break

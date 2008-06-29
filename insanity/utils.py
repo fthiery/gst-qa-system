@@ -25,7 +25,7 @@ Miscellaneous utility functions and classes
 """
 
 from random import randint
-import bz2, gzip
+import gzip
 
 __uuids = []
 

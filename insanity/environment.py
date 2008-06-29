@@ -35,7 +35,7 @@ import string
 import gobject
 gobject.threads_init()
 import gst
-from insanity.log import critical, error, warning, debug, info, exception
+from insanity.log import debug, exception
 
 # TODO : methods/classes to retrieve/process environment
 #

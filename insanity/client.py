@@ -48,7 +48,7 @@ utils.scan_for_tests()
 import insaity.dbustools as dbustools
 from insanity.testrun import TestRun
 from insanity.scenario import Scenario
-from insanity.log import critical, error, warning, debug, info, exception, initLogging
+from insanity.log import warning, debug, info, exception, initLogging
 
 initLogging()
 

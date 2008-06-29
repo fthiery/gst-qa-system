@@ -293,8 +293,8 @@ class SQLiteStorage(DBStorage):
         self._async = async
         self.con = None
         if self._async:
-            self._actionThread = ActionQueueThread()
-            self._actionThread.start()
+            self._actionthread = ActionQueueThread()
+            self._actionthread.start()
 
     def openDatabase(self):
         debug("opening sqlite db for path '%s'", self.path)
@@ -310,15 +310,15 @@ class SQLiteStorage(DBStorage):
         if self._checkForTables() == False:
             error("Tables were not created properly !!")
         # add database version
-        self._ExecuteCommit("INSERT INTO version (version, modificationtime) VALUES (?, ?)",
-                            (DATABASE_VERSION, int(time.time())))
+        cmstr = "INSERT INTO version (version, modificationtime) VALUES (?, ?)"
+        self._ExecuteCommit(cmstr, (DATABASE_VERSION, int(time.time())))
         debug("Tables properly created")
 
     def shutDown(self, callback, *args, **kwargs):
         """ Shut down the database, the callback will be called when it's finished
         processing pending actions. """
         if self._async:
-            self._actionThread.queueFinalAction(callback, *args, **kwargs)
+            self._actionthread.queueFinalAction(callback, *args, **kwargs)
         else:
             callback(*args, **kwargs)
 
@@ -370,12 +370,12 @@ class SQLiteStorage(DBStorage):
         Returns the name of all the available tables in the currently
         loaded database.
         """
-        checkTables = """
+        checktables = """
         SELECT name FROM sqlite_master
         WHERE type='table'
         ORDER BY name;
         """
-        return [x[0] for x in self.con.execute(checkTables).fetchall()]
+        return [x[0] for x in self.con.execute(checktables).fetchall()]
 
     def _getDatabaseSchemeVersion(self):
         """
@@ -496,31 +496,40 @@ class SQLiteStorage(DBStorage):
                                monitorid, map_dict(dic, maps))
 
     def _storeTestClassArgumentsDict(self, testclassinfoid, dic):
-        return self._storeDict("testclassinfo_arguments_dict", testclassinfoid, dic)
+        return self._storeDict("testclassinfo_arguments_dict",
+                               testclassinfoid, dic)
 
     def _storeTestClassCheckListDict(self, testclassinfoid, dic):
-        return self._storeDict("testclassinfo_checklist_dict", testclassinfoid, dic)
+        return self._storeDict("testclassinfo_checklist_dict",
+                               testclassinfoid, dic)
 
     def _storeTestClassExtraInfoDict(self, testclassinfoid, dic):
-        return self._storeDict("testclassinfo_extrainfo_dict", testclassinfoid, dic)
+        return self._storeDict("testclassinfo_extrainfo_dict",
+                               testclassinfoid, dic)
 
     def _storeTestClassOutputFileDict(self, testclassinfoid, dic):
-        return self._storeDict("testclassinfo_outputfiles_dict", testclassinfoid, dic)
+        return self._storeDict("testclassinfo_outputfiles_dict",
+                               testclassinfoid, dic)
 
     def _storeMonitorClassArgumentsDict(self, monitorclassinfoid, dic):
-        return self._storeDict("monitorclassinfo_arguments_dict", monitorclassinfoid, dic)
+        return self._storeDict("monitorclassinfo_arguments_dict",
+                               monitorclassinfoid, dic)
 
     def _storeMonitorClassCheckListDict(self, monitorclassinfoid, dic):
-        return self._storeDict("monitorclassinfo_checklist_dict", monitorclassinfoid, dic)
+        return self._storeDict("monitorclassinfo_checklist_dict",
+                               monitorclassinfoid, dic)
 
     def _storeMonitorClassExtraInfoDict(self, monitorclassinfoid, dic):
-        return self._storeDict("monitorclassinfo_extrainfo_dict", monitorclassinfoid, dic)
+        return self._storeDict("monitorclassinfo_extrainfo_dict",
+                               monitorclassinfoid, dic)
 
     def _storeMonitorClassOutputFileDict(self, monitorclassinfoid, dic):
-        return self._storeDict("monitorclassinfo_outputfiles_dict", monitorclassinfoid, dic)
+        return self._storeDict("monitorclassinfo_outputfiles_dict",
+                               monitorclassinfoid, dic)
 
     def _storeEnvironmentDict(self, testrunid, dic):
-        return self._storeDict("testrun_environment_dict", testrunid, dic)
+        return self._storeDict("testrun_environment_dict",
+                               testrunid, dic)
 
     def _insertTestClassInfo(self, tclass):
         ctype = tclass.__dict__.get("__test_name__").strip()
@@ -587,7 +596,9 @@ class SQLiteStorage(DBStorage):
             parent = tclass.__base__.__dict__.get("__monitor_name__").strip()
 
         # insert into db
-        insertstr = "INSERT INTO monitorclassinfo (type, parent, description) VALUES (?, ?, ?)"
+        insertstr = """
+        INSERT INTO monitorclassinfo (type, parent, description) VALUES (?, ?, ?)
+        """
         tcid = self._ExecuteCommit(insertstr, (ctype, parent, desc))
 
         # store the dicts
@@ -615,9 +626,10 @@ class SQLiteStorage(DBStorage):
 
     # public storage API
 
-    def _setClientInfo(self, softwarename, clientname, user, id=None):
+    def _setClientInfo(self, softwarename, clientname, user):
         # check if that triplet is already present
-        debug("softwarename:%s, clientname:%s, user:%s", softwarename, clientname, user)
+        debug("softwarename:%s, clientname:%s, user:%s",
+              softwarename, clientname, user)
         existstr = "SELECT id FROM client WHERE software=? AND name=? AND user=?"
         res = self._FetchAll(existstr, (softwarename, clientname, user))
         if len(res) == 1 :
@@ -625,25 +637,27 @@ class SQLiteStorage(DBStorage):
             key = res[0][0]
         elif len(res) > 1:
             warning("More than one similar entry ???")
-            raise Exception("There are more than one client entry with the same information, fix database !")
+            raise Exception("Several client entries with the same information, fix db!")
         else:
-            insertstr = "INSERT INTO client (id, software, name, user) VALUES (NULL, ?,?,?)"
+            insertstr = """
+            INSERT INTO client (id, software, name, user) VALUES (NULL, ?,?,?)
+            """
             key = self._ExecuteCommit(insertstr, (softwarename, clientname, user))
         debug("got id %d", key)
         # cache the key
         self.__clientid = key
         return key
 
-    def setClientInfo(self, softwarename, clientname, user, id=None):
+    def setClientInfo(self, softwarename, clientname, user):
         if self._async:
-            self._actionThread.queueAction(self._setClientInfo, softwarename,
+            self._actionthread.queueAction(self._setClientInfo, softwarename,
                                            clientname, user)
         else:
             self._setClientInfo(softwarename, clientname, user)
 
     def startNewTestRun(self, testrun):
         if self._async:
-            self._actionThread.queueAction(self._startNewTestRun,
+            self._actionthread.queueAction(self._startNewTestRun,
                                            testrun)
         else:
             self._startNewTestRun(testrun)
@@ -652,11 +666,15 @@ class SQLiteStorage(DBStorage):
         # create new testrun entry with client entry
         debug("testrun:%r", testrun)
         if not self.__clientid:
-            raise Exception("Please specify client information before starting the testruns")
+            raise Exception("Please specify client information before starting testruns")
         if self.__testrun:
             warning("Apparently the previous testrun didn't exit successfully")
-        insertstr = "INSERT INTO testrun (id, clientid, starttime, stoptime) VALUES (NULL, ?, ?, NULL)"
-        self.__testrunid = self._ExecuteCommit(insertstr, (self.__clientid, testrun._starttime))
+        insertstr = """
+        INSERT INTO testrun (id, clientid, starttime, stoptime) VALUES (NULL, ?, ?, NULL)
+        """
+        self.__testrunid = self._ExecuteCommit(insertstr,
+                                               (self.__clientid,
+                                                testrun._starttime))
         envdict = testrun.getEnvironment()
         if envdict:
             self._storeEnvironmentDict(self.__testrunid, envdict)
@@ -665,7 +683,7 @@ class SQLiteStorage(DBStorage):
 
     def endTestRun(self, testrun):
         if self._async:
-            self._actionThread.queueAction(self._endTestRun,
+            self._actionthread.queueAction(self._endTestRun,
                                            testrun)
         else:
             self._endTestRun(testrun)
@@ -685,7 +703,8 @@ class SQLiteStorage(DBStorage):
 
         Returns None if there is no information regarding the given testtype
         """
-        res = self._FetchOne("SELECT id FROM testclassinfo WHERE type=?", (testtype, ))
+        res = self._FetchOne("SELECT id FROM testclassinfo WHERE type=?",
+                             (testtype, ))
         if res == None:
             return None
         return res[0]
@@ -696,14 +715,15 @@ class SQLiteStorage(DBStorage):
 
         Returns None if there is no information regarding the given monitortype
         """
-        res = self._FetchOne("SELECT id FROM monitorclassinfo WHERE type=?", (monitortype, ))
+        res = self._FetchOne("SELECT id FROM monitorclassinfo WHERE type=?",
+                             (monitortype, ))
         if res == None:
             return None
         return res[0]
 
     def newTestStarted(self, testrun, test, commit=True):
         if self._async:
-            self._actionThread.queueAction(self._newTestStarted,
+            self._actionthread.queueAction(self._newTestStarted,
                                            testrun, test, commit)
         else:
             self._newTestStarted(testrun, test, commit)
@@ -726,7 +746,7 @@ class SQLiteStorage(DBStorage):
 
     def newTestFinished(self, testrun, test):
         if self._async:
-            self._actionThread.queueAction(self._newTestFinished,
+            self._actionthread.queueAction(self._newTestFinished,
                                            testrun, test)
         else:
             self._newTestFinished(testrun, test)
@@ -797,15 +817,16 @@ class SQLiteStorage(DBStorage):
 
     # public retrieval API
 
-    def _getDict(self, tablename, containerid, blobonly=False, txtonly=False, intonly=False):
+    def _getDict(self, tablename, containerid, blobonly=False, txtonly=False,
+                 intonly=False):
         # returns a dict object
         # get all the key/type for that dictid
         searchstr = "SELECT * FROM %s WHERE containerid=?" % tablename
         res = self._FetchAll(searchstr, (containerid, ))
 
-        d = {}
+        dc = {}
         for row in res:
-            id, containerid, name = row[:3]
+            containerid, name = row[1:3]
             if intonly or txtonly:
                 val = row[3]
             elif blobonly:
@@ -819,18 +840,19 @@ class SQLiteStorage(DBStorage):
                     val = str(tval)
                 else:
                     val = loads(str(bval))
-            d[name] = val
-        return d
+            dc[name] = val
+        return dc
 
-    def _getList(self, tablename, containerid, blobonly=False, txtonly=False, intonly=False):
+    def _getList(self, tablename, containerid, blobonly=False, txtonly=False,
+                 intonly=False):
         # returns a list object
         # get all the key, value for that dictid
         searchstr = "SELECT * FROM %s WHERE containerid=?" % tablename
         res = self._FetchAll(searchstr, (containerid, ))
 
-        d = []
+        dc = []
         for row in res:
-            id, containerid, name = row[:3]
+            containerid, name = row[1:3]
             if intonly or txtonly:
                 val = row[3]
             elif blobonly:
@@ -844,8 +866,8 @@ class SQLiteStorage(DBStorage):
                     val = str(tval)
                 else:
                     val = loads(str(bval))
-            d.append((name, val))
-        return d
+            dc.append((name, val))
+        return dc
 
 
     def getClientInfoForTestRun(self, testrunid):
@@ -892,8 +914,8 @@ class SQLiteStorage(DBStorage):
         tmp = list(zip(*res)[0])
         if not withscenarios:
             scenarios = self.getScenariosForTestRun(testrunid)
-            for x in scenarios.keys():
-                tmp.remove(x)
+            for sc in scenarios.keys():
+                tmp.remove(sc)
         return tmp
 
     def getScenariosForTestRun(self, testrunid):
@@ -908,13 +930,13 @@ class SQLiteStorage(DBStorage):
         if not res:
             return {}
         # make list unique
-        d = {}
+        dc = {}
         for scenarioid, subtestid in res:
-            if not scenarioid in d.keys():
-                d[scenarioid] = [subtestid]
+            if not scenarioid in dc.keys():
+                dc[scenarioid] = [subtestid]
             else:
-                d[scenarioid].append(subtestid)
-        return d
+                dc[scenarioid].append(subtestid)
+        return dc
 
     def getFailedTestsForTestRun(self, testrunid):
         debug("testrunid:%d", testrunid)
@@ -967,19 +989,21 @@ class SQLiteStorage(DBStorage):
         res = self._FetchOne(searchstr, (testid, ))
         if not res:
             return (None, None, None, None, None, None, None)
-        testrunid,ttype,resperc = res
+        testrunid, ttype, resperc = res
         args = self._getDict("test_arguments_dict", testid)
         results = self._getList("test_checklist_list", testid, intonly=True)
         extras = self._getDict("test_extrainfo_dict", testid)
-        outputfiles = self._getDict("test_outputfiles_dict", testid, txtonly=True)
+        ofs = self._getDict("test_outputfiles_dict", testid, txtonly=True)
         if not rawinfo:
-            args = map_dict(args, reverse_dict(self._getTestClassArgumentMapping(ttype)))
-            results = map_list(results, reverse_dict(self._getTestClassCheckListMapping(ttype)))
+            args = map_dict(args,
+                            reverse_dict(self._getTestClassArgumentMapping(ttype)))
+            results = map_list(results,
+                               reverse_dict(self._getTestClassCheckListMapping(ttype)))
             extras = map_dict(extras,
                               reverse_dict(self._getTestClassExtraInfoMapping(ttype)))
-            outputfiles = map_dict(outputfiles,
-                                   reverse_dict(self._getTestClassOutputFileMapping(ttype)))
-        return (testrunid, ttype, args, results, resperc, extras, outputfiles)
+            ofs = map_dict(ofs,
+                           reverse_dict(self._getTestClassOutputFileMapping(ttype)))
+        return (testrunid, ttype, args, results, resperc, extras, ofs)
 
     def getTestClassInfo(self, testtype):
         searchstr = """SELECT id,parent,description,fulldescription
@@ -991,13 +1015,18 @@ class SQLiteStorage(DBStorage):
         args = self._getDict("testclassinfo_arguments_dict", tcid, blobonly=True)
         checks = self._getDict("testclassinfo_checklist_dict", tcid, txtonly=True)
         extras = self._getDict("testclassinfo_extrainfo_dict", tcid, txtonly=True)
-        outputfiles = self._getDict("testclassinfo_outputfiles_dict", tcid, txtonly=True)
+        outputfiles = self._getDict("testclassinfo_outputfiles_dict",
+                                    tcid, txtonly=True)
         while rp:
-            ptcid, prp, pd, pfd = self._FetchOne(searchstr, (rp, ))
-            args.update(self._getDict("testclassinfo_arguments_dict", ptcid, blobonly=True))
-            checks.update(self._getDict("testclassinfo_checklist_dict", ptcid, txtonly=True))
-            extras.update(self._getDict("testclassinfo_extrainfo_dict", ptcid, txtonly=True))
-            outputfiles.update(self._getDict("testclassinfo_outputfiles_dict", ptcid, txtonly=True))
+            ptcid, prp = self._FetchOne(searchstr, (rp, ))[:2]
+            args.update(self._getDict("testclassinfo_arguments_dict",
+                                      ptcid, blobonly=True))
+            checks.update(self._getDict("testclassinfo_checklist_dict",
+                                        ptcid, txtonly=True))
+            extras.update(self._getDict("testclassinfo_extrainfo_dict",
+                                        ptcid, txtonly=True))
+            outputfiles.update(self._getDict("testclassinfo_outputfiles_dict",
+                                             ptcid, txtonly=True))
             rp = prp
 
         return (desc, fulldesc, args, checks, extras, outputfiles)
@@ -1058,16 +1087,20 @@ class SQLiteStorage(DBStorage):
         return self._getTestClassMapping(testtype, "testclassinfo_outputfiles_dict")
 
     def _getMonitorClassArgumentMapping(self, monitortype):
-        return self._getMonitorClassMapping(monitortype, "monitorclassinfo_arguments_dict")
+        return self._getMonitorClassMapping(monitortype,
+                                            "monitorclassinfo_arguments_dict")
 
     def _getMonitorClassCheckListMapping(self, monitortype):
-        return self._getMonitorClassMapping(monitortype, "monitorclassinfo_checklist_dict")
+        return self._getMonitorClassMapping(monitortype,
+                                            "monitorclassinfo_checklist_dict")
 
     def _getMonitorClassExtraInfoMapping(self, monitortype):
-        return self._getMonitorClassMapping(monitortype, "monitorclassinfo_extrainfo_dict")
+        return self._getMonitorClassMapping(monitortype,
+                                            "monitorclassinfo_extrainfo_dict")
 
     def _getMonitorClassOutputFileMapping(self, monitortype):
-        return self._getMonitorClassMapping(monitortype, "monitorclassinfo_outputfiles_dict")
+        return self._getMonitorClassMapping(monitortype,
+                                            "monitorclassinfo_outputfiles_dict")
 
 
     def getMonitorsIDForTest(self, testid):
@@ -1097,11 +1130,13 @@ class SQLiteStorage(DBStorage):
         testid, mtype, resperc = res
         args = map_dict(self._getDict("monitor_arguments_dict", monitorid),
                         reverse_dict(self._getMonitorClassArgumentMapping(mtype)))
-        results = map_dict(self._getDict("monitor_checklist_dict", monitorid, intonly=True),
+        results = map_dict(self._getDict("monitor_checklist_dict",
+                                         monitorid, intonly=True),
                            reverse_dict(self._getMonitorClassCheckListMapping(mtype)))
         extras = map_dict(self._getDict("monitor_extrainfo_dict", monitorid),
                           reverse_dict(self._getMonitorClassExtraInfoMapping(mtype)))
-        outputfiles = map_dict(self._getDict("monitor_outputfiles_dict", monitorid, txtonly=True),
+        outputfiles = map_dict(self._getDict("monitor_outputfiles_dict",
+                                             monitorid, txtonly=True),
                                reverse_dict(self._getMonitorClassOutputFileMapping(mtype)))
         return (testid, mtype, args, results, resperc, extras, outputfiles)
 
@@ -1172,9 +1207,9 @@ class SQLiteStorage(DBStorage):
         if not monitorids == None:
             tmp = []
             monitors = [self.getFullMonitorInfo(x) for x in monitorids]
-            for p in res:
+            for pid in res:
                 similar = True
-                pm = [self.getFullMonitorInfo(x) for x in self.getMonitorsIDForTest(p)]
+                pm = [self.getFullMonitorInfo(x) for x in self.getMonitorsIDForTest(pid)]
 
                 samemons = []
                 # for each candidate monitors
@@ -1183,13 +1218,14 @@ class SQLiteStorage(DBStorage):
                     for mon in monitors:
                         if mon[1] == mtype:
                             # same type of monitor, now check arguments
-                            samemons.append(((tid, mtype, margs, mres, mresperc, mextra, mout), mon))
+                            samemons.append(((tid, mtype, margs, mres,
+                                              mresperc, mextra, mout), mon))
                 if not samemons == []:
                     for cand, mon in samemons:
                         if not cand[2] ==  mon[2]:
                             similar = False
                 if similar:
-                    tmp.append(p)
+                    tmp.append(pid)
             res = tmp
         return res
 

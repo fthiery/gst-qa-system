@@ -27,7 +27,7 @@ import os.path
 from fnmatch import fnmatch
 
 from insanity.generator import Generator
-from insanity.log import critical, error, warning, debug, info
+from insanity.log import debug, info
 
 class FileSystemGenerator(Generator):
     """
@@ -96,8 +96,8 @@ class FileSystemGenerator(Generator):
 
     def _generate(self):
         res = []
-        for p in self.paths:
-            fullpath = os.path.abspath(p)
+        for path in self.paths:
+            fullpath = os.path.abspath(path)
             if os.path.isfile(fullpath) and self._is_valid_file(fullpath):
                 res.append(fullpath)
             else:

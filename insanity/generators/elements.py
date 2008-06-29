@@ -25,7 +25,7 @@ GstElement-related generators
 
 import gst
 from insanity.generator import Generator
-from insanity.log import critical, error, warning, debug, info
+#from insanity.log import critical, error, warning, debug, info
 
 class ElementGenerator(Generator):
     """
@@ -42,9 +42,9 @@ class ElementGenerator(Generator):
         }
 
     def _generate(self):
-        def list_compat(a, b):
-            for x in a:
-                if not x in b:
+        def list_compat(la, lb):
+            for item in la:
+                if not item in lb:
                     return False
             return True
 
@@ -158,16 +158,19 @@ class EncoderMuxerGenerator(Generator):
             allvencs = VideoEncoderGenerator(factories=True).generate()
 
         def can_sink_caps(muxer, ocaps):
-            sinkcaps = [x.get_caps() for x in muxer.get_static_pad_templates() if x.direction == gst.PAD_SINK and not x.get_caps().is_any()]
-            for x in sinkcaps:
-                if not x.intersect(ocaps).is_empty():
+            pts = muxer.get_static_pad_templates()
+            sdir = gst.PAD_SINK
+            sinkcaps = [x.get_caps() for x in pts if x.direction == sdir and not x.get_caps().is_any()]
+            for caps in sinkcaps:
+                if not caps.intersect(ocaps).is_empty():
                     return True
             return False
 
         def encoders_muxer_compatible(encoders, muxer):
             res = []
             for encoder in encoders:
-                for caps in [x.get_caps() for x in encoder.get_static_pad_templates() if x.direction == gst.PAD_SRC]:
+                pts = encoder.get_static_pad_templates()
+                for caps in [x.get_caps() for x in pts if x.direction == gst.PAD_SRC]:
                     if can_sink_caps(muxer, caps):
                         res.append(encoder)
                         break
@@ -187,9 +190,12 @@ class EncoderMuxerGenerator(Generator):
             if aencname and not gst.element_factory_find(aencname) in compataenc:
                 continue
 
-            if not aencname and can_sink_caps(mux, gst.Caps("audio/x-raw-int;audio/x-raw-float")):
+            acaps = gst.Caps("audio/x-raw-int;audio/x-raw-float")
+            vcaps = gst.Caps("video/x-raw-rgb;video/x-raw-yuv")
+
+            if not aencname and can_sink_caps(mux, acaps):
                 compataenc.append(gst.element_factory_find("identity"))
-            if not vencname and can_sink_caps(mux, gst.Caps("video/x-raw-rgb;video/x-raw-yuv")):
+            if not vencname and can_sink_caps(mux, vcaps):
                 compatvenc.append(gst.element_factory_find("identity"))
 
             # and now produce the tuples

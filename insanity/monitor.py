@@ -48,7 +48,7 @@ import os
 import os.path
 import subprocess
 from insanity.test import Test, DBusTest, GStreamerTest
-from insanity.log import critical, error, warning, debug, info, exception
+from insanity.log import warning, debug, info, exception
 from insanity.utils import compress_file
 
 class Monitor(object):

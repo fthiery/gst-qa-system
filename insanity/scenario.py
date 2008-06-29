@@ -21,7 +21,7 @@
 
 import gobject
 from insanity.test import Test
-from insanity.log import critical, error, warning, debug, info, exception
+from insanity.log import debug, exception
 
 class Scenario(Test):
     """

@@ -24,7 +24,7 @@ Playlist-related generators
 """
 
 from insanity.generator import Generator
-from insanity.log import critical, error, warning, debug, info
+#from insanity.log import critical, error, warning, debug, info
 
 # FIXME
 #   Should check to see if we actually have valid URI(s)

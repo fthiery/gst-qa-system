@@ -33,14 +33,13 @@ D-Bus convenience methods and classes
 #   /TestRun/<TestRunID>/<TestName>/<TestID>
 #
 
-import dbus
 from dbus.bus import BusConnection
 from dbus.mainloop.glib import DBusGMainLoop
 import tempfile
 import subprocess
 import os
 import signal
-from insanity.log import critical, error, warning, debug, info
+from insanity.log import debug, info
 
 private_bus = None
 private_bus_address = None

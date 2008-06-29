@@ -19,7 +19,7 @@ class EncoderMuxerClient(CommandLineTesterClient):
         gen = EncoderMuxerGenerator(muxer=muxer,
                                     audio_encoder=aenc,
                                     video_encoder=venc)
-        monitors = [(GstDebugLogMonitor, {"debug-level":"4",
+        monitors = [(GstDebugLogMonitor, {"debug-level":"3",
                                           "compress-logs":False})]
 
         testrun = TestRun(maxnbtests=maxnbtests)

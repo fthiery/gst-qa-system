@@ -40,11 +40,10 @@ import time
 import dbus.gobject_service
 import tempfile
 import os
-from insanity.log import critical, error, warning, debug, info
+from insanity.log import error, warning, debug, info
 from insanity.test import Test
 from insanity.arguments import Arguments
 import insanity.environment as environment
-from insanity.threads import ThreadMaster, CallbackThread
 import insanity.dbustools as dbustools
 
 ##
@@ -111,6 +110,11 @@ class TestRun(gobject.GObject):
         self._workingdir = workingdir or os.path.join(os.getcwd(), "workingdir")
         self._outputdir = os.path.join(self._workingdir, "outputfiles")
         self._running = False
+        # used for dbus
+        self._bus = None
+        self._bus_address = None
+        self._dbusobject = None
+        self._dbusiface = None
 
     ## PUBLIC API
 
@@ -155,7 +159,7 @@ class TestRun(gobject.GObject):
             info("Creating Arguments for %r" % arguments)
             arguments = Arguments(**arguments)
         elif not isinstance(arguments, Arguments):
-            raise TypeError("Test arguments need to be an Arguments object or a dictionnary")
+            raise TypeError("Test arguments need to be of type Arguments or dict")
         self._tests.append((test, arguments, monitors))
 
     def getEnvironment(self):
@@ -176,8 +180,6 @@ class TestRun(gobject.GObject):
                                          "org.freedesktop.DBus")
         self._dbusiface.connect_to_signal("NameOwnerChanged",
                                           self._dbusNameOwnerChangedSignal)
-        #self._busname = dbus.service.BusName("net.gstreamer.insanity.TestRun", self._bus)
-        #dbus.gobject_service.ExportedGObject.__init__(self, self._bus, "/TestRun/XXX")
 
     def _dbusNameOwnerChangedSignal(self, name, oldowner, newowner):
         # we only care about connections named net.gstreamer.Insanity.Test.xxx
@@ -364,6 +366,6 @@ def single_test_run(test, arguments=[], monitors=None):
     """
     Convenience function to create a TestRun for a single test
     """
-    t = TestRun()
-    t.addTest(test, arguments, monitors)
-    return t
+    tr = TestRun()
+    tr.addTest(test, arguments, monitors)
+    return tr

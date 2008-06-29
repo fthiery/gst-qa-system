@@ -19,6 +19,10 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
+"""
+Base Test Classes
+"""
+
 import gobject
 gobject.threads_init()
 import gst
@@ -30,20 +34,15 @@ import time
 import dbus
 import dbus.gobject_service
 from insanity.dbustools import unwrap
-from insanity.threads import ThreadMaster, CallbackThread
-from insanity.log import critical, error, warning, debug, info, exception
+from insanity.log import error, warning, debug, info, exception
 import insanity.utils as utils
 
 if gst.pygst_version < (0, 10, 9):
     # pygst before 0.10.9 has atexit(gst_deinit), causing segfaults.  Let's
     # replace sys.exit with something that overrides atexit processing:
-    def exit(status=0):
+    def exi(status=0):
         os._exit(status)
-    sys.exit = exit
-
-"""
-Base Test Classes
-"""
+    sys.exit = exi
 
 # Class tree
 #
@@ -58,18 +57,6 @@ Base Test Classes
 #           +--- GStreamerTest
 #           |
 #           +--- CmdLineTest
-#
-# def timeme(mth):
-#     def newone(*args,**kwargs):
-#         t = time.time()
-#         res = mth(*args, **kwargs)
-#         print "method %r took %.6fs" % (mth, time.time() - t)
-#         return res
-#     return newone
-
-def timeme(mth):
-    return mth
-
 
 class Test(gobject.GObject):
     """
@@ -136,8 +123,10 @@ class Test(gobject.GObject):
     """
 
     __test_extra_infos__ = {
-        "test-setup-duration" : "How long it took to setup the test (in seconds) for asynchronous tests",
-        "test-total-duration" : "How long it took to run the entire test (in seconds)"
+        "test-setup-duration" :
+        "How long it took to setup the test (in seconds) for asynchronous tests",
+        "test-total-duration" :
+        "How long it took to run the entire test (in seconds)"
         }
     """
     Dictionnary of extra information this test can produce.
@@ -195,7 +184,7 @@ class Test(gobject.GObject):
 
     def __init__(self, testrun=None, uuid=None, timeout=None,
                  asynctimeout=None,
-                 *args, **kwargs):
+                 **kwargs):
         gobject.GObject.__init__(self)
         self._timeout = timeout or self.__test_timeout__
         self._asynctimeout = asynctimeout or self.__async_setup_timeout__
@@ -206,11 +195,11 @@ class Test(gobject.GObject):
         # list of actual check items
         self._checklist = []
         # dictionnary of possible values
-        self._possibleChecklist = {}
+        self._possiblechecklist = {}
         # populate checklist with all possible checkitems
         # initialize checklist to False
         self._populateChecklist()
-        self._extraInfo = {}
+        self._extrainfo = {}
         self._testrun = testrun
 
         if uuid == None:
@@ -222,7 +211,7 @@ class Test(gobject.GObject):
         self._outputfiles = kwargs.get("outputfiles", {})
         # creating default file names
         if self._testrun:
-            for ofname,desc in self.getFullOutputFilesList().iteritems():
+            for ofname, desc in self.getFullOutputFilesList().iteritems():
                 if not ofname in self._outputfiles:
                     ofd, opath = self._testrun.get_temp_file(nameid=ofname)
                     debug("created temp file name '%s' for outputfile '%s' [%s]",
@@ -245,8 +234,6 @@ class Test(gobject.GObject):
         self._monitors = []
         self._monitorinstances = []
 
-        self._threads = ThreadMaster()
-
     @classmethod
     def get_file(cls):
         """
@@ -267,7 +254,7 @@ class Test(gobject.GObject):
         """ fill the instance checklist with default values """
         ckl = self.getFullCheckList()
         for key in ckl.keys():
-            self._possibleChecklist[key] = False
+            self._possiblechecklist[key] = False
 
     def _asyncSetupTimeoutCb(self):
         debug("async setup timeout for %r", self)
@@ -310,21 +297,11 @@ class Test(gobject.GObject):
             return True
 
         # 2. Start it
-        if self.__async_test__:
-            # spawn a thread
-            self.start()
-#             self._threads.addThread(CallbackThread,
-#                                     self._asyncStartThread)
-        else:
-            self.start()
-            # synchronous tests
+        self.start()
+        if not self.__async_test__:
             self.stop()
 
         return True
-
-    @timeme
-    def _asyncStartThread(self):
-        self.start()
 
     def setUp(self):
         """
@@ -370,7 +347,7 @@ class Test(gobject.GObject):
         if self._testtimeoutid:
             gobject.source_remove(self._testtimeoutid)
             self._testtimeoutid = 0
-        for ofname,fname in list(self._outputfiles.iteritems()):
+        for ofname, fname in list(self._outputfiles.iteritems()):
             if os.path.exists(fname):
                 if not os.path.getsize(fname):
                     debug("removing empty file from outputfiles dictionnary")
@@ -447,7 +424,7 @@ class Test(gobject.GObject):
         """
         info("step %s for item %r : %r" % (checkitem, self, validated))
         # check for valid checkitem
-        if not checkitem in self._possibleChecklist:
+        if not checkitem in self._possiblechecklist:
             return
         # check to see if we don't already have it
         if checkitem in dict(self._checklist):
@@ -466,9 +443,9 @@ class Test(gobject.GObject):
         Called by the test itself
         """
         info("uuid:%s, key:%s, value:%r", self.uuid, key, value)
-        if key in self._extraInfo:
+        if key in self._extrainfo:
             return
-        self._extraInfo[key] = value
+        self._extrainfo[key] = value
         self.emit("extra-info", key, value)
 
     ## Getters/Setters
@@ -479,13 +456,13 @@ class Test(gobject.GObject):
         Returns the full test checklist. This is used to know all the
         possible check items for this instance, along with their description.
         """
-        d = {}
+        dc = {}
         for cl in cls.mro():
             if "__test_checklist__" in cl.__dict__:
-                d.update(cl.__test_checklist__)
+                dc.update(cl.__test_checklist__)
             if cl == Test:
                 break
-        return d
+        return dc
 
     @classmethod
     def getFullArgumentList(cls):
@@ -499,39 +476,39 @@ class Test(gobject.GObject):
             * default value
             * extended description (Can be None)
         """
-        d = {}
+        dc = {}
         for cl in cls.mro():
             if "__test_arguments__" in cls.__dict__:
-                d.update(cl.__test_arguments__)
+                dc.update(cl.__test_arguments__)
             if cl == Test:
                 break
-        return d
+        return dc
 
     @classmethod
     def getFullExtraInfoList(cls):
         """
         Returns the full list of extra info with descriptions.
         """
-        d = {}
+        dc = {}
         for cl in cls.mro():
             if "__test_extra_infos__" in cls.__dict__:
-                d.update(cl.__test_extra_infos__)
+                dc.update(cl.__test_extra_infos__)
             if cl == Test:
                 break
-        return d
+        return dc
 
     @classmethod
     def getFullOutputFilesList(cls):
         """
         Returns the full list of output files with descriptions.
         """
-        d = {}
+        dc = {}
         for cl in cls.mro():
             if "__test_output_files__" in cls.__dict__:
-                d.update(cl.__test_output_files__)
+                dc.update(cl.__test_output_files__)
             if cl == Test:
                 break
-        return d
+        return dc
 
     def getCheckList(self):
         """
@@ -557,15 +534,15 @@ class Test(gobject.GObject):
         Returns the success rate of this instance as a float
         """
         ckl = self.getCheckList()
-        nbsteps = len(self._possibleChecklist)
-        nbsucc = len([step for step,val in ckl if val == True])
+        nbsteps = len(self._possiblechecklist)
+        nbsucc = len([step for step, val in ckl if val == True])
         return (100.0 * nbsucc) / nbsteps
 
     def getExtraInfo(self):
         """
         Returns the extra-information dictionnary
         """
-        return self._extraInfo
+        return self._extrainfo
 
     def getOutputFiles(self):
         """
@@ -606,7 +583,7 @@ class Test(gobject.GObject):
         debug("timeout : %d", timeout)
         if self._asynctimeoutid:
             debug("updating timeout/timeouttime")
-            self._asynctimeouttime = self._asynctimeouttime - self._asynctimeout + timeout
+            self._asynctimeouttime -= (self._asynctimeout - timeout)
         self._asynctimeout = timeout
         return True
 
@@ -640,10 +617,14 @@ class DBusTest(Test, dbus.service.Object):
     __test_description__ = """Base class for distributed tests using DBUS"""
 
     __test_checklist__ = {
-    "dbus-process-spawned":"The DBus child process spawned itself",
-    "dbus-process-connected":"The DBus child process connected properly to the private Bus",
-    "remote-instance-created":"The remote version of this test was created properly",
-    "subprocess-exited-normally":"The subprocess returned a null exit code (success)"
+    "dbus-process-spawned":
+    "The DBus child process spawned itself",
+    "dbus-process-connected":
+    "The DBus child process connected properly to the private Bus",
+    "remote-instance-created":
+    "The remote version of this test was created properly",
+    "subprocess-exited-normally":
+    "The subprocess returned a null exit code (success)"
     }
 
     __test_extra_infos__ = {
@@ -671,7 +652,7 @@ class DBusTest(Test, dbus.service.Object):
         """
         Test.__init__(self, bus_address=bus_address,
                       proxy=proxy, *args, **kwargs)
-        self._isProxy = proxy
+        self._isproxy = proxy
         if (bus == None) and (bus_address == ""):
             raise Exception("You need to provide at least a bus or bus_address")
         self._bus = bus
@@ -679,13 +660,17 @@ class DBusTest(Test, dbus.service.Object):
 
         self._remote_tearing_down = False
 
-        if self._isProxy:
+        if self._isproxy:
             if self._testrun:
-                self._testrunNewRemoteTestSigId = self._testrun.connect("new-remote-test", self._newRemoteTest)
-                self._testrunRemovedRemoteTestSigId = self._testrun.connect("removed-remote-test", self._removedRemoteTest)
+                sid = self._testrun.connect("new-remote-test",
+                                            self._newRemoteTest)
+                self._newremotetestsid = sid
+                sid = self._testrun.connect("removed-remote-test",
+                                            self._removedRemoteTest)
+                self._testrunremovedtestsigid = sid
             self._process = None
-            self._processPollId = 0
-            self._remoteInstance = None
+            self._processpollid = 0
+            self._remoteinstance = None
             # return code from subprocess
             self._returncode = None
             # variables for remote launching, can be modified by monitors
@@ -699,8 +684,8 @@ class DBusTest(Test, dbus.service.Object):
             self._subprocessconnecttime = 0
             self._pid = 0
         else:
-            self._remoteTimeoutId = 0
-            self._remoteTimedOut = False
+            self._remotetimeoutid = 0
+            self._remotetimedout = False
             # connect to bus
             self.objectpath = "/net/gstreamer/Insanity/Test/Test%s" % self.uuid
             dbus.service.Object.__init__(self, conn=self._bus,
@@ -708,8 +693,8 @@ class DBusTest(Test, dbus.service.Object):
     # Test class overrides
 
     def test(self):
-        info("uuid:%s proxy:%r", self.uuid, self._isProxy)
-        if self._isProxy:
+        info("uuid:%s proxy:%r", self.uuid, self._isproxy)
+        if self._isproxy:
             self.callRemoteTest()
         else:
             # really do the test
@@ -717,26 +702,26 @@ class DBusTest(Test, dbus.service.Object):
 
     def validateStep(self, checkitem, validate=True):
         info("uuid:%s proxy:%r checkitem:%s : %r", self.uuid,
-             self._isProxy, checkitem, validate)
-        if self._isProxy:
+             self._isproxy, checkitem, validate)
+        if self._isproxy:
             Test.validateStep(self, checkitem, validate)
         else:
             self.remoteValidateStepSignal(checkitem, validate)
 
     def extraInfo(self, key, value):
-        info("uuid:%s proxy:%r", self.uuid, self._isProxy)
-        if self._isProxy:
+        info("uuid:%s proxy:%r", self.uuid, self._isproxy)
+        if self._isproxy:
             Test.extraInfo(self, key, value)
         else:
             self.remoteExtraInfoSignal(key, value)
 
 
     def setUp(self):
-        info("uuid:%s proxy:%r", self.uuid, self._isProxy)
+        info("uuid:%s proxy:%r", self.uuid, self._isproxy)
         if Test.setUp(self) == False:
             return False
 
-        if self._isProxy:
+        if self._isproxy:
             # get the remote launcher
             pargs = self._preargs
             pargs.extend(self.get_remote_launcher_args())
@@ -767,7 +752,7 @@ class DBusTest(Test, dbus.service.Object):
 
             self.validateStep("dbus-process-spawned")
             # add a poller for the proces
-            self._processPollId = gobject.timeout_add(500, self._pollSubProcess)
+            self._processpollid = gobject.timeout_add(500, self._pollSubProcess)
             # Don't forget to set a timeout for waiting for the connection
         else:
             # remote instance setup
@@ -776,8 +761,8 @@ class DBusTest(Test, dbus.service.Object):
         return True
 
     def tearDown(self):
-        info("uuid:%s proxy:%r", self.uuid, self._isProxy)
-        if self._isProxy:
+        info("uuid:%s proxy:%r", self.uuid, self._isproxy)
+        if self._isproxy:
             # FIXME : tear down the other process gracefully
             #    by first sending it the termination remote signal
             #    and then checking it's killed
@@ -785,15 +770,15 @@ class DBusTest(Test, dbus.service.Object):
                 self.callRemoteStop()
             finally:
                 if self._testrun:
-                    if self._testrunNewRemoteTestSigId:
-                        self._testrun.disconnect(self._testrunNewRemoteTestSigId)
-                        self._testrunNewRemoteTestSigId = 0
-                    if self._testrunRemovedRemoteTestSigId:
-                        self._testrun.disconnect(self._testrunRemovedRemoteTestSigId)
-                        self._testrunRemovedRemoteTestSigId = 0
-                if self._processPollId:
-                    gobject.source_remove(self._processPollId)
-                    self._processPollId = 0
+                    if self._newremotetestsid:
+                        self._testrun.disconnect(self._newremotetestsid)
+                        self._newremotetestsid = 0
+                    if self._testrunremovedtestsigid:
+                        self._testrun.disconnect(self._testrunremovedtestsigid)
+                        self._testrunremovedtestsigid = 0
+                if self._processpollid:
+                    gobject.source_remove(self._processpollid)
+                    self._processpollid = 0
                 if self._process:
                     # double check it hasn't actually exited
                     # give the test up to one second to exit
@@ -816,8 +801,8 @@ class DBusTest(Test, dbus.service.Object):
         Test.tearDown(self)
 
     def stop(self):
-        info("uuid:%s proxy:%r", self.uuid, self._isProxy)
-        if self._isProxy:
+        info("uuid:%s proxy:%r", self.uuid, self._isproxy)
+        if self._isproxy:
             Test.stop(self)
         else:
             self.tearDown()
@@ -848,62 +833,66 @@ class DBusTest(Test, dbus.service.Object):
         info("subprocess returned %r" % res)
         self._returncode = res
         self._process = None
-        self._processPollId = 0
+        self._processpollid = 0
         self.stop()
         return False
 
 
     ## void handlers for remote DBUS calls
-    def voidRemoteCallBackHandler(self):
+    def _voidRemoteCallBackHandler(self):
         pass
 
-    def voidRemoteErrBackHandler(self, exception, caller=None, fatal=True):
-        warning("%r : %s", caller, exception)
+    def _voidRemoteErrBackHandler(self, exc, caller=None, fatal=True):
+        warning("%r : %s", caller, exc)
         if fatal:
             warning("FATAL : aborting test")
             # a fatal error happened, DIVE DIVE DIVE !
             self.stop()
 
-    def voidRemoteTestErrBackHandler(self, exception):
-        self.voidRemoteErrBackHandler(exception, "remoteTest")
+    def _voidRemoteTestErrBackHandler(self, exc):
+        self._voidRemoteErrBackHandler(exc, "remoteTest")
 
-    def voidRemoteSetUpErrBackHandler(self, exception):
-        self.voidRemoteErrBackHandler(exception, "remoteSetUp")
+    def _voidRemoteSetUpErrBackHandler(self, exc):
+        self._voidRemoteErrBackHandler(exc, "remoteSetUp")
 
-    def voidRemoteStopErrBackHandler(self, exception):
-        self.voidRemoteErrBackHandler(exception, "remoteStop", fatal=False)
+    def _voidRemoteStopErrBackHandler(self, exc):
+        self._voidRemoteErrBackHandler(exc, "remoteStop", fatal=False)
 
-    def voidRemoteTearDownErrBackHandler(self, exception):
-        self.voidRemoteErrBackHandler(exception, "remoteTearDown", fatal=False)
+    def _voidRemoteTearDownErrBackHandler(self, exc):
+        self._voidRemoteErrBackHandler(exc, "remoteTearDown", fatal=False)
 
     ## Proxies for remote DBUS calls
     def callRemoteTest(self):
         # call remote instance "remoteTest()"
-        if not self._remoteInstance:
+        if not self._remoteinstance:
             return
-        self._remoteInstance.remoteTest(reply_handler=self.voidRemoteCallBackHandler,
-                                        error_handler=self.voidRemoteTestErrBackHandler)
+        self._remoteinstance.remoteTest(reply_handler=self._voidRemoteCallBackHandler,
+                                        error_handler=self._voidRemoteTestErrBackHandler)
 
     def callRemoteSetUp(self):
         # call remote instance "remoteSetUp()"
-        if not self._remoteInstance:
+        if not self._remoteinstance:
             return
-        self._remoteInstance.remoteSetUp(reply_handler=self.voidRemoteCallBackHandler,
-                                         error_handler=self.voidRemoteSetUpErrBackHandler)
+        rephandler = self._voidRemoteCallBackHandler
+        errhandler = self._voidRemoteSetUpErrBackHandler
+        self._remoteinstance.remoteSetUp(reply_handler=rephandler,
+                                         error_handler=errhandler)
 
     def callRemoteStop(self):
         # call remote instance "remoteStop()"
-        if not self._remoteInstance:
+        if not self._remoteinstance:
             return
-        self._remoteInstance.remoteStop(reply_handler=self.voidRemoteCallBackHandler,
-                                        error_handler=self.voidRemoteStopErrBackHandler)
+        self._remoteinstance.remoteStop(reply_handler=self._voidRemoteCallBackHandler,
+                                        error_handler=self._voidRemoteStopErrBackHandler)
 
     def callRemoteTearDown(self):
         # call remote instance "remoteTearDown()"
-        if not self._remoteInstance:
+        if not self._remoteinstance:
             return
-        self._remoteInstance.remoteTearDown(reply_handler=self.voidRemoteCallBackHandler,
-                                            error_handler=self.voidRemoteTearDownErrBackHandler)
+        rephandler = self._voidRemoteCallBackHandler
+        errhandler = self._voidRemoteTearDownErrBackHandler
+        self._remoteinstance.remoteTearDown(reply_handler=rephandler,
+                                            error_handler=errhandler)
 
     ## callbacks from remote signals
     def _remoteReadyCb(self):
@@ -929,7 +918,7 @@ class DBusTest(Test, dbus.service.Object):
         debug("%s", self.uuid)
         self.validateStep("no-timeout", False)
         self.remoteTearDown()
-        self._remoteTimeoutId = 0
+        self._remotetimeoutid = 0
         return False
 
     @dbus.service.method(dbus_interface="net.gstreamer.Insanity.Test",
@@ -943,7 +932,7 @@ class DBusTest(Test, dbus.service.Object):
         """
         info("%s", self.uuid)
         # add a timeout
-        self._remoteTimeoutId = gobject.timeout_add(self._timeout * 1000,
+        self._remotetimeoutid = gobject.timeout_add(self._timeout * 1000,
                                                     self._remoteTestTimeoutCb)
 
     @dbus.service.method(dbus_interface="net.gstreamer.Insanity.Test",
@@ -983,13 +972,13 @@ class DBusTest(Test, dbus.service.Object):
         if self._remote_tearing_down:
             return False
         self._remote_tearing_down = True
-        info("%s remoteTimeoutId:%r", self.uuid, self._remoteTimeoutId)
+        info("%s remoteTimeoutId:%r", self.uuid, self._remotetimeoutid)
         # remote the timeout
-        if self._remoteTimeoutId:
-            gobject.source_remove(self._remoteTimeoutId)
-            self._remoteTimedOut = False
-            self._remoteTimeoutId = 0
-        self.validateStep("no-timeout", not self._remoteTimedOut)
+        if self._remotetimeoutid:
+            gobject.source_remove(self._remotetimeoutid)
+            self._remotetimedout = False
+            self._remotetimeoutid = 0
+        self.validateStep("no-timeout", not self._remotetimedout)
         return True
 
     ## Remote DBUS signals
@@ -1036,24 +1025,24 @@ class DBusTest(Test, dbus.service.Object):
         rname = "net.gstreamer.Insanity.Test.Test%s" % self.uuid
         rpath = "/net/gstreamer/Insanity/Test/RemotePythonRunner%s" % self.uuid
         # get the proxy object to our counterpart
-        remoteRunnerObject = self._bus.get_object(rname, rpath)
-        debug("Got remote runner object %r" % remoteRunnerObject)
+        remoteobj = self._bus.get_object(rname, rpath)
+        debug("Got remote runner object %r" % remoteobj)
         # call createTestInstance()
-        remoteRunner = dbus.Interface(remoteRunnerObject,
+        remoterunner = dbus.Interface(remoteobj,
                                       "net.gstreamer.Insanity.RemotePythonRunner")
-        debug("Got remote iface %r" % remoteRunner)
+        debug("Got remote iface %r" % remoterunner)
         args = self.arguments.copy()
         args["bus_address"] = self._bus_address
         args["timeout"] = self._timeout
         if self._outputfiles:
             args["outputfiles"] = self.getOutputFiles()
         debug("Creating remote instance with arguments %r", args)
-        remoteRunner.createTestInstance(self.get_file(),
+        remoterunner.createTestInstance(self.get_file(),
                                         self.__module__,
                                         self.__class__.__name__,
                                         args,
                                         reply_handler=self._createTestInstanceCallBack,
-                                        error_handler=self.voidRemoteErrBackHandler)
+                                        error_handler=self._voidRemoteErrBackHandler)
 
     def _createTestInstanceCallBack(self, retval):
         debug("%s retval:%r", self.uuid, retval)
@@ -1063,22 +1052,22 @@ class DBusTest(Test, dbus.service.Object):
             rpath = "/net/gstreamer/Insanity/Test/Test%s" % self.uuid
             # remote instance was successfully created, let's get it
             try:
-                remoteObj = self._bus.get_object(rname, rpath)
+                remoteobj = self._bus.get_object(rname, rpath)
             except:
                 warning("Couldn't get the remote instance for test %r", self.uuid)
                 self.stop()
                 return
             self.extraInfo("remote-instance-creation-delay", delay)
             self.validateStep("remote-instance-created")
-            self._remoteInstance = dbus.Interface(remoteObj,
+            self._remoteinstance = dbus.Interface(remoteobj,
                                                   "net.gstreamer.Insanity.Test")
-            self._remoteInstance.connect_to_signal("remoteReadySignal",
+            self._remoteinstance.connect_to_signal("remoteReadySignal",
                                                    self._remoteReadyCb)
-            self._remoteInstance.connect_to_signal("remoteStopSignal",
+            self._remoteinstance.connect_to_signal("remoteStopSignal",
                                                    self._remoteStopCb)
-            self._remoteInstance.connect_to_signal("remoteValidateStepSignal",
+            self._remoteinstance.connect_to_signal("remoteValidateStepSignal",
                                                    self._remoteValidateStepCb)
-            self._remoteInstance.connect_to_signal("remoteExtraInfoSignal",
+            self._remoteinstance.connect_to_signal("remoteExtraInfoSignal",
                                                    self._remoteExtraInfoCb)
             self.callRemoteSetUp()
         else:
@@ -1090,7 +1079,7 @@ class DBusTest(Test, dbus.service.Object):
 
         info("%s our remote counterpart has left", self.uuid)
         # abort if the test hasn't actually finished
-        self._remoteInstance = None
+        self._remoteinstance = None
         if not self._stopping:
             self.stop()
 
@@ -1104,14 +1093,14 @@ class PythonDBusTest(DBusTest):
         "python-exception" : """Python unhandled exception information"""}
 
     def __init__(self, proxy=True, *args, **kwargs):
-
+        self.__exception_handled = False
+        self.__orig_excepthook = None
         DBusTest.__init__(self, proxy=proxy, *args, **kwargs)
 
         if not proxy:
             self.__setup_excepthook()
 
     def get_remote_launcher_args(self):
-        import os
         # FIXME : add proper arguments
         # locate the python dbus runner
         # HACK : take top-level-dir/bin/pythondbusrunner.py
@@ -1173,8 +1162,13 @@ class GStreamerTest(PythonDBusTest):
         #
         # This feature is only available since 0.10.19.1 (24th April 2008) in
         # GStreamer core
-        env["GST_REGISTRY_UPDATE"] = "no"
+        if env:
+            env["GST_REGISTRY_UPDATE"] = "no"
         self.pipeline = None
+        self.bus = None
+        self._errors = []
+        self._tags = {}
+        self._elements = []
         PythonDBusTest.__init__(self, env=env, *args, **kwargs)
 
     def setUp(self):
@@ -1186,9 +1180,6 @@ class GStreamerTest(PythonDBusTest):
         debug("%s", self.uuid)
         gst.log("%s" % self.uuid)
         # local variables
-        self._errors = []
-        self._tags = {}
-        self._elements = []
 
         # create the pipeline
         try:
@@ -1223,23 +1214,24 @@ class GStreamerTest(PythonDBusTest):
         self.validateStep("no-errors-seen", self._errors == [])
         if not self._errors == []:
             self.extraInfo("errors", self._errors)
+
         if not self._tags == {}:
             debug("Got tags %r", self._tags)
-            for k,v in self._tags.iteritems():
-                if isinstance(v, int):
+            for key, val in self._tags.iteritems():
+                if isinstance(val, int):
                     # make sure that only values < 2**31 (MAX_INT32) are ints
                     # TODO : this is gonna screw up MASSIVELY with values > 2**63
-                    if v >= 2**31:
-                        self._tags[k] = long(v)
+                    if val >= 2**31:
+                        self._tags[key] = long(val)
             # FIXME : if the value is a list, the dbus python bindings screw up
             #
             # For the time being we remove the values of type list, but this is REALLY
             # bad.
             listval = [x for x in self._tags.keys() if type(self._tags[x]) == list]
             if listval:
-                warning("Removing the following items from the taglist since they're list:%r", listval)
-                for x in listval:
-                    del self._tags[x]
+                warning("Removing this from the taglist since they're list:%r", listval)
+                for val in listval:
+                    del self._tags[val]
             self.extraInfo("tags", dbus.Dictionary(self._tags, signature="sv"))
         if not self._elements == []:
             self.extraInfo("elements-used", self._elements)
@@ -1268,8 +1260,8 @@ class GStreamerTest(PythonDBusTest):
             return
         # handle common types
         if message.type == gst.MESSAGE_ERROR:
-            error, dbg = message.parse_error()
-            self._errors.append((error.code, error.domain, error.message, dbg))
+            gerror, dbg = message.parse_error()
+            self._errors.append((gerror.code, gerror.domain, gerror.message, dbg))
             debug("Got an error on the bus, stopping")
             self.stop()
         elif message.type == gst.MESSAGE_TAG:
@@ -1303,7 +1295,7 @@ class GStreamerTest(PythonDBusTest):
             self._elements.append((elt.get_name(),
                                    elt.get_factory().get_name(),
                                    container.get_name()))
-            if isinstance(elt,gst.Bin):
+            if isinstance(elt, gst.Bin):
                 self._watchContainer(elt)
         container.connect("element-added", self._elementAddedCb)
         # connect to signal
@@ -1371,11 +1363,11 @@ class GStreamerTest(PythonDBusTest):
         pipestring = self.getPipelineString()
         debug("%s Got pipeline string %s", self.uuid, pipestring)
         try:
-            p = gst.parse_launch(pipestring)
+            pip = gst.parse_launch(pipestring)
         except:
             exception("error while creating pipeline")
-            p = None
-        return p
+            pip = None
+        return pip
 
 class CmdLineTest(PythonDBusTest):
     """
