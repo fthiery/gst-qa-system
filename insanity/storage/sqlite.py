@@ -24,10 +24,9 @@ SQLite based DataStorage
 """
 
 import time
-import string
 import threading
 from weakref import WeakKeyDictionary
-from insanity.log import critical, error, warning, debug, info
+from insanity.log import error, warning, debug
 from insanity.storage.storage import DBStorage
 from insanity.scenario import Scenario
 from insanity.test import Test
@@ -292,6 +291,7 @@ class SQLiteStorage(DBStorage):
         # { 'testtype' : { 'dictname' : mapping } }
         self.__mcmapping = {}
         self._async = async
+        self.con = None
         if self._async:
             self._actionThread = ActionQueueThread()
             self._actionThread.start()
@@ -370,12 +370,12 @@ class SQLiteStorage(DBStorage):
         Returns the name of all the available tables in the currently
         loaded database.
         """
-        CHECKTABLES = """
+        checkTables = """
         SELECT name FROM sqlite_master
         WHERE type='table'
         ORDER BY name;
         """
-        return [x[0] for x in self.con.execute(CHECKTABLES).fetchall()]
+        return [x[0] for x in self.con.execute(checkTables).fetchall()]
 
     def _getDatabaseSchemeVersion(self):
         """
@@ -400,7 +400,7 @@ class SQLiteStorage(DBStorage):
         if pdict == None:
             return None
         res = {}
-        for key,value in pdict.iteritems():
+        for key, value in pdict.iteritems():
             res[key] = value
         return res
 
@@ -416,7 +416,7 @@ class SQLiteStorage(DBStorage):
         VALUES (NULL, ?, ?, ?)"""
         self._lock.acquire()
         cur = self.con.cursor()
-        for key,value in pdict.iteritems():
+        for key, value in pdict.iteritems():
             debug("Adding key:%s , value:%r", key, value)
             val = value
             if isinstance(value, int):
@@ -440,7 +440,7 @@ class SQLiteStorage(DBStorage):
         cur = self.con.cursor()
         insertstr = """INSERT INTO %s (id, containerid, name, %s)
         VALUES (NULL, ?, ?, ?)"""
-        for key,value in pdict:
+        for key, value in pdict:
             debug("Adding key:%s , value:%r", key, value)
             val = value
             if isinstance(value, int):
@@ -454,97 +454,73 @@ class SQLiteStorage(DBStorage):
             cur.execute(comstr, (containerid, key, val))
         self._lock.release()
 
-    def _storeList(self, dicttable, containerid, pdict):
-        if not pdict:
-            # empty dictionnary
-            debug("Empty list, returning")
-            return
-
-        self._lock.acquire()
-        cur = self.con.cursor()
-        insertstr = """INSERT INTO %s (id, containerid, name, %s)
-        VALUES (NULL, ?, ?, ?)"""
-        for key,value in pdict:
-            debug("Adding key:%s , value:%r", key, value)
-            val = value
-            if isinstance(value, int):
-                valstr = "intvalue"
-            elif isinstance(value, basestring):
-                valstr = "txtvalue"
-            else:
-                valstr = "blobvalue"
-                val = sqlite.Binary(dumps(value))
-            comstr = insertstr % (dicttable, valstr)
-            cur.execute(comstr, (containerid, key, val))
-        self._lock.release()
-
-    def _storeTestArgumentsDict(self, testid, dict, testtype):
+    def _storeTestArgumentsDict(self, testid, dic, testtype):
         # transform the dictionnary from names to ids
         maps = self._getTestClassArgumentMapping(testtype)
         return self._storeDict("test_arguments_dict",
-                               testid, map_dict(dict, maps))
+                               testid, map_dict(dic, maps))
 
-    def _storeTestCheckListList(self, testid, dict, testtype):
+    def _storeTestCheckListList(self, testid, dic, testtype):
         maps = self._getTestClassCheckListMapping(testtype)
         return self._storeList("test_checklist_list",
-                               testid, map_list(dict, maps))
+                               testid, map_list(dic, maps))
 
-    def _storeTestExtraInfoDict(self, testid, dict, testtype):
+    def _storeTestExtraInfoDict(self, testid, dic, testtype):
         maps = self._getTestClassExtraInfoMapping(testtype)
         return self._storeDict("test_extrainfo_dict",
-                               testid, map_dict(dict, maps))
+                               testid, map_dict(dic, maps))
 
-    def _storeTestOutputFileDict(self, testid, dict, testtype):
+    def _storeTestOutputFileDict(self, testid, dic, testtype):
         maps = self._getTestClassOutputFileMapping(testtype)
         return self._storeDict("test_outputfiles_dict",
-                               testid, map_dict(dict, maps))
+                               testid, map_dict(dic, maps))
 
-    def _storeMonitorArgumentsDict(self, monitorid, dict, monitortype):
+    def _storeMonitorArgumentsDict(self, monitorid, dic, monitortype):
         maps = self._getMonitorClassArgumentMapping(monitortype)
         return self._storeDict("monitor_arguments_dict",
-                               monitorid, map_dict(dict, maps))
+                               monitorid, map_dict(dic, maps))
 
-    def _storeMonitorCheckListDict(self, monitorid, dict, monitortype):
+    def _storeMonitorCheckListDict(self, monitorid, dic, monitortype):
         maps = self._getMonitorClassCheckListMapping(monitortype)
         return self._storeDict("monitor_checklist_dict",
-                               monitorid, map_dict(dict, maps))
+                               monitorid, map_dict(dic, maps))
 
-    def _storeMonitorExtraInfoDict(self, monitorid, dict, monitortype):
+    def _storeMonitorExtraInfoDict(self, monitorid, dic, monitortype):
         maps = self._getMonitorClassExtraInfoMapping(monitortype)
         return self._storeDict("monitor_extrainfo_dict",
-                               monitorid, map_dict(dict, maps))
+                               monitorid, map_dict(dic, maps))
 
-    def _storeMonitorOutputFileDict(self, monitorid, dict, monitortype):
+    def _storeMonitorOutputFileDict(self, monitorid, dic, monitortype):
         maps = self._getMonitorClassOutputFileMapping(monitortype)
         return self._storeDict("monitor_outputfiles_dict",
-                               monitorid, map_dict(dict, maps))
+                               monitorid, map_dict(dic, maps))
 
-    def _storeTestClassArgumentsDict(self, testclassinfoid, dict):
-        return self._storeDict("testclassinfo_arguments_dict", testclassinfoid, dict)
+    def _storeTestClassArgumentsDict(self, testclassinfoid, dic):
+        return self._storeDict("testclassinfo_arguments_dict", testclassinfoid, dic)
 
-    def _storeTestClassCheckListDict(self, testclassinfoid, dict):
-        return self._storeDict("testclassinfo_checklist_dict", testclassinfoid, dict)
+    def _storeTestClassCheckListDict(self, testclassinfoid, dic):
+        return self._storeDict("testclassinfo_checklist_dict", testclassinfoid, dic)
 
-    def _storeTestClassExtraInfoDict(self, testclassinfoid, dict):
-        return self._storeDict("testclassinfo_extrainfo_dict", testclassinfoid, dict)
+    def _storeTestClassExtraInfoDict(self, testclassinfoid, dic):
+        return self._storeDict("testclassinfo_extrainfo_dict", testclassinfoid, dic)
 
-    def _storeTestClassOutputFileDict(self, testclassinfoid, dict):
-        return self._storeDict("testclassinfo_outputfiles_dict", testclassinfoid, dict)
+    def _storeTestClassOutputFileDict(self, testclassinfoid, dic):
+        return self._storeDict("testclassinfo_outputfiles_dict", testclassinfoid, dic)
 
-    def _storeMonitorClassArgumentsDict(self, monitorclassinfoid, dict):
-        return self._storeDict("monitorclassinfo_arguments_dict", monitorclassinfoid, dict)
+    def _storeMonitorClassArgumentsDict(self, monitorclassinfoid, dic):
+        return self._storeDict("monitorclassinfo_arguments_dict", monitorclassinfoid, dic)
 
-    def _storeMonitorClassCheckListDict(self, monitorclassinfoid, dict):
-        return self._storeDict("monitorclassinfo_checklist_dict", monitorclassinfoid, dict)
+    def _storeMonitorClassCheckListDict(self, monitorclassinfoid, dic):
+        return self._storeDict("monitorclassinfo_checklist_dict", monitorclassinfoid, dic)
 
-    def _storeMonitorClassExtraInfoDict(self, monitorclassinfoid, dict):
-        return self._storeDict("monitorclassinfo_extrainfo_dict", monitorclassinfoid, dict)
+    def _storeMonitorClassExtraInfoDict(self, monitorclassinfoid, dic):
+        return self._storeDict("monitorclassinfo_extrainfo_dict", monitorclassinfoid, dic)
 
-    def _storeMonitorClassOutputFileDict(self, monitorclassinfoid, dict):
-        return self._storeDict("monitorclassinfo_outputfiles_dict", monitorclassinfoid, dict)
+    def _storeMonitorClassOutputFileDict(self, monitorclassinfoid, dic):
+        return self._storeDict("monitorclassinfo_outputfiles_dict", monitorclassinfoid, dic)
 
-    def _storeEnvironmentDict(self, testrunid, dict):
-        return self._storeDict("testrun_environment_dict", testrunid, dict)
+    def _storeEnvironmentDict(self, testrunid, dic):
+        return self._storeDict("testrun_environment_dict", testrunid, dic)
 
     def _insertTestClassInfo(self, tclass):
         ctype = tclass.__dict__.get("__test_name__").strip()
@@ -768,7 +744,6 @@ class SQLiteStorage(DBStorage):
         # if it's a scenario, fill up the subtests
         if isinstance(test, Scenario):
             debug("test is a scenario, adding subtests")
-            sublist = []
             for sub in test.tests:
                 self._newTestFinished(testrun, sub)
             # now add those to the subtests table
@@ -1119,7 +1094,7 @@ class SQLiteStorage(DBStorage):
         res = self.getMonitorInfo(monitorid)
         if res == (None, None, None):
             return (None, None, None, None, None, None, None)
-        testid,mtype,resperc = res
+        testid, mtype, resperc = res
         args = map_dict(self._getDict("monitor_arguments_dict", monitorid),
                         reverse_dict(self._getMonitorClassArgumentMapping(mtype)))
         results = map_dict(self._getDict("monitor_checklist_dict", monitorid, intonly=True),
@@ -1166,9 +1141,9 @@ class SQLiteStorage(DBStorage):
 
         res = []
 
-        for key,val in arguments.iteritems():
+        for key, val in arguments.iteritems():
             if not res == []:
-                tmpsearch = "AND test.id in (%s) " % string.join([str(x) for x in res], ', ')
+                tmpsearch = "AND test.id in (%s) " % ', '.join([str(x) for x in res])
             else:
                 tmpsearch = ""
             value = val

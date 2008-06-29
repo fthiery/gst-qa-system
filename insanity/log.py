@@ -62,10 +62,11 @@ def initLogging():
 
     maj,min,mic,nm,cvs = sys.version_info
 
+    debuformat = "%(asctime)s  0x%(thread)x  %(levelname)10s  %(filename)s:%(lineno)d:"
     if (maj,min) >= (2,5):
-        debugformat = "%(asctime)s  0x%(thread)x  %(levelname)10s  %(filename)s:%(lineno)d:%(funcName)s: %(message)s"
+        debugformat += "%(funcName)s: %(message)s"
     else:
-        debugformat = "%(asctime)s  0x%(thread)x  %(levelname)10s  %(filename)s:%(lineno)d:: %(message)s"
+        debugformat += ": %(message)s"
     debuglevel = ERROR
 
     # get default level INSANITY_DEBUG

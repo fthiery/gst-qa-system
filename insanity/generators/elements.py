@@ -23,7 +23,6 @@
 GstElement-related generators
 """
 
-import string
 import gst
 from insanity.generator import Generator
 from insanity.log import critical, error, warning, debug, info
@@ -43,7 +42,7 @@ class ElementGenerator(Generator):
         }
 
     def _generate(self):
-        def list_compat(a,b):
+        def list_compat(a, b):
             for x in a:
                 if not x in b:
                     return False
@@ -52,10 +51,10 @@ class ElementGenerator(Generator):
         res = []
         classes = self.kwargs.get("classes", [])
         retfact = self.kwargs.get("factories", False)
-        all = gst.registry_get_default().get_feature_list(gst.TYPE_ELEMENT_FACTORY)
+        allf = gst.registry_get_default().get_feature_list(gst.TYPE_ELEMENT_FACTORY)
         # filter by class
-        for fact in all:
-            if list_compat(classes, string.split(fact.get_klass(), '/')):
+        for fact in allf:
+            if list_compat(classes, fact.get_klass().split('/')):
                 if retfact:
                     res.append(fact)
                 else:
@@ -94,7 +93,7 @@ class VideoEncoderGenerator(ElementGenerator):
         facts = ElementGenerator._generate(self)
         # filter those which have Video or Image
         for fact in facts:
-            klasses = string.split(fact.get_klass(), '/')
+            klasses = fact.get_klass().split('/')
             if "Video" in klasses or "audio" in klasses:
                 res.append(fact)
         return res
