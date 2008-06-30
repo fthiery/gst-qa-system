@@ -44,6 +44,11 @@ command:
 
   epydoc -o epydoc --docformat plaintext -v  gstqa
 
+Requirements
+------------
+  Python >= 2.5 *OR* Python >= 2.4 with the sqlite python module
+  DBus and python bindings
+
 Database support
 ----------------
 
