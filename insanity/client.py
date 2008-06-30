@@ -45,7 +45,7 @@ import time
 import insanity.utils as utils
 utils.scan_for_tests()
 
-import insaity.dbustools as dbustools
+import insanity.dbustools as dbustools
 from insanity.testrun import TestRun
 from insanity.scenario import Scenario
 from insanity.log import warning, debug, info, exception, initLogging

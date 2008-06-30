@@ -279,6 +279,7 @@ class SQLiteStorage(DBStorage):
 
     def __init__(self, async=True, *args, **kwargs):
         self._lock = threading.Lock()
+        self.con = None
         DBStorage.__init__(self, *args, **kwargs)
         self.__clientid = None
         self.__testrunid = None
@@ -291,7 +292,6 @@ class SQLiteStorage(DBStorage):
         # { 'testtype' : { 'dictname' : mapping } }
         self.__mcmapping = {}
         self._async = async
-        self.con = None
         if self._async:
             self._actionthread = ActionQueueThread()
             self._actionthread.start()

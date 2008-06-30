@@ -90,7 +90,13 @@ class TestRun(gobject.GObject):
         env : extra environment variables
         """
         gobject.GObject.__init__(self)
+        # dbus
+        self._bus = None
+        self._bus_address = None
+        self._dbusobject = None
+        self._dbusiface = None
         self._setupPrivateBus()
+
         self._tests = [] # list of (test, arguments, monitors)
         self._storage = None
         self._currenttest = None
@@ -110,11 +116,6 @@ class TestRun(gobject.GObject):
         self._workingdir = workingdir or os.path.join(os.getcwd(), "workingdir")
         self._outputdir = os.path.join(self._workingdir, "outputfiles")
         self._running = False
-        # used for dbus
-        self._bus = None
-        self._bus_address = None
-        self._dbusobject = None
-        self._dbusiface = None
 
     ## PUBLIC API
 

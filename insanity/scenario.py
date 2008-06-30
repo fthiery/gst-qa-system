@@ -84,8 +84,9 @@ class Scenario(Test):
             debug("About to create subtest %r with arguments %r", testclass, args)
             instance = testclass(testrun=self._testrun,
                                  **args)
-            for monitor in monitors:
-                instance.addMonitor(*monitor)
+            if monitors:
+                for monitor in monitors:
+                    instance.addMonitor(*monitor)
         except Exception, e:
             exception("Failed to create instance of class %r : %r", testclass, e)
             self.stop()
