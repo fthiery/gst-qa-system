@@ -117,7 +117,7 @@ class TypeFindTest(GStreamerTest):
         self.validateStep("duration-available", not length == -1)
         self.extraInfo("total-uri-duration", length)
         self.validateStep("available-demuxer",
-                          not self.mimetype in [s.caps.to_string() for s in self._streams])
+                          not self._mimetype in [s.caps.to_string() for s in self._streams])
 
         debug("allstreams : %s", [s.pad.get_name() for s in self._streams])
         raws = [s for s in self._streams if s.raw]
@@ -167,7 +167,7 @@ class TypeFindTest(GStreamerTest):
 
     def _haveTypeCb(self, pipeline, probability, caps):
         mt = caps.to_string()
-        self.mimetype = mt
+        self._mimetype = mt
         debug("mimetype:%s", mt)
         self.extraInfo("mimetype", mt)
         self.validateStep("known-mime-type")
