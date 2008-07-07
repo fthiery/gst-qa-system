@@ -1123,7 +1123,7 @@ class PythonDBusTest(DBusTest):
         # locate the python dbus runner
         # HACK : take top-level-dir/bin/pythondbusrunner.py
         rootdir = os.path.split(os.path.dirname(os.path.abspath(__file__)))[0]
-        return [os.path.join(rootdir, "bin", "pythondbusrunner.py"), self.uuid]
+        return [sys.executable, os.path.join(rootdir, "bin", "pythondbusrunner.py"), self.uuid]
 
     def __excepthook(self, exc_type, exc_value, exc_traceback):
 
