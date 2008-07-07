@@ -1,2 +1,2 @@
 include MANIFEST.in README
-include bin/pythondbusrunner.py
+include bin/insanity-pythondbusrunner.py
