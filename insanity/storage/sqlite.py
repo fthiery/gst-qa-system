@@ -299,6 +299,8 @@ class SQLiteStorage(DBStorage):
     def openDatabase(self):
         debug("opening sqlite db for path '%s'", self.path)
         self.con = sqlite.connect(self.path, check_same_thread=False)
+        # we do this so that we can store UTF8 strings in the database
+        self.con.text_factory = str
 
     def createTables(self):
         # check if tables aren't already created
