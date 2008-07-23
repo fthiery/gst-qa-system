@@ -189,7 +189,20 @@ class Test(gobject.GObject):
         self._timeout = timeout or self.__test_timeout__
         self._asynctimeout = asynctimeout or self.__async_setup_timeout__
         self._running = False
-        self.arguments = kwargs
+        self.arguments = {}
+        # making sure all string arguments are valid UTF8
+        for k,v in kwargs.iteritems():
+            if isinstance(v, str):
+                try:
+                    self.arguments[k] = unicode(v)
+                except:
+                    try:
+                        self.arguments[k] = unicode(v, 'iso8859_1')
+                    except:
+                        exception("Argument [%s] is not valid UTF8 (%r)",
+                                  k, v)
+            else:
+                self.arguments[k] = v
         self._stopping = False
 
         # list of actual check items
@@ -1037,12 +1050,17 @@ class DBusTest(Test, dbus.service.Object):
         if self._outputfiles:
             args["outputfiles"] = self.getOutputFiles()
         debug("Creating remote instance with arguments %r", args)
-        remoterunner.createTestInstance(self.get_file(),
-                                        self.__module__,
-                                        self.__class__.__name__,
-                                        args,
-                                        reply_handler=self._createTestInstanceCallBack,
-                                        error_handler=self._voidRemoteErrBackHandler)
+        try:
+            remoterunner.createTestInstance(self.get_file(),
+                                            self.__module__,
+                                            self.__class__.__name__,
+                                            args,
+                                            reply_handler=self._createTestInstanceCallBack,
+                                            error_handler=self._voidRemoteErrBackHandler)
+        except:
+            exception("Exception raised when creating remote instance !")
+            self.validateStep("remote-instanced-created", False)
+            self.stop()
 
     def _createTestInstanceCallBack(self, retval):
         debug("%s retval:%r", self.uuid, retval)

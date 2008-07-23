@@ -85,7 +85,7 @@ class GnlFileSourceTest(GStreamerTest):
         self._mstart = self.arguments.get("media-start", 5 * gst.SECOND)
         self._mduration = self.arguments.get("media-duration", self._duration)
         warning("Got caps-string:%r", self.arguments.get("caps-string", "audio/x-raw-int;audio/x-raw-float"))
-        self._caps = gst.Caps(self.arguments.get("caps-string", "audio/x-raw-int;audio/x-raw-float"))
+        self._caps = gst.Caps(str(self.arguments.get("caps-string", "audio/x-raw-int;audio/x-raw-float")))
         GStreamerTest.remoteSetUp(self)
 
     def createPipeline(self):

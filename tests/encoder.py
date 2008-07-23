@@ -192,7 +192,7 @@ class EncoderMuxerTest(GStreamerTest):
         debug("pad %r, audioCaps:%r", pad, self._audioCaps)
         try:
             if self._audioCaps:
-                self._audioSource.link(self._audioEncoder, gst.Caps(self._audioCaps))
+                self._audioSource.link(self._audioEncoder, gst.Caps(str(self._audioCaps)))
             else:
                 self._audioSource.link(self._audioEncoder)
         finally:
@@ -202,7 +202,7 @@ class EncoderMuxerTest(GStreamerTest):
         debug("pad %r, videoCaps:%r", pad, self._videoCaps)
         try:
             if self._videoCaps:
-                self._videoSource.link(self._videoEncoder, gst.Caps(self._videoCaps))
+                self._videoSource.link(self._videoEncoder, gst.Caps(str(self._videoCaps)))
             else:
                 self._videoSource.link(self._videoEncoder)
         finally:
