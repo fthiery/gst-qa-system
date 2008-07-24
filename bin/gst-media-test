@@ -39,7 +39,8 @@ import os.path
 from optparse import OptionParser
 from insanity.client import CommandLineTesterClient
 from insanity.scenario import Scenario
-from insanity.generators.filesystem import FileSystemGenerator, URIFileSystemGenerator
+from insanity.generators.filesystem import URIFileSystemGenerator
+from insanity.generators.playlist import PlaylistGenerator
 from insanity.monitor import GstDebugLogMonitor, ValgrindMemCheckMonitor, GDBMonitor
 from insanity.testrun import TestRun
 import insanity.utils as utils
@@ -58,11 +59,12 @@ class GstMediaTestClient(CommandLineTesterClient):
         CommandLineTesterClient.__init__(self, verbose=verbose, singlerun=True)
         self.addTestRun(testrun)
 
-def create_testrun(files, testscripts, recursive=True, topdir=None,
+def create_testrun(files=[], testscripts=[], recursive=True, topdir=None,
                    extreme=False, valgrinding=False,
                    debuglevel=2, debuglevel2=5,
                    acceptlist=[], rejectlist=[],
-                   maxnbtests=2, rerun=True):
+                   maxnbtests=2, rerun=True,
+                   playlist=None):
     """
     Takes the parameters of gst-media-test and creates a TestRun object
     """
@@ -77,9 +79,12 @@ def create_testrun(files, testscripts, recursive=True, topdir=None,
     # * recursive
     # * acceptlist
     # * rejectlist
-    generator1 = URIFileSystemGenerator(paths=files, recursive=recursive,
-                                        matching=acceptlist,
-                                        reject=rejectlist)
+    if not files == []:
+        generator1 = URIFileSystemGenerator(paths=files, recursive=recursive,
+                                            matching=acceptlist,
+                                            reject=rejectlist)
+    else:
+        generator1 = PlaylistGenerator(location=playlist)
 
     # get the classes corresponding to the given tests
     tests = [utils.get_test_class(name) for name in testscripts]
@@ -177,6 +182,9 @@ if __name__ == "__main__":
     parser.add_option("-l", "--no-reruns", dest="rerun",
                       action="store_false", default=True,
                       help="Don't rerun test with higher debugging if it failed")
+    parser.add_option("-p", "--playlist", dest="playlist",
+                      default=None, metavar="PLAYLIST",
+                      help="Playlist file containing one URI per line")
     (options, args) = parser.parse_args(sys.argv[1:])
     files = options.files
     tests = options.tests
@@ -184,11 +192,13 @@ if __name__ == "__main__":
         acceptlist = options.accept.split(",")
     else:
         acceptlist = []
+
     if options.exclude:
         rejectlist = options.exclude.split(",")
     else:
         rejectlist = []
-    if not len(files) and not len(tests):
+
+    if not (len(files) or options.playlist) and not len(tests):
         parser.print_help()
         tests = utils.list_available_tests()
         print "Available tests:"
@@ -199,12 +209,12 @@ if __name__ == "__main__":
         for name, desc, cls in scenarios:
             print "\t% -20s : %s" % (name, desc)
         sys.exit()
-    if not len(files):
-        print "No files/directories to test were given"
+    if not len(files) and not options.playlist:
+        print "No files/directorie (or playlist) to test were given"
     elif not len(tests):
         print "No test was given"
     else:
-        testrun = create_testrun(files, tests,
+        testrun = create_testrun(files=files, testscripts=tests,
                                  topdir=options.output,
                                  recursive=options.recursive,
                                  extreme=options.extreme,
@@ -214,6 +224,7 @@ if __name__ == "__main__":
                                  acceptlist=acceptlist,
                                  rejectlist=rejectlist,
                                  maxnbtests=options.maxnbtests,
-                                 rerun=options.rerun)
+                                 rerun=options.rerun,
+                                 playlist=options.playlist)
         tester = GstMediaTestClient(testrun, verbose=options.verbose)
         tester.run()

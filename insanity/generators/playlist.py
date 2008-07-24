@@ -46,7 +46,7 @@ class PlaylistGenerator(Generator):
             return res
         resfile = open(location, "r")
         # this is a bit too simplistic
-        res = [x.strip() for x in resfile.readlines()]
+        res = [x.strip() for x in resfile.readlines() if x.strip()]
         resfile.close()
         return res
 
