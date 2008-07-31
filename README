@@ -42,7 +42,7 @@ Inline documentation
   You can get an html version by using epydoc and the following
 command:
 
-  epydoc -o epydoc --docformat plaintext -v  gstqa
+  epydoc -o epydoc --docformat plaintext -v insanity
 
 Requirements
 ------------
