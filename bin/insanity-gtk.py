@@ -207,6 +207,55 @@ class TestStatusWidget(gtk.Frame):
         label_text = self._check_shortname(check)
         label.props.label = "<span background='%s'>%s</span>" % (color, label_text,) # FIXME: escape
 
+class TestStatusWidget(gtk.Frame):
+
+    def __init__(self):
+
+        gtk.Frame.__init__(self)
+
+        self.labels = {}
+        self.box = gtk.HBox(True, 2)
+        self.add(self.box)
+
+        self.box.show()
+
+    @staticmethod
+    def _check_shortname(n):
+        parts = n.split("-")
+        return "".join([p[:1] for p in parts]).upper()
+
+    def set_checklist(self, checks):
+
+        for label in self.labels.itervalues():
+            label.destroy()
+        self.labels.clear()
+
+        for check in checks.keys():
+            label_text = self._check_shortname(check)
+            label = gtk.Label()
+            label.props.use_markup = True
+            label.props.label = label_text # FIXME escape
+            self.labels[check] = label
+            self.box.pack_start(label)
+            label.show()
+
+    def reset_status(self):
+
+        for check, label in self.labels.iteritems():
+            label_text = self._check_shortname(check)
+            label.props.label = label_text # FIXME: escape
+
+    def update_status(self, check, status):
+
+        label = self.labels[check]
+        if status:
+            color = "green"
+        else:
+            color = "red"
+
+        label_text = self._check_shortname(check)
+        label.props.label = "<span background='%s'>%s</span>" % (color, label_text,) # FIXME: escape
+
 class Window(object):
 
     def __init__ (self):
