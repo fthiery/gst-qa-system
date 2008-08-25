@@ -34,7 +34,7 @@ Generators expand some arguments into a dictionnary of arguments.
 
 from insanity.log import critical, error, warning, debug, info
 
-class Generator:
+class Generator(object):
     """
     Expands some arguments into a list of arguments.
 

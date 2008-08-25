@@ -23,7 +23,7 @@
 Classes and methods related to storing/retrieving results/data/...
 """
 
-class DataStorage:
+class DataStorage(object):
     """
     Base class for storing data
     """

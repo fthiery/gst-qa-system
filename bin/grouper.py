@@ -37,7 +37,7 @@ from insanity.storage.sqlite import SQLiteStorage
 
 statusnames = ["True", "False", "Unvalidated" ]
 
-class CheckGroup:
+class CheckGroup(object):
 
     def __init__(self, checkname):
         self.name = checkname
@@ -68,7 +68,7 @@ class CheckGroup:
     def __repr__(self):
         return "<Checkgroup %s>" % self.name
 
-class Node:
+class Node(object):
     def __init__(self, tests, name=None):
         self.tests = tests
         self.true = None
