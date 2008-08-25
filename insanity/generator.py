@@ -72,7 +72,7 @@ class Generator(object):
         raise NotImplementedError
 
     def __iter__(self):
-        return self.generate()[:]
+        return iter(self.generate()[:])
 
     def __len__(self):
         if self._length == None:
