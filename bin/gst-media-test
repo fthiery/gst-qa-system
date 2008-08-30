@@ -172,10 +172,10 @@ if __name__ == "__main__":
     parser.add_option("-D", "--debuglevel2", dest="debuglevel2", type="int",
                       default=5, help="GStreamer debug level for 2nd run (default: 5)")
     parser.add_option("-a", "--accept", dest="accept",
-                      help="Coma-separated list of file extensions to limit the tests to.",
+                      help="Coma-separated list of file globs to limit the tests to.",
                       default=None, metavar="EXTENSIONS")
     parser.add_option("-e", "--exclude", dest="exclude",
-                      help="Coma-separated list of file extensions to exclude.",
+                      help="Coma-separated list of file globs to exclude from tests.",
                       default=None, metavar="EXTENSIONS")
     parser.add_option("-S", "--simultaneous", dest="maxnbtests",
                       type="int", default=1, help="Maximum number of simultaneous tests (default:1)")
