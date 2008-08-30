@@ -296,7 +296,7 @@ class CommandLineTesterClient(TesterClient):
         print "Aborted", testrun
 
     def _singleTestDoneCb(self, testrun, test):
-        self.printSingleTestResult(test)
+        self.printSingleTestResult(test, testrun=testrun)
 
     def _printTestRunEnvironment(self, testrun):
         d = testrun.getEnvironment()
@@ -310,9 +310,15 @@ class CommandLineTesterClient(TesterClient):
                 else:
                     print "\t% -30s:\t%s" % (key,val)
 
-    def printSingleTestResult(self, test, offset=0):
+    def printSingleTestResult(self, test, offset=0, testrun=None):
         stub = " " * offset
-        print stub, "Test %r is done (Success:%5.1f%%)" % (test, test.getSuccessPercentage())
+        if testrun:
+            pos = testrun.getCurrentBatchPosition()
+            length = testrun.getCurrentBatchLength()
+            perc = float(pos * 100.0) / float(length)
+            print stub, "Test %r is done (Success:%5.1f%%)  %5d / %5d  [%5.1f%%]" % (test, test.getSuccessPercentage(), pos, length, perc)
+        else:
+            print stub, "Test %r is done (Success:%5.1f%%)" % (test, test.getSuccessPercentage())
         if self._verbose:
             # print out all details from test
             print stub, "Arguments:"
