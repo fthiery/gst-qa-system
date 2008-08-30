@@ -102,11 +102,6 @@ class TesterClient(dbus.service.Object):
         self._running = True
         self._ensureStorageAvailable()
         gobject.idle_add(self._runNext)
-        try:
-            self._ml.run()
-        except KeyboardInterrupt:
-            exception("Interrupted, calling clean-up")
-            self.quit()
 
     def quit(self):
         """
@@ -272,6 +267,17 @@ class CommandLineTesterClient(TesterClient):
         """
         TesterClient.__init__(self, *args, **kwargs)
         self._verbose = verbose
+
+    def run(self):
+
+        TesterClient.run(self)
+
+        # Now run the main loop, which blocks until finished or quitting:
+        try:
+            self._ml.run()
+        except KeyboardInterrupt:
+            exception("Interrupted, calling clean-up")
+            self.quit()
 
     def test_run_start(self, testrun):
         print "Starting", testrun
