@@ -115,6 +115,15 @@ class Arguments(object):
         self.generators = cpy
         self._initialized = True
 
+    def __len__(self):
+        if not self._initialized:
+            self._initialize()
+        return self.combinations
+
+    def current(self):
+        """ Returns the current position """
+        return self.globalidx
+
     ## EXTRA METHODS
     ## NOT IMPLEMENTED YET
 

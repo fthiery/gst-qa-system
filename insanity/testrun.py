@@ -303,6 +303,22 @@ class TestRun(gobject.GObject):
         self._runNext()
         return False
 
+    def getCurrentBatchPosition(self):
+        """
+        Returns the position (index) in the current batch.
+        """
+        if self._currentarguments:
+            return self._currentarguments.current()
+        return 0
+
+    def getCurrentBatchLength(self):
+        """
+        Returns the size of the current batch.
+        """
+        if self._currentarguments:
+            return len(self._currentarguments)
+        return 0
+
     def getWorkingDirectory(self):
         """
         Returns the currently configured working directory for this

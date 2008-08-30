@@ -51,6 +51,7 @@ class Generator:
         self.args = args
         self.kwargs = kwargs
         self.generated = []
+        self._length = None
 
     def copy(self):
         return self.__class__(*self.args, **self.kwargs)
@@ -74,7 +75,9 @@ class Generator:
         return self.generate()[:]
 
     def __len__(self):
-        return len(self.generate())
+        if self._length == None:
+            self._length = len(self.generate())
+        return self._length
 
     def __getitem__(self, idx):
         return self.generate()[idx]
