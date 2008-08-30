@@ -37,7 +37,7 @@ def printTestRunInfo(db, testrunid, verbose=False):
     softname, clientname, clientuser = db.getClientInfoForTestRun(testrunid)
     tests = db.getTestsForTestRun(testrunid)
     failed = db.getFailedTestsForTestRun(testrunid)
-    print "[% 3d]\tDate:%s\tnbtests:% 5dFailed:% 5d\tClient : %s/%s/%s" % (testrunid,
+    print "[% 3d]\tDate:%s\tNbTests:% 5d\tFailed:% 5d\tClient: %s/%s/%s" % (testrunid,
                                                                            time.ctime(starttime),
                                                                            len(tests),
                                                                            len(failed),
@@ -121,9 +121,10 @@ def printTestRun(db, testrunid, failedonly=False, hidescenarios=False):
         printTestInfo(db, testid, failedonly)
 
 if __name__ == "__main__":
-    parser = OptionParser()
+    usage = "usage: %prog database [options]"
+    parser = OptionParser(usage=usage)
     parser.add_option("-l", "--list", dest="list",
-                      help="List the available test runs",
+                      help="List the available test runs with summary",
                       action="store_true",
                       default=False)
     parser.add_option("-t", "--testrun", dest="testrun",
