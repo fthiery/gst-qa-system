@@ -1,4 +1,4 @@
-from web.insanity.models import TestRun, Test
+from web.insanity.models import TestRun, Test, TestClassInfo
 from django.shortcuts import render_to_response, get_object_or_404
 from django.http import HttpResponse
 import time
@@ -18,6 +18,12 @@ def testrun_summary(request, testrun_id):
 def test_summary(request, test_id):
     tr = get_object_or_404(Test, pk=test_id)
     return render_to_response('insanity/test_summary.html', {'test': tr})
+
+def available_tests(request):
+    """ Returns a tree of all available tests """
+    classinfos = TestClassInfo.objects.all()
+    return render_to_response('insanity/available_tests.html',
+                              {"classinfos": classinfos})
 
 def handler404(request):
     return "Something went wrong !"

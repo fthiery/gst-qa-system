@@ -95,6 +95,17 @@ class TestClassInfo(models.Model):
                                related_name="subclass")
     description = models.TextField(blank=True)
     fulldescription = models.TextField(blank=True)
+
+    def _get_fullchecklist(self):
+        print self.parent_id, self.checklist.all()
+        if self.parent_id:
+            res = list(self.parent.fullchecklist)
+            res.extend(list(self.checklist.order_by("id")))
+        else:
+            res = list(self.checklist.order_by("id"))
+        return res
+    fullchecklist = property(_get_fullchecklist)
+
     class Meta:
         db_table = 'testclassinfo'
 
@@ -110,6 +121,21 @@ class TestClassInfoArgumentsDict(models.Model):
         return loads(str(self.blobvalue))
     value = property(_get_value)
 
+    def _get_description(self):
+        return self.value[0]
+    description = property(_get_description)
+
+    def _get_defaultvalue(self):
+        return self.value[1]
+    defaultvalue = property(_get_defaultvalue)
+
+    def _get_fulldescription(self):
+        return self.value[2]
+    fulldescription = property(_get_fulldescription)
+
+    def __str__(self):
+        return self.name
+
     class Meta:
         db_table = 'testclassinfo_arguments_dict'
 
@@ -119,8 +145,12 @@ class TestClassInfoCheckListDict(models.Model):
                                     db_column="containerid",
                                     related_name="checklist")
     name = models.TextField(blank=True)
-    value = models.TextField(blank=True,
-                             db_column="txtvalue")
+    description = models.TextField(blank=True,
+                                   db_column="txtvalue")
+
+    def __str__(self):
+        return self.name
+
     class Meta:
         db_table = 'testclassinfo_checklist_dict'
 
@@ -131,6 +161,9 @@ class TestClassInfoExtraInfoDict(models.Model):
                                     related_name="extrainfos")
     name = models.TextField(blank=True)
     value = models.TextField(blank=True, db_column="txtvalue")
+    def __str__(self):
+        return self.name
+
     class Meta:
         db_table = 'testclassinfo_extrainfo_dict'
 
@@ -141,6 +174,9 @@ class TestClassInfoOutputFilesDict(models.Model):
                                     related_name="outputfiles")
     name = models.TextField(blank=True)
     value = models.TextField(blank=True, db_column="txtvalue")
+    def __str__(self):
+        return self.name
+
     class Meta:
         db_table = 'testclassinfo_outputfiles_dict'
 
