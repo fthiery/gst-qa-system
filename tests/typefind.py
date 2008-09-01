@@ -121,10 +121,10 @@ class TypeFindTest(GStreamerTest):
 
         debug("allstreams : %s", [s.pad.get_name() for s in self._streams])
         raws = [s for s in self._streams if s.raw]
-        notraws = [s for s in self._streams if not s.raw]
-        nonfixedraw = [s for s in raws if not s.caps.is_fixed()]
+        notraws = [s for s in self._streams if s and not s.raw]
+        nonfixedraw = [s for s in raws if s and not s.caps.is_fixed()]
         self.validateStep("all-fixed-caps-streams",
-                          not len([s for s in raws if not s.caps.is_fixed()]))
+                          not len([s for s in raws if s and not s.caps.is_fixed()]))
         self.validateStep("all-streams-decodable", not len(notraws))
         if len(notraws):
             self.extraInfo("unhandled-formats", [s.caps.to_string() for s in notraws])

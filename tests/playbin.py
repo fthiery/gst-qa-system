@@ -40,7 +40,10 @@ class PlaybinTest(GStreamerTest):
         return os.path.abspath(__file__)
 
     def createPipeline(self):
-        p = gst.element_factory_make("playbin")
+        try:
+            p = gst.element_factory_make("playbin2")
+        except:
+            p = gst.element_factory_make("playbin")
         p.props.uri = self.arguments["uri"]
         p.props.audio_sink = gst.element_factory_make("fakesink", "audio-fake-sink")
         p.props.video_sink = gst.element_factory_make("fakesink", "video-fake-sink")
