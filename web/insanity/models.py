@@ -97,7 +97,6 @@ class TestClassInfo(models.Model):
     fulldescription = models.TextField(blank=True)
 
     def _get_fullchecklist(self):
-        print self.parent_id, self.checklist.all()
         if self.parent_id:
             res = list(self.parent.fullchecklist)
             res.extend(list(self.checklist.order_by("id")))
@@ -246,7 +245,6 @@ class TestRun(models.Model, CustomSQLInterface):
         oldinnew = []
         newtests = []
 
-        before = time.time()
         for othert in other.test_set.all():
             anc = self.find_test_similar_args(othert)
             if anc == []:
@@ -254,12 +252,8 @@ class TestRun(models.Model, CustomSQLInterface):
             else:
                 newmapping[othert] = anc
                 oldinnew.extend(anc)
-        med = time.time()
         testsgone = [x for x in self.test_set.all() if not x in oldinnew]
 
-        after = time.time()
-        print "it took %.2fs/%.2fs to find similar tests" % (med - before,
-                                                             after - before)
         return newmapping
 
     def __str__(self):
