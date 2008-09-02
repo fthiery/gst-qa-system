@@ -253,10 +253,12 @@ CREATE INDEX mc_a_dict_c_idx ON monitorclassinfo_arguments_dict (containerid);
 CREATE INDEX mc_c_dict_c_idx ON monitorclassinfo_checklist_dict (containerid);
 CREATE INDEX mc_ei_dict_c_idx ON monitorclassinfo_extrainfo_dict (containerid);
 CREATE INDEX mc_of_dict_c_idx ON monitorclassinfo_outputfiles_dict (containerid);
+
+CREATE INDEX test_type_idx ON test (type);
 """
 
 # Current database version
-DATABASE_VERSION = 1
+DATABASE_VERSION = 2
 
 DATA_TYPE_INT = 0
 DATA_TYPE_STR = 1
@@ -324,17 +326,40 @@ class SQLiteStorage(DBStorage):
         else:
             callback(*args, **kwargs)
 
+    def _updateDatabaseFrom1To2(self):
+        create1to2 = """
+        CREATE INDEX test_type_idx ON test (type);
+        """
+        # Add usedtests_testrun table and index
+        self.con.executescript(create1to2)
+        self.con.commit()
+
+    def _updateDatabase(self, oldversion, newversion):
+        if oldversion < 2:
+            self._updateDatabaseFrom1To2()
+
+        # finally update the db version
+        cmstr = "UPDATE version SET version=?,modificationtime=? WHERE version=?"
+        self._ExecuteCommit(cmstr, (DATABASE_VERSION, int (time.time()), oldversion))
+        return True
+
     def _checkForTables(self):
         # return False if the tables aren't created
         tables = self._getAllTables()
         if len(tables) == 0 or not "version" in tables:
             return False
 
-        # FIXME : if ver != DATABASE_VERSION, then update the database
         ver = self._getDatabaseSchemeVersion()
-        if not ver or ver != DATABASE_VERSION:
+        if not ver:
             return False
-        return True
+        if ver > DATABASE_VERSION:
+            warning("Tables were created using a newer database scheme than what we support")
+            return False
+        if ver == DATABASE_VERSION:
+            return True
+
+        # FIXME : if ver != DATABASE_VERSION, then update the database
+        return self._updateDatabase(ver, DATABASE_VERSION)
 
     def _ExecuteCommit(self, instruction, *args, **kwargs):
         # Convenience function to call execute and commit in one line
