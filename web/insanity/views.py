@@ -25,5 +25,19 @@ def available_tests(request):
     return render_to_response('insanity/available_tests.html',
                               {"classinfos": classinfos})
 
+def matrix_view(request, testrun_id):
+    tr = get_object_or_404(TestRun, pk=testrun_id)
+    # following returns a list of {"type" : testtypeid}
+    testtypesid = tr.test_set.values("type").distinct()
+    tests = []
+    for d in testtypesid:
+        t = TestClassInfo.objects.get(pk=d["type"])
+        tests.append({"type":t,
+                      "tests":Test.objects.filter(testrunid=int(testrun_id),
+                                                  type=t)})
+    return render_to_response('insanity/matrix_view.html',
+                              {'testrun':tr,
+                               'sortedtests':tests})
+
 def handler404(request):
     return "Something went wrong !"

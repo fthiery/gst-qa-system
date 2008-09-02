@@ -1,0 +1,77 @@
+<style type="text/css">
+<!--
+    /* The rest are ordinary style properties */
+    table {
+        border-collapse: collapse;
+    }
+    thead td, thead th {
+        font-size: 90%%;
+        line-height: 1.15em;
+    }
+    td {
+        border: 1px solid black;
+    }
+    td.first-in-round {
+        border-left: 2px solid black;
+    }
+    td.last-in-round {
+        border-right: 2px solid black;
+    }
+    td.result-ERROR {
+         background: %(error)s;
+    }
+    td.result-FAIL {
+         background: %(fail)s;
+    }
+    td.result-skipped {
+         background: %(skipped)s;
+    }
+    td.result-excluded * {
+         color: %(ok)s;
+    }
+    td.result-excluded {
+         background: %(ok)s;
+    }
+    td.result-OK {
+         background: %(ok)s;
+    }
+    table a {
+         color: black;
+         text-decoration: none;
+    }
+    table.summary, table.summary td {
+         border: none;
+    }
+    table.summary td {
+         padding: 0ex 1ex;
+    } 
+-->
+</STYLE>
+
+<!-- We're supposing we only have one test type and we ignore scenarios -->
+{% for sortedtest in sortedtests %}
+<table>
+  <tr><th>{{ sortedtest.type.type }} </th></tr>
+  <tr>
+<table>
+  <tr>
+    <th>ID</th>
+    {% for arg in sortedtest.type.arguments.all %}
+    <th>{{ arg.name }}</th>
+    {% endfor %}
+    <th>Result</th>
+  </tr>
+  
+  {% for test in sortedtest.tests %}
+  <tr>
+    <td>{{test.id}}</td>
+    {% for arg in test.arguments.all %}
+    <td>{{ arg.value }}</td>
+    {% endfor %}
+    <td>{{test.resultpercentage}}%</td>
+  </tr>
+  {% endfor %}
+
+</table>
+</tr>
+{% endfor %}

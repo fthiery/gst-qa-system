@@ -472,4 +472,3 @@ class Version(models.Model):
     modificationtime = models.IntegerField(null=True, blank=True)
     class Meta:
         db_table = 'version'
-
