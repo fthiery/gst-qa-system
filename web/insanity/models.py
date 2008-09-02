@@ -277,6 +277,10 @@ class Test(models.Model):
         return bool(SubTest.objects.filter(testid=self.id).count())
     is_subtest = property(_is_subtest)
 
+    def _is_success(self):
+        return bool(self.resultpercentage == 100.0)
+    is_success = property(_is_success)
+
     class Meta:
         db_table = 'test'
 

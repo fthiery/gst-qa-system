@@ -27,17 +27,21 @@ def available_tests(request):
 
 def matrix_view(request, testrun_id):
     tr = get_object_or_404(TestRun, pk=testrun_id)
+    onlyfailed = bool(int(request.GET.get("onlyfailed",False)))
     # following returns a list of {"type" : testtypeid}
     testtypesid = tr.test_set.values("type").distinct()
     tests = []
     for d in testtypesid:
         t = TestClassInfo.objects.get(pk=d["type"])
+        query = Test.objects.filter(testrunid=int(testrun_id),
+                                    type=t)
+        # FIXME : find a way to filter out successful tests if onlyfailed
         tests.append({"type":t,
-                      "tests":Test.objects.filter(testrunid=int(testrun_id),
-                                                  type=t)})
+                      "tests":query})
     return render_to_response('insanity/matrix_view.html',
                               {'testrun':tr,
-                               'sortedtests':tests})
+                               'sortedtests':tests,
+                               'onlyfailed':onlyfailed})
 
 def handler404(request):
     return "Something went wrong !"
