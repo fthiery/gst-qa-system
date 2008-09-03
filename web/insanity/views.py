@@ -28,11 +28,14 @@ def available_tests(request):
 def matrix_view(request, testrun_id):
     tr = get_object_or_404(TestRun, pk=testrun_id)
     onlyfailed = bool(int(request.GET.get("onlyfailed",False)))
+    showscenario = bool(int(request.GET.get("showscenario",True)))
     # following returns a list of {"type" : testtypeid}
     testtypesid = tr.test_set.values("type").distinct()
     tests = []
     for d in testtypesid:
         t = TestClassInfo.objects.get(pk=d["type"])
+        if not showscenario and t.is_scenario:
+            continue
         query = Test.objects.filter(testrunid=int(testrun_id),
                                     type=t)
         # FIXME : find a way to filter out successful tests if onlyfailed

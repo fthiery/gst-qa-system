@@ -105,6 +105,14 @@ class TestClassInfo(models.Model):
         return res
     fullchecklist = property(_get_fullchecklist)
 
+    def _get_is_scenario(self):
+        if self.type == "scenario":
+            return True
+        if self.parent_id:
+            return self.parent.is_scenario
+        return False
+    is_scenario = property(_get_is_scenario)
+
     class Meta:
         db_table = 'testclassinfo'
 
