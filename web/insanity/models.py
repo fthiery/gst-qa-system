@@ -97,6 +97,10 @@ class TestClassInfo(models.Model):
     fulldescription = models.TextField(blank=True)
 
     def _get_fullchecklist(self):
+        """
+        Returns the full list of checkitems (including from parents)
+        The list is ordered by classes and then by id.
+        """
         if self.parent_id:
             res = list(self.parent.fullchecklist)
             res.extend(list(self.checklist.order_by("id")))
@@ -288,6 +292,29 @@ class Test(models.Model):
     def _is_success(self):
         return bool(self.resultpercentage == 100.0)
     is_success = property(_is_success)
+
+    def _get_results_dict(self):
+        """
+        Returns an ordered list of check results as dictionnaries.
+        dictionnary:
+          'type': TestClassInfoCheckListDict
+          'value': TestCheckListList
+
+        This differs from checklist_set in the sense that it will
+        """
+        res = []
+        for checktype in self.type.fullchecklist:
+            d = {}
+            d['type'] = checktype
+            val = TestCheckListList.objects.filter(containerid=self,
+                                                   name=checktype)
+            if len(val):
+                d['value'] = val[0]
+            else:
+                d['value'] = None
+            res.append(d)
+        return res
+    results = property(_get_results_dict)
 
     class Meta:
         db_table = 'test'

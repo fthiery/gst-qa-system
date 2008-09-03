@@ -53,7 +53,6 @@
   <th>Type</th>
   <th>Parent</th>
   <th>Description</th>
-  <th>Full Description</th>
   <th>Arguments</th>
   <th>Specific Check items</th>
 </tr>
@@ -62,16 +61,13 @@
   <td>{{info.type}}</td>
   <td>{{info.parent.type}}</td>
   <td>{{info.description}}</td>
-  <td>{% if info.fulldescription %}
-    {{info.fulldescription}}
-    {% endif %}</td>
   <td>{% for arg in info.arguments.all %}
-    {{arg.name}} : {{arg.description}}<br>
+    <b>{{arg.name}}</b> : {{arg.description}}<br>
     {% endfor %}
   </td>
   <td>
     {% for item in info.checklist.all %}
-    {{item.name}} : {{item.description}}<br>
+    <b>{{item.name}}</b> : {{item.description}}<br>
     {% endfor %}
   </td>
 </tr>

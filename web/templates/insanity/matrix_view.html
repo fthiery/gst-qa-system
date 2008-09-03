@@ -18,22 +18,22 @@
         border-right: 2px solid black;
     }
     td.result-ERROR {
-         background: %(error)s;
+         background: #FF0000;
     }
     td.result-FAIL {
-         background: %(fail)s;
+         background: #FF0000;
     }
     td.result-skipped {
-         background: %(skipped)s;
+         background: #FFF650;
     }
     td.result-excluded * {
-         color: %(ok)s;
+         color: #00FF00;
     }
     td.result-excluded {
-         background: %(ok)s;
+         background: #00FF00;
     }
     td.result-OK {
-         background: %(ok)s;
+         background: #00FF00;
     }
     table a {
          color: black;
@@ -49,7 +49,6 @@
 </STYLE>
 
 <!-- We're supposing we only have one test type and we ignore scenarios -->
-{{onlyfailed}}
 {% for sortedtest in sortedtests %}
 <table>
   <tr><th>{{ sortedtest.type.type }} </th></tr>
@@ -61,6 +60,9 @@
     <th>{{ arg.name }}</th>
     {% endfor %}
     <th>Result</th>
+    {% for item in sortedtest.type.fullchecklist %}
+    <th> {{item.name}} </th>
+    {% endfor %}
   </tr>
   
   {% for test in sortedtest.tests %}
@@ -70,7 +72,12 @@
     {% for arg in test.arguments.all %}
     <td>{{ arg.value }}</td>
     {% endfor %}
-    <td>{{test.resultpercentage}}%</td>
+    <td class="{% if test.is_success %}result-OK{% else %}result-FAIL{% endif %}">{{test.resultpercentage}}%</td>
+    {% for item in test.results %}
+    <td class="{% if item.value and item.value.value %}result-OK{% else %}{%if not item.value.value %}result-FAIL{% else %}result-skipped{% endif %}{% endif %}">
+      <span title="{{item.name}}">{{ item.value.value }}</span>
+    </td>
+    {% endfor %}
   </tr>
   {% endif %}
   {% endfor %}
