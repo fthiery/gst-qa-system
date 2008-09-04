@@ -7,6 +7,8 @@
     thead td, thead th {
         font-size: 90%%;
         line-height: 1.15em;
+	margin: .5em 0 0 .5em;
+	vertical-align: text-bottom;
     }
     td {
         border: 1px solid black;
@@ -61,7 +63,7 @@
     {% endfor %}
     <th>Result</th>
     {% for item in sortedtest.type.fullchecklist %}
-    <th> {{item.name}} </th>
+    <th> {{item.shortname}} </th>
     {% endfor %}
   </tr>
   
@@ -74,7 +76,7 @@
     {% endfor %}
     <td class="{% if test.is_success %}result-OK{% else %}result-FAIL{% endif %}">{{test.resultpercentage}}%</td>
     {% for item in test.results %}
-    <td class="{% if item.value and item.value.value %}result-OK{% else %}{%if not item.value.value %}result-FAIL{% else %}result-skipped{% endif %}{% endif %}">
+    <td class="{% if item.skipped %}result-skipped{% else %}{%if item.value.value %}result-OK{% else %}result-FAIL{% endif %}{% endif %}">
       <span title="{{item.name}}">{{ item.value.value }}</span>
     </td>
     {% endfor %}

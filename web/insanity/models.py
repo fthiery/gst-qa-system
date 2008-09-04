@@ -159,6 +159,10 @@ class TestClassInfoCheckListDict(models.Model):
     description = models.TextField(blank=True,
                                    db_column="txtvalue")
 
+    def _get_shortname(self):
+        return "<br>".join([a[0].capitalize() for a in self.name.split('-')])
+    shortname = property(_get_shortname)
+
     def __str__(self):
         return self.name
 
@@ -299,6 +303,7 @@ class Test(models.Model):
         dictionnary:
           'type': TestClassInfoCheckListDict
           'value': TestCheckListList
+          'skipped': boolean set to True if check was skipped
 
         This differs from checklist_set in the sense that it will
         """
@@ -306,12 +311,14 @@ class Test(models.Model):
         for checktype in self.type.fullchecklist:
             d = {}
             d['type'] = checktype
-            val = TestCheckListList.objects.filter(containerid=self,
-                                                   name=checktype)
-            if len(val):
-                d['value'] = val[0]
-            else:
-                d['value'] = None
+            try:
+                val = TestCheckListList.objects.get(containerid=self,
+                                                    name=checktype)
+                d['skipped'] = False
+            except:
+                val = None
+                d['skipped'] = True
+            d['value'] = val
             res.append(d)
         return res
     results = property(_get_results_dict)
