@@ -305,7 +305,8 @@ class Test(models.Model):
           'value': TestCheckListList
           'skipped': boolean set to True if check was skipped
 
-        This differs from checklist_set in the sense that it will
+        This differs from checklist_set in the sense that it will indicate
+        the skipped check items.
         """
         res = []
         for checktype in self.type.fullchecklist:
@@ -322,6 +323,36 @@ class Test(models.Model):
             res.append(d)
         return res
     results = property(_get_results_dict)
+
+    def _test_error(self):
+        """ Returns the error TestExtraInfoDict if available"""
+        def stringify_gst_error(anerr):
+            quarkmap = {
+                "gst-core-error-quark" : "CORE_ERROR",
+                "gst-library-error-quark" : "LIBRARY_ERROR",
+                "gst-resource-error-quark" : "RESOURCE_ERROR",
+                "gst-stream-error-quark" : "STREAM_ERROR"
+                }
+            quark,message = anerr[1:3]
+            return "%s: %s" % (quarkmap.get(quark, "UNKNOWN_ERROR"),
+                               message)
+        def stringify_return_code(retcode):
+            ret = None
+            if retcode:
+                ret = "Process return code : %s" % retcode
+            return ret
+
+        try:
+            errs = self.extrainfo.get(name__name="errors")
+            err = stringify_gst_error(errs.value[0])
+        except:
+            try:
+                errs = self.extrainfo.get(name__name="subprocess-return-code")
+                err = stringify_return_code(errs.value)
+            except:
+                err = None
+        return err
+    test_error = property(_test_error)
 
     class Meta:
         db_table = 'test'
