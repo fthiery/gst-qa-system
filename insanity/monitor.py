@@ -473,7 +473,7 @@ class GDBMonitor(Monitor):
 
     def _findCoreFile(self):
         cwd = self.testrun.getWorkingDirectory()
-        root, dirs, files = list(os.walk(cwd))[0]
+        files = os.listdir(cwd)
         debug("files : %r", files)
         for fname in files:
             if fname == "core":
