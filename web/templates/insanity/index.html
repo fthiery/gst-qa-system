@@ -1,7 +1,7 @@
 {% if latest_runs %}
     <ul>
-    {% for run in latest_runs %}
-        <li>TestRun <a href={{run.get_absolute_url}}>#{{ run.id }}</a>, {{run.test_set.count}} test{{run.test_set.count|pluralize}}</li>
+    {% for run in latest_runs.reverse %}
+        <li>TestRun <a href={{run.get_absolute_url}}>#{{ run.id }}</a>, {{run.test_set.count}} test{{run.test_set.count|pluralize}} <a href={{run.get_matrix_view_url}}>Matrix view</a></li>
     {% endfor %}
     </ul>
 {% else %}

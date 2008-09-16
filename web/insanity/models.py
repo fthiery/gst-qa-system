@@ -207,6 +207,10 @@ class TestRun(models.Model, CustomSQLInterface):
         return ('web.insanity.views.testrun_summary', [str(self.id)])
     get_absolute_url = permalink(get_absolute_url)
 
+    def get_matrix_view_url(self):
+        return ('web.insanity.views.matrix_view', [self.id])
+    get_matrix_view_url = permalink(get_matrix_view_url)
+
     def find_test_similar_args(self, atest):
         """Returns tests which have the similar arguments as atest"""
         # this query is too complex to do with DJango code

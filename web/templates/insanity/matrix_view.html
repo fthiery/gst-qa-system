@@ -63,7 +63,7 @@
     {% endfor %}
     <th>Result</th>
     {% for item in sortedtest.type.fullchecklist %}
-    <th><span title="{{item.name}}">{{item.shortname}}</span></th>
+    <th><span title="{{item.name}}">{{item.shortname|safe}}</span></th>
     {% endfor %}
     <th>Errors seen</th>
   </tr>
@@ -71,7 +71,7 @@
   {% for test in sortedtest.tests %}
   {% if not onlyfailed or not test.is_success %}
   <tr>
-    <td>{{test.id}}</td>
+    <td><a href={{test.get_absolute_url}}>{{test.id}}</a></td>
     {% for arg in test.arguments.all %}
     <td>{{ arg.value }}</td>
     {% endfor %}
