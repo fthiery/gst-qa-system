@@ -265,9 +265,9 @@ DATA_TYPE_STR = 1
 DATA_TYPE_BLOB = 2
 
 #
-# FIXME / WARNING
-# The current implementation only supports handling of one testrun at a time !
+# FIXME : only accepts one client info at a time !
 #
+
 class SQLiteStorage(DBStorage):
     """
     Stores data in a sqlite db
@@ -284,9 +284,11 @@ class SQLiteStorage(DBStorage):
         self.con = None
         DBStorage.__init__(self, *args, **kwargs)
         self.__clientid = None
-        self.__testrunid = None
-        self.__testrun = None
+
+        # key: testrun, value: testrunid
+        self.__testruns = WeakKeyDictionary()
         self.__tests = WeakKeyDictionary()
+
         # cache of mappings for testclassinfo
         # { 'testtype' : { 'dictname' : mapping } }
         self.__tcmapping = {}
@@ -694,19 +696,20 @@ class SQLiteStorage(DBStorage):
         debug("testrun:%r", testrun)
         if not self.__clientid:
             raise Exception("Please specify client information before starting testruns")
-        if self.__testrun:
-            warning("Apparently the previous testrun didn't exit successfully")
+        if testrun in self.__testruns.keys():
+            warning("Testrun already started !")
+            return
         insertstr = """
         INSERT INTO testrun (id, clientid, starttime, stoptime) VALUES (NULL, ?, ?, NULL)
         """
-        self.__testrunid = self._ExecuteCommit(insertstr,
-                                               (self.__clientid,
-                                                testrun._starttime))
+        testrunid = self._ExecuteCommit(insertstr,
+                                        (self.__clientid,
+                                         testrun._starttime))
         envdict = testrun.getEnvironment()
         if envdict:
-            self._storeEnvironmentDict(self.__testrunid, envdict)
-        self.__testrun = testrun
-        debug("Got testrun id %d", self.__testrunid)
+            self._storeEnvironmentDict(testrunid, envdict)
+        self.__testruns[testrun] = testrunid
+        debug("Got testrun id %d", testrunid)
 
     def endTestRun(self, testrun):
         if self._async:
@@ -717,11 +720,11 @@ class SQLiteStorage(DBStorage):
 
     def _endTestRun(self, testrun):
         debug("testrun:%r", testrun)
-        if not self.__testrun == testrun:
+        if not testrun in self.__testruns.keys():
             # add the testrun since it wasn't done before
             self._startNewTestRun(testrun)
         updatestr = "UPDATE testrun SET stoptime=? WHERE id=?"
-        self._ExecuteCommit(updatestr, (testrun._stoptime, self.__testrunid))
+        self._ExecuteCommit(updatestr, (testrun._stoptime, self.__testruns[testrun]))
         debug("updated")
 
     def _getTestTypeID(self, testtype):
@@ -758,14 +761,14 @@ class SQLiteStorage(DBStorage):
     def _newTestStarted(self, testrun, test, commit=True):
         if not isinstance(test, Test):
             raise TypeError("test isn't a Test instance !")
-        if not self.__testrun == testrun:
+        if not testrun in self.__testruns.keys():
             self._startNewTestRun(testrun)
         debug("test:%r", test)
         self._storeTestClassInfo(test)
         testtid = self._getTestTypeID(test.__test_name__)
         insertstr = "INSERT INTO test (id, testrunid, type) VALUES (NULL, ?, ?)"
         testid = self._ExecuteCommit(insertstr,
-                                     (self.__testrunid, testtid),
+                                     (self.__testruns[testrun], testtid),
                                      commit=commit)
         debug("got testid %d", testid)
         self.__tests[test] = testid
@@ -780,7 +783,7 @@ class SQLiteStorage(DBStorage):
 
     def _newTestFinished(self, testrun, test):
         debug("testrun:%r, test:%r", testrun, test)
-        if not self.__testrun == testrun:
+        if not testrun in self.__testruns.keys():
             debug("different testrun, starting new one")
             self._startNewTestRun(testrun)
         if not self.__tests.has_key(test):
