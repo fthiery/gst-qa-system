@@ -368,6 +368,7 @@ class Test(models.Model):
 
     def _test_error(self):
         """ Returns the error TestExtraInfoDict if available"""
+
         def stringify_gst_error(anerr):
             quarkmap = {
                 "gst-core-error-quark" : "CORE_ERROR",
@@ -378,10 +379,25 @@ class Test(models.Model):
             quark,message = anerr[1:3]
             return "%s: %s" % (quarkmap.get(quark, "UNKNOWN_ERROR"),
                                message)
-        def stringify_return_code(retcode):
+
+        def stringify_return_code(retcodestr):
+            retmap = {
+                -1:"SIGHUP",
+                -2:"SIGINT",
+                -3:"SIGQUIT",
+                -4:"SIGILL",
+                -6:"SIGABRT",
+                -8:"SIGFPE",
+                -9:"SIGKILL",
+                -11:"SIGSEGV",
+                }
             ret = None
+            retcode = long(retcodestr)
             if retcode:
-                ret = "Process return code : %s" % retcode
+                if retcode in retmap:
+                    ret = "Process return code : %s [%d]" % (retmap[retcode],retcode)
+                else:
+                    ret = "Process return code : %d" % retcode
             return ret
 
         try:
