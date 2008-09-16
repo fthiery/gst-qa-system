@@ -1,8 +1,13 @@
 from django.conf.urls.defaults import *
+from django import VERSION
 
-urlpatterns = patterns('',
-    (r'^insanity/', include('web.insanity.urls')),
-
-    # Uncomment this for admin:
-     (r'^admin/', include('django.contrib.admin.urls')),
-)
+if VERSION >= (1, 0, ''):
+    from django.contrib import admin
+    admin.autodiscover()
+    urlpatterns = patterns('',
+                           (r'^insanity/', include('web.insanity.urls')),
+                           (r'^admin/', admin.site.root))
+else:
+    urlpatterns = patterns('',
+                           (r'^insanity/', include('web.insanity.urls')),
+                           (r'^admin/', include('django.contrib.admin.urls')))
