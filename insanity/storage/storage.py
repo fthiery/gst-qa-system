@@ -151,33 +151,3 @@ class NetworkStorage(DataStorage):
     # * port
     pass
 
-class DBStorage(DataStorage):
-    """
-    Stores data in a database
-
-    Don't use this class directly, but one of its subclasses
-    """
-
-    # DataStorage methods implementation
-
-    def setUp(self):
-        # open database
-        self.openDatabase()
-
-        # createTables if needed
-        self.createTables()
-
-    def close(self, callback=None, *args, **kwargs):
-        self._shutDown(callback, *args, **kwargs)
-
-
-    # Methods to be implemented in subclasses
-
-    def openDatabase(self):
-        raise NotImplementedError
-
-    def createTables(self):
-        raise NotImplementedError
-
-    def _shutDown(self, callback, *args, **kwargs):
-        raise NotImplementedError
