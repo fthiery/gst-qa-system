@@ -4,14 +4,23 @@
     table {
         border-collapse: collapse;
     }
-    thead td, thead th {
+    td {
+        font-size: 90%%;
+        line-height: 1.15em;
+	margin: .5em 0 0 .5em;
+	vertical-align: text-top;
+        border: 1px solid black;
+    }
+    th {
         font-size: 90%%;
         line-height: 1.15em;
 	margin: .5em 0 0 .5em;
 	vertical-align: text-bottom;
     }
-    td {
-        border: 1px solid black;
+    th.side {
+	vertical-align: text-top;
+	text-align: right;
+	border: 5pt;
     }
     td.first-in-round {
         border-left: 2px solid black;
@@ -37,6 +46,9 @@
     td.result-OK {
          background: #00FF00;
     }
+    td.arg-default {
+	background: #DDDDDD;
+    }
     table a {
          color: black;
          text-decoration: none;
@@ -51,49 +63,60 @@
 </STYLE>
 
 <!-- We're supposing we only have one test type and we ignore scenarios -->
+<table width="98%">
+  <tr>
+    <th class="side">Test type</th>
+    <th>Results for Testrun #{{testrun.id}}</th>
+  </tr>
 {% for sortedtest in sortedtests %}
-<table>
-  <tr><th>{{ sortedtest.type.type }} </th></tr>
   <tr>
-<table>
-  <tr>
-    <th>ID</th>
-    {% for arg in sortedtest.type.arguments.all %}
-    <th>{{ arg.name }}</th>
-    {% endfor %}
-    <th>Result</th>
-    {% for item in sortedtest.type.fullchecklist %}
-    <th><span title="{{item.name}}">{{item.shortname|safe}}</span></th>
-    {% endfor %}
-    <th>Errors seen</th>
-  </tr>
-  
-  {% for test in sortedtest.tests %}
-  {% if not onlyfailed or not test.is_success %}
-  <tr>
-    <td><a href={{test.get_absolute_url}}>{{test.id}}</a></td>
-    {% for arg in test.arguments.all %}
-    <td>{{ arg.value }}</td>
-    {% endfor %}
-    <td class="{% if test.is_success %}result-OK{% else %}result-FAIL{% endif %}">{{test.resultpercentage}}%</td>
-    {% for item in test.results %}
-    {% if item.skipped %}
-    <td class="result-skipped">
-      <span title="{{item.type.name}} : skipped/unavailable">?</span>
+    <th class="side">{{ sortedtest.type.type }} </th>
+    <td>
+      <table>
+	<tr>
+	  <th>ID</th>
+	  {% for arg in sortedtest.type.arguments.all %}
+	  <th>{{ arg.name }}</th>
+	  {% endfor %}
+	  <th>Result</th>
+	  {% for item in sortedtest.type.fullchecklist %}
+	  <th><span title="{{item.name}}">{{item.shortname|safe}}</span></th>
+	  {% endfor %}
+	  <th>Errors seen</th>
+	</tr>
+	
+	{% for test in sortedtest.tests %}
+	{% if not onlyfailed or not test.is_success %}
+	<tr>
+	  <td><a href={{test.get_absolute_url}}>{{test.id}}</a></td>
+	  {% for arg in test.fullarguments %}
+	  {% if arg.default %}
+	  <td class="arg-default">{{ arg.value }}</td>
+	  {% else %}
+	  <td>{{ arg.value.value }}</td>
+	  {% endif %}
+	  {% endfor %}
+	  <td class="{% if test.is_success %}result-OK{% else %}result-FAIL{% endif %}">{{test.resultpercentage}}%</td>
+	  {% for item in test.results %}
+	  {% if item.skipped %}
+	  <td class="result-skipped">
+	    <span title="{{item.type.name}} : skipped/unavailable">?</span>
+	  </td>
+	  {% else %}
+	  <td class="{%if item.value.value %}result-OK{% else %}result-FAIL{% endif %}">
+	    <span title="{{item.type.name}} : {%if item.value.value %}OK{% else %}failed{% endif %}">{{ item.value.value }}</span>
+	  </td>
+	  {% endif %}
+	  {% endfor %}
+	  {% if test.test_error %}
+	  <td> {{test.test_error}} </td>
+	  {% endif %}
+	</tr>
+	{% endif %}
+	{% endfor %}
+	
+      </table>
     </td>
-    {% else %}
-    <td class="{%if item.value.value %}result-OK{% else %}result-FAIL{% endif %}">
-      <span title="{{item.type.name}} : {%if item.value.value %}OK{% else %}failed{% endif %}">{{ item.value.value }}</span>
-    </td>
-    {% endif %}
-    {% endfor %}
-    {% if test.test_error %}
-    <td> {{test.test_error}} </td>
-    {% endif %}
   </tr>
-  {% endif %}
   {% endfor %}
-
 </table>
-</tr>
-{% endfor %}

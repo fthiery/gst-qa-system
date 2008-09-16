@@ -111,6 +111,19 @@ class TestClassInfo(models.Model):
         return res
     fullchecklist = property(_get_fullchecklist)
 
+    def _get_fullarguments(self):
+        """
+        Returns the full list of arguments (including from parents).
+        The list is ordered by classes and then by id.
+        """
+        if self.parent_id:
+            res = list(self.parent.fullarguments)
+            res.extend(list(self.arguments.order_by("id")))
+        else:
+            res = list(self.arguments.order_by("id"))
+        return res
+    fullarguments = property(_get_fullarguments)
+
     def _get_is_scenario(self):
         if self.type == "scenario":
             return True
@@ -329,6 +342,29 @@ class Test(models.Model):
             res.append(d)
         return res
     results = property(_get_results_dict)
+
+    def _get_full_arguments(self):
+        """
+        Returns an ordered list of arguments
+
+        This differs from test.arguments.all in the sense that it will also
+        contains the arguments with defaults values
+        """
+        res = []
+        for argtype in self.type.fullarguments:
+            d = {}
+            d['type'] = argtype
+            try:
+                val = TestArgumentsDict.objects.get(containerid=self,
+                                                    name=argtype)
+                d['default'] = False
+            except:
+                val = argtype.defaultvalue
+                d['default'] = True
+            d['value'] = val
+            res.append(d)
+        return res
+    fullarguments = property(_get_full_arguments)
 
     def _test_error(self):
         """ Returns the error TestExtraInfoDict if available"""
