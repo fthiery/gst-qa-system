@@ -32,7 +32,7 @@
 	
 	{% for test in sortedtest.tests %}
 	{% if not onlyfailed or not test.is_success %}
-	<tr>
+	<tr class="{% cycle row1,row2 %}">
 	  <td><a href={{test.get_absolute_url}}>{{test.id}}</a></td>
 	  {% for arg in test.fullarguments %}
 	  {% if arg.default %}

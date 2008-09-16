@@ -51,7 +51,7 @@
     <table width="100%" class="inside">
       <tr><th/><th>Value</th><th>Description</th></tr>
       {% for arg in test.arguments.all %}
-      <tr>
+      <tr class="{% cycle row1,row2 %}">
 	<th class="side">{{arg.name.name}}</th>
 	<td>{{arg.value}}</td>
 	<td>{{arg.name.description}}</td>
@@ -69,12 +69,12 @@
     <table width="100%" class="inside">
       <tr><th/><th/><th>Description</th></tr>
       {% for check in test.checklist.all %}
-      <tr>
-      <th class="side">{{check.name.name}}</th>
-      <td class="{%if check.value %}result-OK{% else %}result-FAIL{% endif %}">
-	{{check.value}}
-      </td>
-      <td>{{check.name.description}}</td>
+      <tr class="{% cycle row1,row2 %}">
+	<th class="side">{{check.name.name}}</th>
+	<td class="{%if check.value %}result-OK{% else %}result-FAIL{% endif %}">
+	  {{check.value}}
+	</td>
+	<td>{{check.name.description}}</td>
       </tr>
       {% endfor %}
     </table>
@@ -106,7 +106,7 @@
 	<th>Description</th>
       </tr>
       {% for extra in test.extrainfo.all %}
-      <tr>
+      <tr class="{% cycle row1,row2 %}">
 	<th class="side">{{extra.name.name}}</th>
 	<td>{{extra.html_repr|safe}}</td>
 	<td>{{extra.name.description}}</td>
