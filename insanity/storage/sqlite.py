@@ -300,6 +300,109 @@ class SQLiteStorage(DBStorage):
             self._actionthread = ActionQueueThread()
             self._actionthread.start()
 
+
+    # Storage methods implementation
+    def setClientInfo(self, softwarename, clientname, user):
+        if self._async:
+            self._actionthread.queueAction(self._setClientInfo, softwarename,
+                                           clientname, user)
+        else:
+            self._setClientInfo(softwarename, clientname, user)
+
+    def startNewTestRun(self, testrun):
+        if self._async:
+            self._actionthread.queueAction(self._startNewTestRun,
+                                           testrun)
+        else:
+            self._startNewTestRun(testrun)
+
+    def endTestRun(self, testrun):
+        if self._async:
+            self._actionthread.queueAction(self._endTestRun,
+                                           testrun)
+        else:
+            self._endTestRun(testrun)
+
+    def newTestStarted(self, testrun, test, commit=True):
+        if self._async:
+            self._actionthread.queueAction(self._newTestStarted,
+                                           testrun, test, commit)
+        else:
+            self._newTestStarted(testrun, test, commit)
+
+    def newTestFinished(self, testrun, test):
+        if self._async:
+            self._actionthread.queueAction(self._newTestFinished,
+                                           testrun, test)
+        else:
+            self._newTestFinished(testrun, test)
+
+    def listTestRuns(self):
+        liststr = "SELECT id FROM testrun"
+        res = self._FetchAll(liststr)
+        debug("Got %d testruns", len(res))
+        if len(res):
+            return list(zip(*res)[0])
+        return []
+
+    def getTestRun(self, testrunid):
+        debug("testrunid:%d", testrunid)
+        liststr = """
+        SELECT clientid,starttime,stoptime
+        FROM testrun WHERE id=?"""
+        res = self._FetchAll(liststr, (testrunid, ))
+        if len(res) == 0:
+            debug("Testrun not available in DB")
+            return (None, None, None)
+        if len(res) > 1:
+            warning("More than one testrun with the same id ! Fix DB !!")
+            return (None, None, None)
+        return res[0]
+
+    def getTestsForTestRun(self, testrunid, withscenarios=True):
+        debug("testrunid:%d", testrunid)
+        liststr = "SELECT id FROM test WHERE testrunid=?"
+        res = self._FetchAll(liststr, (testrunid, ))
+        if not res:
+            return []
+        tmp = list(zip(*res)[0])
+        if not withscenarios:
+            scenarios = self.getScenariosForTestRun(testrunid)
+            for sc in scenarios.keys():
+                tmp.remove(sc)
+        return tmp
+
+    def getScenariosForTestRun(self, testrunid):
+        debug("testrunid:%d", testrunid)
+        liststr = """
+        SELECT test.id,subtests.testid
+        FROM test
+        INNER JOIN subtests
+        ON test.id=subtests.scenarioid
+        WHERE test.testrunid=?"""
+        res = self._FetchAll(liststr, (testrunid, ))
+        if not res:
+            return {}
+        # make list unique
+        dc = {}
+        for scenarioid, subtestid in res:
+            if not scenarioid in dc.keys():
+                dc[scenarioid] = [subtestid]
+            else:
+                dc[scenarioid].append(subtestid)
+        return dc
+
+    def getClientInfoForTestRun(self, testrunid):
+        debug("testrunid:%d", testrunid)
+        liststr = """
+        SELECT client.software,client.name,client.user
+        FROM client,testrun
+        WHERE client.id=testrun.clientid AND testrun.id=?"""
+        res = self._FetchAll(liststr, (testrunid,))
+        return res[0]
+
+
+    # DBStorage methods implementation
     def openDatabase(self):
         debug("opening sqlite db for path '%s'", self.path)
         self.con = sqlite.connect(self.path, check_same_thread=False)
@@ -677,20 +780,6 @@ class SQLiteStorage(DBStorage):
         self.__clientid = key
         return key
 
-    def setClientInfo(self, softwarename, clientname, user):
-        if self._async:
-            self._actionthread.queueAction(self._setClientInfo, softwarename,
-                                           clientname, user)
-        else:
-            self._setClientInfo(softwarename, clientname, user)
-
-    def startNewTestRun(self, testrun):
-        if self._async:
-            self._actionthread.queueAction(self._startNewTestRun,
-                                           testrun)
-        else:
-            self._startNewTestRun(testrun)
-
     def _startNewTestRun(self, testrun):
         # create new testrun entry with client entry
         debug("testrun:%r", testrun)
@@ -710,13 +799,6 @@ class SQLiteStorage(DBStorage):
             self._storeEnvironmentDict(testrunid, envdict)
         self.__testruns[testrun] = testrunid
         debug("Got testrun id %d", testrunid)
-
-    def endTestRun(self, testrun):
-        if self._async:
-            self._actionthread.queueAction(self._endTestRun,
-                                           testrun)
-        else:
-            self._endTestRun(testrun)
 
     def _endTestRun(self, testrun):
         debug("testrun:%r", testrun)
@@ -750,13 +832,6 @@ class SQLiteStorage(DBStorage):
         if res == None:
             return None
         return res[0]
-
-    def newTestStarted(self, testrun, test, commit=True):
-        if self._async:
-            self._actionthread.queueAction(self._newTestStarted,
-                                           testrun, test, commit)
-        else:
-            self._newTestStarted(testrun, test, commit)
 
     def _newTestStarted(self, testrun, test, commit=True):
         if not isinstance(test, Test):
@@ -900,73 +975,9 @@ class SQLiteStorage(DBStorage):
         return dc
 
 
-    def getClientInfoForTestRun(self, testrunid):
-        debug("testrunid:%d", testrunid)
-        liststr = """
-        SELECT client.software,client.name,client.user
-        FROM client,testrun
-        WHERE client.id=testrun.clientid AND testrun.id=?"""
-        res = self._FetchAll(liststr, (testrunid,))
-        return res[0]
-
-    def listTestRuns(self):
-        liststr = "SELECT id FROM testrun"
-        res = self._FetchAll(liststr)
-        debug("Got %d testruns", len(res))
-        if len(res):
-            return list(zip(*res)[0])
-        return []
-
-    def getTestRun(self, testrunid):
-        debug("testrunid:%d", testrunid)
-        liststr = """
-        SELECT clientid,starttime,stoptime
-        FROM testrun WHERE id=?"""
-        res = self._FetchAll(liststr, (testrunid, ))
-        if len(res) == 0:
-            debug("Testrun not available in DB")
-            return (None, None, None)
-        if len(res) > 1:
-            warning("More than one testrun with the same id ! Fix DB !!")
-            return (None, None, None)
-        return res[0]
-
     def getEnvironmentForTestRun(self, testrunid):
         debug("testrunid", testrunid)
         return self._getDict("testrun_environment_dict", testrunid)
-
-    def getTestsForTestRun(self, testrunid, withscenarios=True):
-        debug("testrunid:%d", testrunid)
-        liststr = "SELECT id FROM test WHERE testrunid=?"
-        res = self._FetchAll(liststr, (testrunid, ))
-        if not res:
-            return []
-        tmp = list(zip(*res)[0])
-        if not withscenarios:
-            scenarios = self.getScenariosForTestRun(testrunid)
-            for sc in scenarios.keys():
-                tmp.remove(sc)
-        return tmp
-
-    def getScenariosForTestRun(self, testrunid):
-        debug("testrunid:%d", testrunid)
-        liststr = """
-        SELECT test.id,subtests.testid
-        FROM test
-        INNER JOIN subtests
-        ON test.id=subtests.scenarioid
-        WHERE test.testrunid=?"""
-        res = self._FetchAll(liststr, (testrunid, ))
-        if not res:
-            return {}
-        # make list unique
-        dc = {}
-        for scenarioid, subtestid in res:
-            if not scenarioid in dc.keys():
-                dc[scenarioid] = [subtestid]
-            else:
-                dc[scenarioid].append(subtestid)
-        return dc
 
     def getFailedTestsForTestRun(self, testrunid):
         debug("testrunid:%d", testrunid)
