@@ -190,17 +190,29 @@ class SQLiteStorage(DBStorage, AsyncStorage):
 
     def createTables(self):
         # check if tables aren't already created
-        if self._checkForTables():
-            return
         debug("Calling db creation script")
         self.con.executescript(DB_SCHEME)
         self.con.commit()
-        if self._checkForTables() == False:
-            error("Tables were not created properly !!")
         # add database version
         cmstr = "INSERT INTO version (version, modificationtime) VALUES (?, ?)"
         self._ExecuteCommit(cmstr, (DB_SCHEME_VERSION, int(time.time())))
         debug("Tables properly created")
+
+    def getDatabaseSchemeVersion(self):
+        """
+        Returns the scheme version of the currently loaded databse
+
+        Returns None if there's no properly configured scheme, else
+        returns the version
+        """
+        tables = self._getAllTables()
+        if not "version" in tables:
+            return None
+        # check if the version is the same as the current one
+        res = self._FetchOne("SELECT version FROM version")
+        if res == None:
+            return None
+        return res[0]
 
     def _shutDown(self, callback, *args, **kwargs):
         """ Shut down the database, the callback will be called when it's finished
@@ -218,7 +230,7 @@ class SQLiteStorage(DBStorage, AsyncStorage):
         self.con.executescript(create1to2)
         self.con.commit()
 
-    def _updateDatabase(self, oldversion, newversion):
+    def updateTables(self, oldversion, newversion):
         if oldversion < 2:
             self._updateDatabaseFrom1To2()
 
@@ -226,24 +238,6 @@ class SQLiteStorage(DBStorage, AsyncStorage):
         cmstr = "UPDATE version SET version=?,modificationtime=? WHERE version=?"
         self._ExecuteCommit(cmstr, (DB_SCHEME_VERSION, int (time.time()), oldversion))
         return True
-
-    def _checkForTables(self):
-        # return False if the tables aren't created
-        tables = self._getAllTables()
-        if len(tables) == 0 or not "version" in tables:
-            return False
-
-        ver = self._getDatabaseSchemeVersion()
-        if not ver:
-            return False
-        if ver > DB_SCHEME_VERSION:
-            warning("Tables were created using a newer database scheme than what we support")
-            return False
-        if ver == DB_SCHEME_VERSION:
-            return True
-
-        # FIXME : if ver != DB_SCHEME_VERSION, then update the database
-        return self._updateDatabase(ver, DB_SCHEME_VERSION)
 
     def _ExecuteCommit(self, instruction, *args, **kwargs):
         # Convenience function to call execute and commit in one line
@@ -287,22 +281,6 @@ class SQLiteStorage(DBStorage, AsyncStorage):
         ORDER BY name;
         """
         return [x[0] for x in self.con.execute(checktables).fetchall()]
-
-    def _getDatabaseSchemeVersion(self):
-        """
-        Returns the scheme version of the currently loaded databse
-
-        Returns None if there's no properly configured scheme, else
-        returns the version
-        """
-        tables = self._getAllTables()
-        if not "version" in tables:
-            return None
-        # check if the version is the same as the current one
-        res = self._FetchOne("SELECT version FROM version")
-        if res == None:
-            return None
-        return res[0]
 
     # dictionnary storage methods
     def _conformDict(self, pdict):
