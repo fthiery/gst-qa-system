@@ -54,3 +54,17 @@ Database support
 
   Currently the data is stored in a sqlite file.
   The default filename is 'testrun.db' in the current directory.
+
+Django web frontend (for searching and reporting)
+-------------------------------------------------
+  The django classes/templates are provided in the web directory.
+
+  You will have to modify the database settings in settings.py
+  according to your local settings.
+
+  > python manage.py runserver
+
+  This will start a local http daemon. The insanity pages are located
+  in the insanity subdirectory.
+
+  Ex: http://127.0.0.1:8000/insanity/
