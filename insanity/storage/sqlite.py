@@ -32,7 +32,7 @@ from insanity.scenario import Scenario
 from insanity.test import Test
 from insanity.monitor import Monitor
 from insanity.utils import reverse_dict, map_dict, map_list
-from insanity.threads import ActionQueueThread
+from insanity.storage.async import AsyncStorage, queuemethod, finalqueuemethod
 try:
     # In Python 2.5, this is part of the standard library:
     from sqlite3 import dbapi2 as sqlite
@@ -268,7 +268,7 @@ DATA_TYPE_BLOB = 2
 # FIXME : only accepts one client info at a time !
 #
 
-class SQLiteStorage(DBStorage):
+class SQLiteStorage(DBStorage, AsyncStorage):
     """
     Stores data in a sqlite db
 
@@ -279,10 +279,10 @@ class SQLiteStorage(DBStorage):
     async=False and only use the storage object from one thread.
     """
 
-    def __init__(self, async=True, *args, **kwargs):
-        self._lock = threading.Lock()
+    def __init__(self, path, async=True, *args, **kwargs):
+        self.path = path
         self.con = None
-        DBStorage.__init__(self, *args, **kwargs)
+        self._lock = threading.Lock()
         self.__clientid = None
 
         # key: testrun, value: testrunid
@@ -295,47 +295,49 @@ class SQLiteStorage(DBStorage):
         # cache of mappings for testclassinfo
         # { 'testtype' : { 'dictname' : mapping } }
         self.__mcmapping = {}
-        self._async = async
-        if self._async:
-            self._actionthread = ActionQueueThread()
-            self._actionthread.start()
+        DBStorage.__init__(self, *args, **kwargs)
+        AsyncStorage.__init__(self, async)
 
 
-    # Storage methods implementation
+    # DataStorage methods implementation
+    @queuemethod
     def setClientInfo(self, softwarename, clientname, user):
-        if self._async:
-            self._actionthread.queueAction(self._setClientInfo, softwarename,
-                                           clientname, user)
+        # check if that triplet is already present
+        debug("softwarename:%s, clientname:%s, user:%s",
+              softwarename, clientname, user)
+        existstr = "SELECT id FROM client WHERE software=? AND name=? AND user=?"
+        res = self._FetchAll(existstr, (softwarename, clientname, user))
+        if len(res) == 1 :
+            debug("Entry already present !")
+            key = res[0][0]
+        elif len(res) > 1:
+            warning("More than one similar entry ???")
+            raise Exception("Several client entries with the same information, fix db!")
         else:
-            self._setClientInfo(softwarename, clientname, user)
+            insertstr = """
+            INSERT INTO client (id, software, name, user) VALUES (NULL, ?,?,?)
+            """
+            key = self._ExecuteCommit(insertstr, (softwarename, clientname, user))
+        debug("got id %d", key)
+        # cache the key
+        self.__clientid = key
+        return key
 
+    @queuemethod
     def startNewTestRun(self, testrun):
-        if self._async:
-            self._actionthread.queueAction(self._startNewTestRun,
-                                           testrun)
-        else:
-            self._startNewTestRun(testrun)
+        self._startNewTestRun(testrun)
 
+    @queuemethod
     def endTestRun(self, testrun):
-        if self._async:
-            self._actionthread.queueAction(self._endTestRun,
-                                           testrun)
-        else:
-            self._endTestRun(testrun)
+        self._endTestRun(testrun)
 
+    @queuemethod
     def newTestStarted(self, testrun, test, commit=True):
-        if self._async:
-            self._actionthread.queueAction(self._newTestStarted,
-                                           testrun, test, commit)
-        else:
-            self._newTestStarted(testrun, test, commit)
+        self._newTestStarted(testrun, test, commit)
 
+    @queuemethod
     def newTestFinished(self, testrun, test):
-        if self._async:
-            self._actionthread.queueAction(self._newTestFinished,
-                                           testrun, test)
-        else:
-            self._newTestFinished(testrun, test)
+        self._newTestFinished(testrun, test)
 
     def listTestRuns(self):
         liststr = "SELECT id FROM testrun"
@@ -423,13 +425,13 @@ class SQLiteStorage(DBStorage):
         self._ExecuteCommit(cmstr, (DATABASE_VERSION, int(time.time())))
         debug("Tables properly created")
 
-    def shutDown(self, callback, *args, **kwargs):
+    def _shutDown(self, callback, *args, **kwargs):
         """ Shut down the database, the callback will be called when it's finished
         processing pending actions. """
-        if self._async:
-            self._actionthread.queueFinalAction(callback, *args, **kwargs)
-        else:
-            callback(*args, **kwargs)
+        if callback == None or not callable(callback):
+            debug("No callback provided or not callable")
+            return
+        self.queueFinalAction(callback, *args, **kwargs)
 
     def _updateDatabaseFrom1To2(self):
         create1to2 = """
@@ -758,28 +760,6 @@ class SQLiteStorage(DBStorage):
 
     # public storage API
 
-    def _setClientInfo(self, softwarename, clientname, user):
-        # check if that triplet is already present
-        debug("softwarename:%s, clientname:%s, user:%s",
-              softwarename, clientname, user)
-        existstr = "SELECT id FROM client WHERE software=? AND name=? AND user=?"
-        res = self._FetchAll(existstr, (softwarename, clientname, user))
-        if len(res) == 1 :
-            debug("Entry already present !")
-            key = res[0][0]
-        elif len(res) > 1:
-            warning("More than one similar entry ???")
-            raise Exception("Several client entries with the same information, fix db!")
-        else:
-            insertstr = """
-            INSERT INTO client (id, software, name, user) VALUES (NULL, ?,?,?)
-            """
-            key = self._ExecuteCommit(insertstr, (softwarename, clientname, user))
-        debug("got id %d", key)
-        # cache the key
-        self.__clientid = key
-        return key
-
     def _startNewTestRun(self, testrun):
         # create new testrun entry with client entry
         debug("testrun:%r", testrun)
@@ -799,6 +779,7 @@ class SQLiteStorage(DBStorage):
             self._storeEnvironmentDict(testrunid, envdict)
         self.__testruns[testrun] = testrunid
         debug("Got testrun id %d", testrunid)
+        return testrunid
 
     def _endTestRun(self, testrun):
         debug("testrun:%r", testrun)
@@ -848,13 +829,6 @@ class SQLiteStorage(DBStorage):
         debug("got testid %d", testid)
         self.__tests[test] = testid
 
-
-    def newTestFinished(self, testrun, test):
-        if self._async:
-            self._actionthread.queueAction(self._newTestFinished,
-                                           testrun, test)
-        else:
-            self._newTestFinished(testrun, test)
 
     def _newTestFinished(self, testrun, test):
         debug("testrun:%r, test:%r", testrun, test)

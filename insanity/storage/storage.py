@@ -44,27 +44,46 @@ class DataStorage:
         """
         raise NotImplementedError
 
+    # public API
+    def close(self, callback=None, *args, **kwargs):
+        """
+        Close the storage.
+
+        The callback (if any given) will be called when the Storage has
+        finished processing any pending actions.
+
+        If the Storage was not being used asynchronously, that callback will
+        be called straight away.
+        """
+        raise NotImplementedError
+
     # public storage API
 
     def setClientInfo(self, softwarename, clientname, user):
         pass
 
     def startNewTestRun(self, testrun):
-        # create new entry in testrun table
+        """Inform the DataStorage that the given testrun has started."""
         pass
 
     def endTestRun(self, testrun):
+        """Inform the DataStorage that the given testrun is closed and done."""
         # mark the testrun as closed and done
         pass
 
     def newTestStarted(self, testrun, test):
+        """Inform the DataStorage that the given test has started for the
+        given testrun."""
         # create new entry in tests table
         pass
 
     def newTestFinished(self, testrun, test):
+        """Inform the DataStorage that the given test of the given testrun
+        has finished."""
         pass
 
     # public retrieval API
+
     def listTestRuns(self):
         """
         Returns the list of testruns ID currently available
@@ -100,6 +119,14 @@ class DataStorage:
         """
 
     def getClientInfoForTestRun(self, testrunid):
+        """
+        Returns the Client information for the given testrunid.
+
+        The result is a tuple of strings:
+        * software
+        * name
+        * user
+        """
         pass
 
 class FileStorage(DataStorage):
@@ -124,12 +151,14 @@ class NetworkStorage(DataStorage):
     # * port
     pass
 
-class DBStorage(FileStorage):
+class DBStorage(DataStorage):
     """
     Stores data in a database
 
     Don't use this class directly, but one of its subclasses
     """
+
+    # DataStorage methods implementation
 
     def setUp(self):
         # open database
@@ -138,8 +167,17 @@ class DBStorage(FileStorage):
         # createTables if needed
         self.createTables()
 
+    def close(self, callback=None, *args, **kwargs):
+        self._shutDown(callback, *args, **kwargs)
+
+
+    # Methods to be implemented in subclasses
+
     def openDatabase(self):
         raise NotImplementedError
 
     def createTables(self):
+        raise NotImplementedError
+
+    def _shutDown(self, callback, *args, **kwargs):
         raise NotImplementedError

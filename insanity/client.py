@@ -117,7 +117,7 @@ class TesterClient(dbus.service.Object):
                 self._current.abort()
         finally:
             try:
-                self._storage.shutDown(self._exit)
+                self._storage.close(self._exit)
             except:
                 self._exit()
 
