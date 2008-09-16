@@ -1,6 +1,6 @@
 # GStreamer QA system
 #
-#       storage/sqlite.py
+#       storage/dbstorage.py
 #
 # Copyright (c) 2008, Edward Hervey <bilboed@bilboed.com>
 #
@@ -23,6 +23,7 @@
 Database DataStorage
 """
 
+from insanity.log import error, warning, debug
 from insanity.storage.storage import DataStorage
 
 class DBStorage(DataStorage):
@@ -38,8 +39,16 @@ class DBStorage(DataStorage):
         # open database
         self.openDatabase()
 
-        # createTables if needed
-        self.createTables()
+        # check if we have an existing database with valid
+        # tables.
+        version = self.getDatabaseSchemeVersion()
+        if version == None:
+            # createTables if needed
+            self.createTables()
+        elif version < DB_SCHEME_VERSION:
+            self.updateTables(DB_SCHEME_VERSION)
+        else:
+            warning("")
 
     def close(self, callback=None, *args, **kwargs):
         self._shutDown(callback, *args, **kwargs)
@@ -48,9 +57,27 @@ class DBStorage(DataStorage):
     # Methods to be implemented in subclasses
 
     def openDatabase(self):
+        """Open the database"""
+        raise NotImplementedError
+
+    def getDatabaseSchemeVersion(self):
+        """
+        Returns the scheme version of the currently loaded databse
+
+        Returns None if there's no properly configured scheme, else
+        returns the version
+        """
+        raise NotImplementedError
+
+    def updateTables(self, fromversion, toversion):
+        """
+        Update the tables from <toversion> to <toversion> database
+        scheme.
+        """
         raise NotImplementedError
 
     def createTables(self):
+        """Makes sure the tables are properly created"""
         raise NotImplementedError
 
     def _shutDown(self, callback, *args, **kwargs):
