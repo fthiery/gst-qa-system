@@ -30,7 +30,18 @@ class DataStorage:
     def __init__(self):
         self.setUp()
 
+    # methods to implement in subclasses
     def setUp(self):
+        raise NotImplementedError
+
+    def findTestsByArgument(self, testtype, arguments, testrunid=None, monitors=None):
+        """
+        Return all test ids of type <testtype> and with arguments <arguments>
+
+        arguments is a dictionnary
+        If specified, only tests belonging to the given testrunid will be
+        returned.
+        """
         raise NotImplementedError
 
     # public storage API
@@ -90,17 +101,6 @@ class DataStorage:
 
     def getClientInfoForTestRun(self, testrunid):
         pass
-
-    # methods to implement in subclasses
-    def findTestsByArgument(self, testtype, arguments, testrunid=None, monitors=None):
-        """
-        Return all test ids of type <testtype> and with arguments <arguments>
-
-        arguments is a dictionnary
-        If specified, only tests belonging to the given testrunid will be
-        returned.
-        """
-        raise NotImplementedError
 
 class FileStorage(DataStorage):
     """
