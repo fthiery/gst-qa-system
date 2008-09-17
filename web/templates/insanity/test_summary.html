@@ -7,7 +7,7 @@
   </head>
 
   <body>
-
+    {% load insanity_extra %}
     <table>
       <tr>
 	<th></th>
@@ -29,8 +29,8 @@
 	<td>{{test.resultpercentage}}%</td>
       </tr>
 
-	{% if test.is_scenario %}
-	{% if test.subtest.count %}
+      {% if test.is_scenario %}
+      {% if test.subtest.count %}
       <tr>
 	<th class="side">Subtests</th>
 	<td>
@@ -53,36 +53,16 @@
       <tr>
 	<th class="side">Arguments</th>
 	<td>
-	  <table width="100%" class="inside">
-	    <tr><th/><th>Value</th><th>Description</th></tr>
-	    {% for arg in test.arguments.all %}
-	    <tr class="{% cycle row1,row2 %}">
-	      <th class="side">{{arg.name.name}}</th>
-	      <td>{{arg.value}}</td>
-	      <td>{{arg.name.description}}</td>
-	    </tr>
-	    {% endfor %}
-	  </table>
-	  {% endif %}
+	  {% test_args_dict test %}
 	</td>
       </tr>
+      {% endif %}
 
       {% if test.checklist.count %}
       <tr>
 	<th class="side">CheckList</th>
 	<td>
-	  <table width="100%" class="inside">
-	    <tr><th/><th/><th>Description</th></tr>
-	    {% for check in test.checklist.all %}
-	    <tr class="{% cycle row1,row2 %}">
-	      <th class="side">{{check.name.name}}</th>
-	      <td class="{%if check.value %}result-OK{% else %}result-FAIL{% endif %}">
-		{{check.value}}
-	      </td>
-	      <td>{{check.name.description}}</td>
-	    </tr>
-	    {% endfor %}
-	  </table>
+	  {% test_checklist_dict test %}
 	</td>
       </tr>
       {% endif %}
@@ -104,20 +84,7 @@
       <tr>
 	<th class="side">ExtraInfo</th>
 	<td>
-	  <table class="inside">
-	    <tr>
-	      <th>Name</th>
-	      <th>Value</th>
-	      <th>Description</th>
-	    </tr>
-	    {% for extra in test.extrainfo.all %}
-	    <tr class="{% cycle row1,row2 %}">
-	      <th class="side">{{extra.name.name}}</th>
-	      <td>{{extra.html_repr|safe}}</td>
-	      <td>{{extra.name.description}}</td>
-	    </tr>
-	    {% endfor %}
-	  </table>
+	  {% test_extrainfo_dict test %}
 	</td>
       </tr>
       {% endif %}

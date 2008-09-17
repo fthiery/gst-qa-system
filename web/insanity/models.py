@@ -5,7 +5,6 @@ from cPickle import dumps, loads
 from django.db import models
 from django.db.models import permalink
 from django.db import connection
-from django.utils.html import escape
 
 class CustomSQLInterface:
 
@@ -583,58 +582,6 @@ class TestExtraInfoDict(models.Model):
             return self.txtvalue
         return loads(str(self.blobvalue))
     value = property(_get_value)
-
-    def _html_repr(self):
-        """Returns an html friendly version of the value, already escaped"""
-        def escape_val(val):
-            if isinstance(val, str):
-                return escape(val)
-            elif isinstance(val, list) or isinstance(val, tuple):
-                res = ["<ul>"]
-                for item in val:
-                    res.extend(["<li>", escape_val(item), "</li>"])
-                res.append("</ul>")
-                return "".join(res)
-            elif isinstance(val, dict):
-                res = ["<dl>"]
-                for k,v in val.iteritems():
-                    res.extend(["<dt>", escape_val(k), "</dt>"])
-                    res.extend(["<dd>", escape_val(v), "</dd>"])
-                res.append("</dl>")
-                return "".join(res)
-            return escape(str(val))
-
-        def elements_used_dict(elements):
-            # returns a dictionnary of the tree of elements used
-            def insert_in_dict(d,el,par,klass):
-                if d == {}:
-                    d[el] = [klass, {}]
-                    return True
-                for k in d.iterkeys():
-                    if k == par:
-                        d[k][1][el] = [klass, {}]
-                        return True
-                    if d[k][1] != {}:
-                        if insert_in_dict(d[k][1], el, par, klass):
-                            return True
-                return False
-            def switch_dict(d):
-                res = {}
-                for k,v in d.iteritems():
-                    klass, childs = v
-                    res["%s (type:%s)" % (k, klass)] = switch_dict(childs)
-                return res
-            d = {}
-            for el, klass, container in elements:
-                insert_in_dict(d, el, container, klass)
-
-            return switch_dict(d)
-
-        if self.name.name == "elements-used":
-            # special handling. We want a dictionnary of container/elements[type]
-            return escape_val(elements_used_dict(self.value))
-        return escape_val(self.value)
-    html_repr = property(_html_repr)
 
     class Meta:
         db_table = 'test_extrainfo_dict'

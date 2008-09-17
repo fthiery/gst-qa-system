@@ -1,0 +1,11 @@
+{% load insanity_extra %}
+<table width="100%" class="inside">
+  <tr><th/><th>Value</th><th>Description</th></tr>
+  {% for arg in args %}
+  <tr class="{% cycle row1,row2 %}">
+    <th class="side">{{arg.name.name}}</th>
+    <td>{% test_arg_value arg %}</td>
+    <td>{{arg.name.description}}</td>
+  </tr>
+  {% endfor %}
+</table>

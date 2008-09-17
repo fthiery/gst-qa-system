@@ -1,0 +1,12 @@
+<table width="100%" class="inside">
+  <tr><th/><th/><th>Description</th></tr>
+  {% for check in checks %}
+  <tr class="{% cycle row1,row2 %}">
+    <th class="side">{{check.name.name}}</th>
+    <td class="{%if check.value %}result-OK{% else %}result-FAIL{% endif %}">
+      {{check.value}}
+    </td>
+    <td>{{check.name.description}}</td>
+  </tr>
+  {% endfor %}
+</table>
