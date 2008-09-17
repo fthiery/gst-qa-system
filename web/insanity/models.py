@@ -1,5 +1,6 @@
 import time
 import string
+import os.path
 from cPickle import dumps, loads
 from django.db import models
 from django.db.models import permalink
@@ -506,6 +507,11 @@ class MonitorOutputFilesDict(models.Model):
     name = models.ForeignKey(MonitorClassInfoOutputFilesDict,
                              db_column="name")
     value = models.TextField(blank=True, db_column="txtvalue")
+
+    def _get_basename(self):
+        return os.path.basename(self.value)
+    basename = property(_get_basename)
+
     class Meta:
         db_table = 'monitor_outputfiles_dict'
 
