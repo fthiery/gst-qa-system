@@ -4,9 +4,10 @@ from django.http import HttpResponse
 import time
 
 def index(request):
-    nbruns = request.GET.get("nbruns", 5)
+    nbruns = request.GET.get("nbruns", 20)
     latest_runs = TestRun.objects.all()[:int(nbruns)]
-    return render_to_response("insanity/index.html", {"latest_runs":latest_runs})
+    return render_to_response("insanity/index.html", {"latest_runs":latest_runs,
+                                                      "nbruns":nbruns})
 
 def testrun_summary(request, testrun_id):
     toplevel_only = bool(int(request.GET.get("toplevel",True)))
