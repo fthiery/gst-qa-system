@@ -1,12 +1,18 @@
 <table width="100%" class="inside">
   <tr><th/><th/><th>Description</th></tr>
-  {% for check in checks %}
+  {% for result in results %}
   <tr class="{% cycle row1,row2 %}">
-    <th class="side">{{check.name.name}}</th>
-    <td class="{%if check.value %}result-OK{% else %}result-FAIL{% endif %}">
-      {{check.value}}
+    <th class="side">{{result.type.name}}</th>
+    {% if result.skipped %}
+    <td class="result-skipped">
+      ?
     </td>
-    <td>{{check.name.description}}</td>
+    {% else %}
+    <td class="{%if result.value.value %}result-OK{% else %}result-FAIL{% endif %}">
+      {{result.value.value}}
+    </td>
+    {% endif %}
+    <td>{{result.type.description}}</td>
   </tr>
   {% endfor %}
 </table>
