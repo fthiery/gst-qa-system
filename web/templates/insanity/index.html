@@ -8,18 +8,20 @@
 
   <body>
     {% if latest_runs %}
-    <table width="50%">
+    <table>
       <tr>
 	<th class="side"/>
 	<th>Test(s)</th>
-	<th colspan=2>Views</th>
+	<th colspan=4>Views</th>
       </tr>
       {% for run in latest_runs.reverse %}
       <tr>
 	<th class="side">TestRun <a href={{run.get_absolute_url}}>#{{ run.id }}</a></th>
 	<td>{{ run.test_set.count }}</td>
-	<td><a href={{run.get_matrix_view_url}}>All</a></td>
-	<td><a href={{run.get_matrix_view_url}}?onlyfailed=1>Failed</a></td>
+	<td><a href={{run.get_matrix_view_url}}?showscenario=0>Tests only</a></td>
+	<td><a href={{run.get_matrix_view_url}}?onlyfailed=1&showscenario=0>Failed Tests</a></td>
+	<td><a href={{run.get_matrix_view_url}}>Tests+Scenarios</a></td>
+	<td><a href={{run.get_matrix_view_url}}?onlyfailed=1>Failed Tests+Scenarios</a></td>
       </tr>
       {% endfor %}
     </table>
