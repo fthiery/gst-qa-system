@@ -14,6 +14,14 @@ def test_arg_value(parser, token):
 
     return TestArgValueNode(arg_name)
 
+@register.simple_tag
+def verticalize(toparse):
+    return "<br>".join([a[0].capitalize() for a in toparse.split('-')])
+
+@register.simple_tag
+def split_dash_lines(toparse):
+    return "<br>".join([a.capitalize() for a in toparse.split('-')])
+
 @register.tag
 def test_extrainfo_value(parser, token):
     try:
@@ -124,8 +132,8 @@ def test_args_dict(test):
 
 @register.inclusion_tag('insanity/test_checklist_dict.html')
 def test_checklist_dict(test):
-    checks = test.checklist.all()
-    return {'checks':checks}
+    results = test.results
+    return {'results':results}
 
 @register.inclusion_tag('insanity/test_extrainfo_dict.html')
 def test_extrainfo_dict(test):

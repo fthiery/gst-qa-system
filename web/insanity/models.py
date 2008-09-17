@@ -174,10 +174,6 @@ class TestClassInfoCheckListDict(models.Model):
     description = models.TextField(blank=True,
                                    db_column="txtvalue")
 
-    def _get_shortname(self):
-        return "<br>".join([a[0].capitalize() for a in self.name.split('-')])
-    shortname = property(_get_shortname)
-
     def __str__(self):
         return self.name
 

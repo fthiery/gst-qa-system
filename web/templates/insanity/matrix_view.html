@@ -6,6 +6,7 @@
     <title>Matrix View of Testrun #{{testrun.id}}</title>
   </head>
 
+  {% load insanity_extra %}
   <body>
     <!-- We're supposing we only have one test type and we ignore scenarios -->
     <table width="98%">
@@ -21,11 +22,11 @@
 	    <tr>
 	      <th>ID</th>
 	      {% for arg in sortedtest.type.arguments.all %}
-	      <th>{{ arg.name }}</th>
+	      <th>{% split_dash_lines arg.name %}</th>
 	      {% endfor %}
 	      <th>Result</th>
 	      {% for item in sortedtest.type.fullchecklist %}
-	      <th><span title="{{item.name}}">{{item.shortname|safe}}</span></th>
+	      <th><span title="{{item.name}}">{% verticalize item.name %}</span></th>
 	      {% endfor %}
 	      <th>Errors seen</th>
 	    </tr>
