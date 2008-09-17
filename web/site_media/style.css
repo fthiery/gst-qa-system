@@ -13,13 +13,13 @@ th {
     margin: .5em 0 0 .5em;
     vertical-align: text-bottom;
     #border-right: 1px solid black;
-    border-left: 1px solid black;
+    #border-left: 1px solid black;
 }
 th.side {
     vertical-align: text-top;
     text-align: right;
-    border-bottom: 1px solid black;
-    border-left-width: 0px;
+    #border-bottom: 1px solid black;
+    #border-left-width: 0px;
 }
 td.result-ERROR {
     background: #FF0000;
