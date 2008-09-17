@@ -215,7 +215,7 @@ class TestRun(models.Model, CustomSQLInterface):
         db_table = 'testrun'
 
     def get_absolute_url(self):
-        return ('web.insanity.views.testrun_summary', [str(self.id)])
+        return ('web.insanity.views.matrix_view', [str(self.id)])
     get_absolute_url = permalink(get_absolute_url)
 
     def get_matrix_view_url(self):
@@ -230,7 +230,7 @@ class TestRun(models.Model, CustomSQLInterface):
         searchstr = """
         SELECT test.id
         FROM test, test_arguments_dict
-        WHERE test.id=test_arguments_dict.containerid 
+        WHERE test.id=test_arguments_dict.containerid
         """
 
         for arg in atest.arguments.all():
