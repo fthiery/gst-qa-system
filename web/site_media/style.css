@@ -1,0 +1,52 @@
+
+table {
+    border-collapse: collapse;
+}
+td {
+    font-size: 90%%;
+    line-height: 1.15em;
+    border: 1px solid black;
+}
+th {
+    font-size: 90%%;
+    line-height: 1.15em;
+    margin: .5em 0 0 .5em;
+    vertical-align: text-bottom;
+    #border-right: 1px solid black;
+    #border-left: 1px solid black;
+}
+th.side {
+    vertical-align: text-top;
+    text-align: right;
+    #border-bottom: 1px solid black;
+    #border-left-width: 0px;
+}
+td.result-ERROR {
+    background: #FF0000;
+}
+td.result-FAIL {
+    background: #FF0000;
+}
+td.result-skipped {
+    background: #FFF650;
+}
+td.result-excluded * {
+    color: #00FF00;
+}
+td.result-excluded {
+    background: #00FF00;
+}
+td.result-OK {
+    background: #00FF00;
+}
+td.arg-default {
+    background: #DDDDDD;
+}
+tr.row2 {
+    background: #E0E0FF;
+}
+table a {
+    #color: black;
+    text-decoration: none;
+}
+

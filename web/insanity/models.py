@@ -1,5 +1,6 @@
 import time
 import string
+import os.path
 from cPickle import dumps, loads
 from django.db import models
 from django.db.models import permalink
@@ -73,6 +74,7 @@ class MonitorClassInfoExtraInfoDict(models.Model):
     name = models.TextField(blank=True)
     value = models.TextField(blank=True,
                              db_column="txtvalue")
+
     class Meta:
         db_table = 'monitorclassinfo_extrainfo_dict'
 
@@ -108,6 +110,19 @@ class TestClassInfo(models.Model):
             res = list(self.checklist.order_by("id"))
         return res
     fullchecklist = property(_get_fullchecklist)
+
+    def _get_fullarguments(self):
+        """
+        Returns the full list of arguments (including from parents).
+        The list is ordered by classes and then by id.
+        """
+        if self.parent_id:
+            res = list(self.parent.fullarguments)
+            res.extend(list(self.arguments.order_by("id")))
+        else:
+            res = list(self.arguments.order_by("id"))
+        return res
+    fullarguments = property(_get_fullarguments)
 
     def _get_is_scenario(self):
         if self.type == "scenario":
@@ -159,10 +174,6 @@ class TestClassInfoCheckListDict(models.Model):
     description = models.TextField(blank=True,
                                    db_column="txtvalue")
 
-    def _get_shortname(self):
-        return "<br>".join([a[0].capitalize() for a in self.name.split('-')])
-    shortname = property(_get_shortname)
-
     def __str__(self):
         return self.name
 
@@ -175,7 +186,7 @@ class TestClassInfoExtraInfoDict(models.Model):
                                     db_column="containerid",
                                     related_name="extrainfos")
     name = models.TextField(blank=True)
-    value = models.TextField(blank=True, db_column="txtvalue")
+    description = models.TextField(blank=True, db_column="txtvalue")
     def __str__(self):
         return self.name
 
@@ -204,8 +215,12 @@ class TestRun(models.Model, CustomSQLInterface):
         db_table = 'testrun'
 
     def get_absolute_url(self):
-        return ('web.insanity.views.testrun_summary', [str(self.id)])
+        return ('web.insanity.views.matrix_view', [str(self.id)])
     get_absolute_url = permalink(get_absolute_url)
+
+    def get_matrix_view_url(self):
+        return ('web.insanity.views.matrix_view', [self.id])
+    get_matrix_view_url = permalink(get_matrix_view_url)
 
     def find_test_similar_args(self, atest):
         """Returns tests which have the similar arguments as atest"""
@@ -215,7 +230,7 @@ class TestRun(models.Model, CustomSQLInterface):
         searchstr = """
         SELECT test.id
         FROM test, test_arguments_dict
-        WHERE test.id=test_arguments_dict.containerid 
+        WHERE test.id=test_arguments_dict.containerid
         """
 
         for arg in atest.arguments.all():
@@ -324,8 +339,32 @@ class Test(models.Model):
         return res
     results = property(_get_results_dict)
 
+    def _get_full_arguments(self):
+        """
+        Returns an ordered list of arguments
+
+        This differs from test.arguments.all in the sense that it will also
+        contains the arguments with defaults values
+        """
+        res = []
+        for argtype in self.type.fullarguments:
+            d = {}
+            d['type'] = argtype
+            try:
+                val = TestArgumentsDict.objects.get(containerid=self,
+                                                    name=argtype)
+                d['default'] = False
+            except:
+                val = argtype.defaultvalue
+                d['default'] = True
+            d['value'] = val
+            res.append(d)
+        return res
+    fullarguments = property(_get_full_arguments)
+
     def _test_error(self):
         """ Returns the error TestExtraInfoDict if available"""
+
         def stringify_gst_error(anerr):
             quarkmap = {
                 "gst-core-error-quark" : "CORE_ERROR",
@@ -336,10 +375,25 @@ class Test(models.Model):
             quark,message = anerr[1:3]
             return "%s: %s" % (quarkmap.get(quark, "UNKNOWN_ERROR"),
                                message)
-        def stringify_return_code(retcode):
+
+        def stringify_return_code(retcodestr):
+            retmap = {
+                -1:"SIGHUP",
+                -2:"SIGINT",
+                -3:"SIGQUIT",
+                -4:"SIGILL",
+                -6:"SIGABRT",
+                -8:"SIGFPE",
+                -9:"SIGKILL",
+                -11:"SIGSEGV",
+                }
             ret = None
+            retcode = long(retcodestr)
             if retcode:
-                ret = "Process return code : %s" % retcode
+                if retcode in retmap:
+                    ret = "Process return code : %s [%d]" % (retmap[retcode],retcode)
+                else:
+                    ret = "Process return code : %d" % retcode
             return ret
 
         try:
@@ -448,6 +502,11 @@ class MonitorOutputFilesDict(models.Model):
     name = models.ForeignKey(MonitorClassInfoOutputFilesDict,
                              db_column="name")
     value = models.TextField(blank=True, db_column="txtvalue")
+
+    def _get_basename(self):
+        return os.path.basename(self.value)
+    basename = property(_get_basename)
+
     class Meta:
         db_table = 'monitor_outputfiles_dict'
 

@@ -27,12 +27,12 @@ import time
 import threading
 from weakref import WeakKeyDictionary
 from insanity.log import error, warning, debug
-from insanity.storage.storage import DBStorage
 from insanity.scenario import Scenario
 from insanity.test import Test
 from insanity.monitor import Monitor
 from insanity.utils import reverse_dict, map_dict, map_list
-from insanity.threads import ActionQueueThread
+from insanity.storage.dbstorage import DBStorage, DB_SCHEME, DB_SCHEME_VERSION
+from insanity.storage.async import AsyncStorage, queuemethod, finalqueuemethod
 try:
     # In Python 2.5, this is part of the standard library:
     from sqlite3 import dbapi2 as sqlite
@@ -41,234 +41,11 @@ except ImportError:
     from pysqlite2 import dbapi2 as sqlite
 from cPickle import dumps, loads
 
-# New dictionnaries table have the following name
-# <container name>_<dictionnary name>_dict
-
-TABLECREATION = """
-CREATE TABLE version (
-   version INTEGER,
-   modificationtime INTEGER
-);
-
-CREATE TABLE testrun (
-   id INTEGER PRIMARY KEY,
-   clientid INTEGER,
-   starttime INTEGER,
-   stoptime INTEGER
-);
-
-CREATE TABLE client (
-   id INTEGER PRIMARY KEY,
-   software TEXT,
-   name TEXT,
-   user TEXT
-);
-
-CREATE TABLE test (
-   id INTEGER PRIMARY KEY,
-   testrunid INTEGER,
-   type INTEGER,
-   resultpercentage FLOAT
-);
-
-CREATE TABLE subtests (
-   testid INTEGER PRIMARY KEY,
-   scenarioid INTEGER
-);
-
-CREATE TABLE monitor (
-   id INTEGER PRIMARY KEY,
-   testid INTEGER,
-   type INTEGER,
-   resultpercentage FLOAT
-);
-
-CREATE TABLE testclassinfo (
-   id INTEGER PRIMARY KEY,
-   type TEXT,
-   parent TEXT,
-   description TEXT,
-   fulldescription TEXT
-);
-
-CREATE TABLE monitorclassinfo (
-   id INTEGER PRIMARY KEY,
-   type TEXT,
-   parent TEXT,
-   description TEXT
-);
-
-CREATE TABLE testrun_environment_dict (
-   id INTEGER PRIMARY KEY,
-   containerid INTEGER,
-   name TEXT,
-   intvalue INTEGER,
-   txtvalue TEXT,
-   blobvalue BLOB
-);
-
-CREATE TABLE test_arguments_dict (
-   id INTEGER PRIMARY KEY,
-   containerid INTEGER,
-   name INTEGER,
-   intvalue INTEGER,
-   txtvalue TEXT,
-   blobvalue BLOB
-);
-
-CREATE TABLE test_checklist_list (
-   id INTEGER PRIMARY KEY,
-   containerid INTEGER,
-   name INTEGER,
-   intvalue INTEGER
-);
-
-CREATE TABLE test_extrainfo_dict (
-   id INTEGER PRIMARY KEY,
-   containerid INTEGER,
-   name INTEGER,
-   intvalue INTEGER,
-   txtvalue TEXT,
-   blobvalue BLOB
-);
-
-CREATE TABLE test_outputfiles_dict (
-   id INTEGER PRIMARY KEY,
-   containerid INTEGER,
-   name INTEGER,
-   txtvalue TEXT
-);
-
-CREATE TABLE monitor_arguments_dict (
-   id INTEGER PRIMARY KEY,
-   containerid INTEGER,
-   name INTEGER,
-   intvalue INTEGER,
-   txtvalue TEXT,
-   blobvalue BLOB
-);
-
-CREATE TABLE monitor_checklist_dict (
-   id INTEGER PRIMARY KEY,
-   containerid INTEGER,
-   name INTEGER,
-   intvalue INTEGER
-);
-
-CREATE TABLE monitor_extrainfo_dict (
-   id INTEGER PRIMARY KEY,
-   containerid INTEGER,
-   name INTEGER,
-   intvalue INTEGER,
-   txtvalue TEXT,
-   blobvalue BLOB
-);
-
-CREATE TABLE monitor_outputfiles_dict (
-   id INTEGER PRIMARY KEY,
-   containerid INTEGER,
-   name INTEGER,
-   txtvalue TEXT
-);
-
-CREATE TABLE testclassinfo_arguments_dict (
-   id INTEGER PRIMARY KEY,
-   containerid INTEGER,
-   name TEXT,
-   blobvalue BLOB
-);
-
-CREATE TABLE testclassinfo_checklist_dict (
-   id INTEGER PRIMARY KEY,
-   containerid INTEGER,
-   name TEXT,
-   txtvalue TEXT
-);
-
-CREATE TABLE testclassinfo_extrainfo_dict (
-   id INTEGER PRIMARY KEY,
-   containerid INTEGER,
-   name TEXT,
-   txtvalue TEXT
-);
-
-CREATE TABLE testclassinfo_outputfiles_dict (
-   id INTEGER PRIMARY KEY,
-   containerid INTEGER,
-   name TEXT,
-   txtvalue TEXT
-);
-
-CREATE TABLE monitorclassinfo_arguments_dict (
-   id INTEGER PRIMARY KEY,
-   containerid INTEGER,
-   name TEXT,
-   txtvalue TEXT
-);
-
-CREATE TABLE monitorclassinfo_checklist_dict (
-   id INTEGER PRIMARY KEY,
-   containerid INTEGER,
-   name TEXT,
-   txtvalue TEXT
-);
-
-CREATE TABLE monitorclassinfo_extrainfo_dict (
-   id INTEGER PRIMARY KEY,
-   containerid INTEGER,
-   name TEXT,
-   txtvalue TEXT
-);
-
-CREATE TABLE monitorclassinfo_outputfiles_dict (
-   id INTEGER PRIMARY KEY,
-   containerid INTEGER,
-   name TEXT,
-   txtvalue TEXT
-);
-
-CREATE INDEX test_testrunid_idx ON test(testrunid);
-CREATE INDEX subtests_scenarioid_idx ON subtests(scenarioid);
-CREATE INDEX monitor_testid_idx ON monitor(testid);
-CREATE INDEX testclassinfo_parent_idx ON testclassinfo (parent);
-CREATE INDEX monitorclassinfo_parent_idx ON monitorclassinfo (parent);
-CREATE INDEX testrun_env_dict_container_idx ON testrun_environment_dict (containerid);
-
-CREATE INDEX t_a_dict_containerid_idx ON test_arguments_dict (containerid);
-CREATE INDEX t_c_list_containerid_idx ON test_checklist_list (containerid);
-CREATE INDEX t_ei_dict_containerid_idx ON test_extrainfo_dict (containerid);
-CREATE INDEX t_of_dict_containerid_idx ON test_outputfiles_dict (containerid);
-
-CREATE INDEX m_a_dict_containerid_idx ON monitor_arguments_dict (containerid);
-CREATE INDEX m_c_dict_containerid_idx ON monitor_checklist_dict (containerid);
-CREATE INDEX m_ei_dict_containerid_idx ON monitor_extrainfo_dict (containerid);
-CREATE INDEX m_of_dict_containerid_idx ON monitor_outputfiles_dict (containerid);
-
-CREATE INDEX tc_a_dict_c_idx ON testclassinfo_arguments_dict (containerid);
-CREATE INDEX tc_c_dict_c_idx ON testclassinfo_checklist_dict (containerid);
-CREATE INDEX tc_ei_dict_c_idx ON testclassinfo_extrainfo_dict (containerid);
-CREATE INDEX tc_of_dict_c_idx ON testclassinfo_outputfiles_dict (containerid);
-
-CREATE INDEX mc_a_dict_c_idx ON monitorclassinfo_arguments_dict (containerid);
-CREATE INDEX mc_c_dict_c_idx ON monitorclassinfo_checklist_dict (containerid);
-CREATE INDEX mc_ei_dict_c_idx ON monitorclassinfo_extrainfo_dict (containerid);
-CREATE INDEX mc_of_dict_c_idx ON monitorclassinfo_outputfiles_dict (containerid);
-
-CREATE INDEX test_type_idx ON test (type);
-"""
-
-# Current database version
-DATABASE_VERSION = 2
-
-DATA_TYPE_INT = 0
-DATA_TYPE_STR = 1
-DATA_TYPE_BLOB = 2
-
 #
-# FIXME / WARNING
-# The current implementation only supports handling of one testrun at a time !
+# FIXME : only accepts one client info at a time !
 #
-class SQLiteStorage(DBStorage):
+
+class SQLiteStorage(DBStorage, AsyncStorage):
     """
     Stores data in a sqlite db
 
@@ -279,25 +56,132 @@ class SQLiteStorage(DBStorage):
     async=False and only use the storage object from one thread.
     """
 
-    def __init__(self, async=True, *args, **kwargs):
-        self._lock = threading.Lock()
+    def __init__(self, path, async=True, *args, **kwargs):
+        self.path = path
         self.con = None
-        DBStorage.__init__(self, *args, **kwargs)
+        self._lock = threading.Lock()
         self.__clientid = None
-        self.__testrunid = None
-        self.__testrun = None
+
+        # key: testrun, value: testrunid
+        self.__testruns = WeakKeyDictionary()
         self.__tests = WeakKeyDictionary()
+
         # cache of mappings for testclassinfo
         # { 'testtype' : { 'dictname' : mapping } }
         self.__tcmapping = {}
         # cache of mappings for testclassinfo
         # { 'testtype' : { 'dictname' : mapping } }
         self.__mcmapping = {}
-        self._async = async
-        if self._async:
-            self._actionthread = ActionQueueThread()
-            self._actionthread.start()
+        DBStorage.__init__(self, *args, **kwargs)
+        AsyncStorage.__init__(self, async)
 
+
+    # DataStorage methods implementation
+    @queuemethod
+    def setClientInfo(self, softwarename, clientname, user):
+        # check if that triplet is already present
+        debug("softwarename:%s, clientname:%s, user:%s",
+              softwarename, clientname, user)
+        existstr = "SELECT id FROM client WHERE software=? AND name=? AND user=?"
+        res = self._FetchAll(existstr, (softwarename, clientname, user))
+        if len(res) == 1 :
+            debug("Entry already present !")
+            key = res[0][0]
+        elif len(res) > 1:
+            warning("More than one similar entry ???")
+            raise Exception("Several client entries with the same information, fix db!")
+        else:
+            insertstr = """
+            INSERT INTO client (id, software, name, user) VALUES (NULL, ?,?,?)
+            """
+            key = self._ExecuteCommit(insertstr, (softwarename, clientname, user))
+        debug("got id %d", key)
+        # cache the key
+        self.__clientid = key
+        return key
+
+    @queuemethod
+    def startNewTestRun(self, testrun):
+        self._startNewTestRun(testrun)
+
+    @queuemethod
+    def endTestRun(self, testrun):
+        self._endTestRun(testrun)
+
+    @queuemethod
+    def newTestStarted(self, testrun, test, commit=True):
+        self._newTestStarted(testrun, test, commit)
+
+    @queuemethod
+    def newTestFinished(self, testrun, test):
+        self._newTestFinished(testrun, test)
+
+    def listTestRuns(self):
+        liststr = "SELECT id FROM testrun"
+        res = self._FetchAll(liststr)
+        debug("Got %d testruns", len(res))
+        if len(res):
+            return list(zip(*res)[0])
+        return []
+
+    def getTestRun(self, testrunid):
+        debug("testrunid:%d", testrunid)
+        liststr = """
+        SELECT clientid,starttime,stoptime
+        FROM testrun WHERE id=?"""
+        res = self._FetchAll(liststr, (testrunid, ))
+        if len(res) == 0:
+            debug("Testrun not available in DB")
+            return (None, None, None)
+        if len(res) > 1:
+            warning("More than one testrun with the same id ! Fix DB !!")
+            return (None, None, None)
+        return res[0]
+
+    def getTestsForTestRun(self, testrunid, withscenarios=True):
+        debug("testrunid:%d", testrunid)
+        liststr = "SELECT id FROM test WHERE testrunid=?"
+        res = self._FetchAll(liststr, (testrunid, ))
+        if not res:
+            return []
+        tmp = list(zip(*res)[0])
+        if not withscenarios:
+            scenarios = self.getScenariosForTestRun(testrunid)
+            for sc in scenarios.keys():
+                tmp.remove(sc)
+        return tmp
+
+    def getScenariosForTestRun(self, testrunid):
+        debug("testrunid:%d", testrunid)
+        liststr = """
+        SELECT test.id,subtests.testid
+        FROM test
+        INNER JOIN subtests
+        ON test.id=subtests.scenarioid
+        WHERE test.testrunid=?"""
+        res = self._FetchAll(liststr, (testrunid, ))
+        if not res:
+            return {}
+        # make list unique
+        dc = {}
+        for scenarioid, subtestid in res:
+            if not scenarioid in dc.keys():
+                dc[scenarioid] = [subtestid]
+            else:
+                dc[scenarioid].append(subtestid)
+        return dc
+
+    def getClientInfoForTestRun(self, testrunid):
+        debug("testrunid:%d", testrunid)
+        liststr = """
+        SELECT client.software,client.name,client.user
+        FROM client,testrun
+        WHERE client.id=testrun.clientid AND testrun.id=?"""
+        res = self._FetchAll(liststr, (testrunid,))
+        return res[0]
+
+
+    # DBStorage methods implementation
     def openDatabase(self):
         debug("opening sqlite db for path '%s'", self.path)
         self.con = sqlite.connect(self.path, check_same_thread=False)
@@ -306,25 +190,37 @@ class SQLiteStorage(DBStorage):
 
     def createTables(self):
         # check if tables aren't already created
-        if self._checkForTables():
-            return
         debug("Calling db creation script")
-        self.con.executescript(TABLECREATION)
+        self.con.executescript(DB_SCHEME)
         self.con.commit()
-        if self._checkForTables() == False:
-            error("Tables were not created properly !!")
         # add database version
         cmstr = "INSERT INTO version (version, modificationtime) VALUES (?, ?)"
-        self._ExecuteCommit(cmstr, (DATABASE_VERSION, int(time.time())))
+        self._ExecuteCommit(cmstr, (DB_SCHEME_VERSION, int(time.time())))
         debug("Tables properly created")
 
-    def shutDown(self, callback, *args, **kwargs):
+    def getDatabaseSchemeVersion(self):
+        """
+        Returns the scheme version of the currently loaded databse
+
+        Returns None if there's no properly configured scheme, else
+        returns the version
+        """
+        tables = self._getAllTables()
+        if not "version" in tables:
+            return None
+        # check if the version is the same as the current one
+        res = self._FetchOne("SELECT version FROM version")
+        if res == None:
+            return None
+        return res[0]
+
+    def _shutDown(self, callback, *args, **kwargs):
         """ Shut down the database, the callback will be called when it's finished
         processing pending actions. """
-        if self._async:
-            self._actionthread.queueFinalAction(callback, *args, **kwargs)
-        else:
-            callback(*args, **kwargs)
+        if callback == None or not callable(callback):
+            debug("No callback provided or not callable")
+            return
+        self.queueFinalAction(callback, *args, **kwargs)
 
     def _updateDatabaseFrom1To2(self):
         create1to2 = """
@@ -334,32 +230,14 @@ class SQLiteStorage(DBStorage):
         self.con.executescript(create1to2)
         self.con.commit()
 
-    def _updateDatabase(self, oldversion, newversion):
+    def updateTables(self, oldversion, newversion):
         if oldversion < 2:
             self._updateDatabaseFrom1To2()
 
         # finally update the db version
         cmstr = "UPDATE version SET version=?,modificationtime=? WHERE version=?"
-        self._ExecuteCommit(cmstr, (DATABASE_VERSION, int (time.time()), oldversion))
+        self._ExecuteCommit(cmstr, (DB_SCHEME_VERSION, int (time.time()), oldversion))
         return True
-
-    def _checkForTables(self):
-        # return False if the tables aren't created
-        tables = self._getAllTables()
-        if len(tables) == 0 or not "version" in tables:
-            return False
-
-        ver = self._getDatabaseSchemeVersion()
-        if not ver:
-            return False
-        if ver > DATABASE_VERSION:
-            warning("Tables were created using a newer database scheme than what we support")
-            return False
-        if ver == DATABASE_VERSION:
-            return True
-
-        # FIXME : if ver != DATABASE_VERSION, then update the database
-        return self._updateDatabase(ver, DATABASE_VERSION)
 
     def _ExecuteCommit(self, instruction, *args, **kwargs):
         # Convenience function to call execute and commit in one line
@@ -403,22 +281,6 @@ class SQLiteStorage(DBStorage):
         ORDER BY name;
         """
         return [x[0] for x in self.con.execute(checktables).fetchall()]
-
-    def _getDatabaseSchemeVersion(self):
-        """
-        Returns the scheme version of the currently loaded databse
-
-        Returns None if there's no properly configured scheme, else
-        returns the version
-        """
-        tables = self._getAllTables()
-        if not "version" in tables:
-            return None
-        # check if the version is the same as the current one
-        res = self._FetchOne("SELECT version FROM version")
-        if res == None:
-            return None
-        return res[0]
 
     # dictionnary storage methods
     def _conformDict(self, pdict):
@@ -653,75 +515,34 @@ class SQLiteStorage(DBStorage):
 
     # public storage API
 
-    def _setClientInfo(self, softwarename, clientname, user):
-        # check if that triplet is already present
-        debug("softwarename:%s, clientname:%s, user:%s",
-              softwarename, clientname, user)
-        existstr = "SELECT id FROM client WHERE software=? AND name=? AND user=?"
-        res = self._FetchAll(existstr, (softwarename, clientname, user))
-        if len(res) == 1 :
-            debug("Entry already present !")
-            key = res[0][0]
-        elif len(res) > 1:
-            warning("More than one similar entry ???")
-            raise Exception("Several client entries with the same information, fix db!")
-        else:
-            insertstr = """
-            INSERT INTO client (id, software, name, user) VALUES (NULL, ?,?,?)
-            """
-            key = self._ExecuteCommit(insertstr, (softwarename, clientname, user))
-        debug("got id %d", key)
-        # cache the key
-        self.__clientid = key
-        return key
-
-    def setClientInfo(self, softwarename, clientname, user):
-        if self._async:
-            self._actionthread.queueAction(self._setClientInfo, softwarename,
-                                           clientname, user)
-        else:
-            self._setClientInfo(softwarename, clientname, user)
-
-    def startNewTestRun(self, testrun):
-        if self._async:
-            self._actionthread.queueAction(self._startNewTestRun,
-                                           testrun)
-        else:
-            self._startNewTestRun(testrun)
-
     def _startNewTestRun(self, testrun):
         # create new testrun entry with client entry
         debug("testrun:%r", testrun)
         if not self.__clientid:
             raise Exception("Please specify client information before starting testruns")
-        if self.__testrun:
-            warning("Apparently the previous testrun didn't exit successfully")
+        if testrun in self.__testruns.keys():
+            warning("Testrun already started !")
+            return
         insertstr = """
         INSERT INTO testrun (id, clientid, starttime, stoptime) VALUES (NULL, ?, ?, NULL)
         """
-        self.__testrunid = self._ExecuteCommit(insertstr,
-                                               (self.__clientid,
-                                                testrun._starttime))
+        testrunid = self._ExecuteCommit(insertstr,
+                                        (self.__clientid,
+                                         testrun._starttime))
         envdict = testrun.getEnvironment()
         if envdict:
-            self._storeEnvironmentDict(self.__testrunid, envdict)
-        self.__testrun = testrun
-        debug("Got testrun id %d", self.__testrunid)
-
-    def endTestRun(self, testrun):
-        if self._async:
-            self._actionthread.queueAction(self._endTestRun,
-                                           testrun)
-        else:
-            self._endTestRun(testrun)
+            self._storeEnvironmentDict(testrunid, envdict)
+        self.__testruns[testrun] = testrunid
+        debug("Got testrun id %d", testrunid)
+        return testrunid
 
     def _endTestRun(self, testrun):
         debug("testrun:%r", testrun)
-        if not self.__testrun == testrun:
+        if not testrun in self.__testruns.keys():
             # add the testrun since it wasn't done before
             self._startNewTestRun(testrun)
         updatestr = "UPDATE testrun SET stoptime=? WHERE id=?"
-        self._ExecuteCommit(updatestr, (testrun._stoptime, self.__testrunid))
+        self._ExecuteCommit(updatestr, (testrun._stoptime, self.__testruns[testrun]))
         debug("updated")
 
     def _getTestTypeID(self, testtype):
@@ -748,39 +569,25 @@ class SQLiteStorage(DBStorage):
             return None
         return res[0]
 
-    def newTestStarted(self, testrun, test, commit=True):
-        if self._async:
-            self._actionthread.queueAction(self._newTestStarted,
-                                           testrun, test, commit)
-        else:
-            self._newTestStarted(testrun, test, commit)
-
     def _newTestStarted(self, testrun, test, commit=True):
         if not isinstance(test, Test):
             raise TypeError("test isn't a Test instance !")
-        if not self.__testrun == testrun:
+        if not testrun in self.__testruns.keys():
             self._startNewTestRun(testrun)
         debug("test:%r", test)
         self._storeTestClassInfo(test)
         testtid = self._getTestTypeID(test.__test_name__)
         insertstr = "INSERT INTO test (id, testrunid, type) VALUES (NULL, ?, ?)"
         testid = self._ExecuteCommit(insertstr,
-                                     (self.__testrunid, testtid),
+                                     (self.__testruns[testrun], testtid),
                                      commit=commit)
         debug("got testid %d", testid)
         self.__tests[test] = testid
 
 
-    def newTestFinished(self, testrun, test):
-        if self._async:
-            self._actionthread.queueAction(self._newTestFinished,
-                                           testrun, test)
-        else:
-            self._newTestFinished(testrun, test)
-
     def _newTestFinished(self, testrun, test):
         debug("testrun:%r, test:%r", testrun, test)
-        if not self.__testrun == testrun:
+        if not testrun in self.__testruns.keys():
             debug("different testrun, starting new one")
             self._startNewTestRun(testrun)
         if not self.__tests.has_key(test):
@@ -897,73 +704,9 @@ class SQLiteStorage(DBStorage):
         return dc
 
 
-    def getClientInfoForTestRun(self, testrunid):
-        debug("testrunid:%d", testrunid)
-        liststr = """
-        SELECT client.software,client.name,client.user
-        FROM client,testrun
-        WHERE client.id=testrun.clientid AND testrun.id=?"""
-        res = self._FetchAll(liststr, (testrunid,))
-        return res[0]
-
-    def listTestRuns(self):
-        liststr = "SELECT id FROM testrun"
-        res = self._FetchAll(liststr)
-        debug("Got %d testruns", len(res))
-        if len(res):
-            return list(zip(*res)[0])
-        return []
-
-    def getTestRun(self, testrunid):
-        debug("testrunid:%d", testrunid)
-        liststr = """
-        SELECT clientid,starttime,stoptime
-        FROM testrun WHERE id=?"""
-        res = self._FetchAll(liststr, (testrunid, ))
-        if len(res) == 0:
-            debug("Testrun not available in DB")
-            return (None, None, None)
-        if len(res) > 1:
-            warning("More than one testrun with the same id ! Fix DB !!")
-            return (None, None, None)
-        return res[0]
-
     def getEnvironmentForTestRun(self, testrunid):
         debug("testrunid", testrunid)
         return self._getDict("testrun_environment_dict", testrunid)
-
-    def getTestsForTestRun(self, testrunid, withscenarios=True):
-        debug("testrunid:%d", testrunid)
-        liststr = "SELECT id FROM test WHERE testrunid=?"
-        res = self._FetchAll(liststr, (testrunid, ))
-        if not res:
-            return []
-        tmp = list(zip(*res)[0])
-        if not withscenarios:
-            scenarios = self.getScenariosForTestRun(testrunid)
-            for sc in scenarios.keys():
-                tmp.remove(sc)
-        return tmp
-
-    def getScenariosForTestRun(self, testrunid):
-        debug("testrunid:%d", testrunid)
-        liststr = """
-        SELECT test.id,subtests.testid
-        FROM test
-        INNER JOIN subtests
-        ON test.id=subtests.scenarioid
-        WHERE test.testrunid=?"""
-        res = self._FetchAll(liststr, (testrunid, ))
-        if not res:
-            return {}
-        # make list unique
-        dc = {}
-        for scenarioid, subtestid in res:
-            if not scenarioid in dc.keys():
-                dc[scenarioid] = [subtestid]
-            else:
-                dc[scenarioid].append(subtestid)
-        return dc
 
     def getFailedTestsForTestRun(self, testrunid):
         debug("testrunid:%d", testrunid)

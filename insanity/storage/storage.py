@@ -30,7 +30,31 @@ class DataStorage:
     def __init__(self):
         self.setUp()
 
+    # methods to implement in subclasses
     def setUp(self):
+        raise NotImplementedError
+
+    def findTestsByArgument(self, testtype, arguments, testrunid=None, monitors=None):
+        """
+        Return all test ids of type <testtype> and with arguments <arguments>
+
+        arguments is a dictionnary
+        If specified, only tests belonging to the given testrunid will be
+        returned.
+        """
+        raise NotImplementedError
+
+    # public API
+    def close(self, callback=None, *args, **kwargs):
+        """
+        Close the storage.
+
+        The callback (if any given) will be called when the Storage has
+        finished processing any pending actions.
+
+        If the Storage was not being used asynchronously, that callback will
+        be called straight away.
+        """
         raise NotImplementedError
 
     # public storage API
@@ -39,21 +63,27 @@ class DataStorage:
         pass
 
     def startNewTestRun(self, testrun):
-        # create new entry in testrun table
+        """Inform the DataStorage that the given testrun has started."""
         pass
 
     def endTestRun(self, testrun):
+        """Inform the DataStorage that the given testrun is closed and done."""
         # mark the testrun as closed and done
         pass
 
     def newTestStarted(self, testrun, test):
+        """Inform the DataStorage that the given test has started for the
+        given testrun."""
         # create new entry in tests table
         pass
 
     def newTestFinished(self, testrun, test):
+        """Inform the DataStorage that the given test of the given testrun
+        has finished."""
         pass
 
     # public retrieval API
+
     def listTestRuns(self):
         """
         Returns the list of testruns ID currently available
@@ -89,18 +119,15 @@ class DataStorage:
         """
 
     def getClientInfoForTestRun(self, testrunid):
+        """
+        Returns the Client information for the given testrunid.
+
+        The result is a tuple of strings:
+        * software
+        * name
+        * user
+        """
         pass
-
-    # methods to implement in subclasses
-    def findTestsByArgument(self, testtype, arguments, testrunid=None, monitors=None):
-        """
-        Return all test ids of type <testtype> and with arguments <arguments>
-
-        arguments is a dictionnary
-        If specified, only tests belonging to the given testrunid will be
-        returned.
-        """
-        raise NotImplementedError
 
 class FileStorage(DataStorage):
     """
@@ -124,22 +151,3 @@ class NetworkStorage(DataStorage):
     # * port
     pass
 
-class DBStorage(FileStorage):
-    """
-    Stores data in a database
-
-    Don't use this class directly, but one of its subclasses
-    """
-
-    def setUp(self):
-        # open database
-        self.openDatabase()
-
-        # createTables if needed
-        self.createTables()
-
-    def openDatabase(self):
-        raise NotImplementedError
-
-    def createTables(self):
-        raise NotImplementedError

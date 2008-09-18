@@ -1,0 +1,18 @@
+<table width="100%" class="inside">
+  <tr><th/><th/><th>Description</th></tr>
+  {% for result in results %}
+  <tr class="{% cycle row1,row2 %}">
+    <th class="side">{{result.type.name}}</th>
+    {% if result.skipped %}
+    <td class="result-skipped">
+      ?
+    </td>
+    {% else %}
+    <td class="{%if result.value.value %}result-OK{% else %}result-FAIL{% endif %}">
+      {{result.value.value}}
+    </td>
+    {% endif %}
+    <td>{{result.type.description}}</td>
+  </tr>
+  {% endfor %}
+</table>

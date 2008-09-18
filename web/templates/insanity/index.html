@@ -1,9 +1,32 @@
-{% if latest_runs %}
-    <ul>
-    {% for run in latest_runs %}
-        <li>TestRun <a href={{run.get_absolute_url}}>#{{ run.id }}</a>, {{run.test_set.count}} test{{run.test_set.count|pluralize}}</li>
-    {% endfor %}
-    </ul>
-{% else %}
-    <p>No Test Runs are available.</p>
-{% endif %}
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+	  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <link rel="stylesheet" href="/site_media/style.css" rel="stylesheet" />
+    <title>GStreamer QA system (latest {{nbruns}} runs)</title>
+  </head>
+
+  <body>
+    {% if latest_runs %}
+    <table>
+      <tr>
+	<th class="side"/>
+	<th>Test(s)</th>
+	<th colspan=4>Views</th>
+      </tr>
+      {% for run in latest_runs.reverse %}
+      <tr>
+	<th class="side">TestRun #{{ run.id }}</th>
+	<td align=right>{{ run.test_set.count }}</td>
+	<td><a href={{run.get_matrix_view_url}}?showscenario=0>Tests only</a></td>
+	<td><a href={{run.get_matrix_view_url}}?onlyfailed=1&showscenario=0>Failed Tests</a></td>
+	<td><a href={{run.get_matrix_view_url}}>Tests+Scenarios</a></td>
+	<td><a href={{run.get_matrix_view_url}}?onlyfailed=1>Failed Tests+Scenarios</a></td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}
+    <p>No Test Runs are currently available.</p>
+    {% endif %}
+  </body>
+</html>

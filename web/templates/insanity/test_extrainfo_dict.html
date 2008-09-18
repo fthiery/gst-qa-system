@@ -1,0 +1,15 @@
+{% load insanity_extra %}
+<table class="inside">
+  <tr>
+    <th/>
+    <th>Value</th>
+    <th>Description</th>
+  </tr>
+  {% for extra in extrainfos %}
+  <tr class="{% cycle row1,row2 %}">
+    <th class="side">{{extra.name.name}}</th>
+    <td>{% test_extrainfo_value extra %}</td>
+    <td>{{extra.name.description}}</td>
+  </tr>
+  {% endfor %}
+</table>
