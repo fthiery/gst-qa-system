@@ -34,7 +34,7 @@ Generators expand some arguments into a dictionnary of arguments.
 
 from insanity.log import critical, error, warning, debug, info
 
-class Generator:
+class Generator(object):
     """
     Expands some arguments into a list of arguments.
 
@@ -72,7 +72,7 @@ class Generator:
         raise NotImplementedError
 
     def __iter__(self):
-        return self.generate()[:]
+        return iter(self.generate()[:])
 
     def __len__(self):
         if self._length == None:

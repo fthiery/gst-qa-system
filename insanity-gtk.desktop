@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Insanity testing system
+Comment=Run automated tests
+StartupNotify=true
+Exec=insanity-gtk.py
+## Icon=
+Type=Application
+Categories=GTK;Development

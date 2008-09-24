@@ -81,7 +81,7 @@ def collectEnvironment(environ, callback):
         if thispath.endswith(suffix):
             thispath = thispath[:-len(suffix)] + ".py"
             break
-    pargs = [thispath, respath]
+    pargs = [sys.executable, thispath, respath]
 
     try:
         debug("spawning subprocess %r", pargs)
