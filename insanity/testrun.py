@@ -54,6 +54,19 @@ import insanity.dbustools as dbustools
 ##   WITHOUT having to restart the daemon.
 
 class TestRun(gobject.GObject):
+    """
+    A TestRun is the execution of one or more tests/scenarios with various
+    arguments.
+    It will also collect the state of the environment.
+
+    The smallest TestRun is a single test without any arguments nor any
+    monitors.
+
+    Tests have access to the TestRun within which they are being executed
+    so they can look for results of other tests.
+
+    Access to the TestRun from test instances will be possible via DBus IPC.
+    """
     __gsignals__ = {
         "start" : (gobject.SIGNAL_RUN_LAST,
                    gobject.TYPE_NONE,
@@ -142,6 +155,9 @@ class TestRun(gobject.GObject):
         self.emit("aborted")
 
     def setStorage(self, storage):
+        """
+        Use the given storage for this TestRun
+        """
         self._storage = storage
 
     def addTest(self, test, arguments, monitors=None):
@@ -201,7 +217,7 @@ class TestRun(gobject.GObject):
         """
         # we specify our own registry
         if not "GST_REGISTRY" in self._env:
-            obj, path = self.get_temp_file(nameid="registry", category="testrun")
+            path = self.get_temp_file(nameid="registry", category="testrun")[1]
             self._env["GST_REGISTRY"] = path
         environment.collectEnvironment(self._env, self._gotEnvironment)
 

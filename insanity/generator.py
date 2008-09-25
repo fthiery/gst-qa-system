@@ -32,8 +32,6 @@ Generators expand some arguments into a dictionnary of arguments.
 # * chaining generators output
 #   i.e. pass the output of FileSystemGenerator to PlaylistGenerator
 
-from insanity.log import critical, error, warning, debug, info
-
 class Generator(object):
     """
     Expands some arguments into a list of arguments.
@@ -81,12 +79,3 @@ class Generator(object):
 
     def __getitem__(self, idx):
         return self.generate()[idx]
-
-##
-## FIXME : IMPLEMENT THESE GENERATORS
-##
-
-class CapsGenerator(Generator):
-    """
-    """
-    pass

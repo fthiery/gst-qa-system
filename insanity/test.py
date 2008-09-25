@@ -181,20 +181,7 @@ class Test(gobject.GObject):
         self._timeout = timeout or self.__test_timeout__
         self._asynctimeout = asynctimeout or self.__async_setup_timeout__
         self._running = False
-        self.arguments = {}
-        # making sure all string arguments are valid UTF8
-        for k,v in kwargs.iteritems():
-            if isinstance(v, str):
-                try:
-                    self.arguments[k] = unicode(v)
-                except:
-                    try:
-                        self.arguments[k] = unicode(v, 'iso8859_1')
-                    except:
-                        exception("Argument [%s] is not valid UTF8 (%r)",
-                                  k, v)
-            else:
-                self.arguments[k] = v
+        self.arguments = utils.unicode_dict(kwargs)
         self._stopping = False
 
         # list of actual check items
@@ -216,7 +203,7 @@ class Test(gobject.GObject):
         self._outputfiles = kwargs.get("outputfiles", {})
         # creating default file names
         if self._testrun:
-            for ofname, desc in self.getFullOutputFilesList().iteritems():
+            for ofname in self.getFullOutputFilesList().iterkeys():
                 if not ofname in self._outputfiles:
                     ofd, opath = self._testrun.get_temp_file(nameid=ofname)
                     debug("created temp file name '%s' for outputfile '%s' [%s]",

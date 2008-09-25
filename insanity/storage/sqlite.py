@@ -32,7 +32,7 @@ from insanity.test import Test
 from insanity.monitor import Monitor
 from insanity.utils import reverse_dict, map_dict, map_list
 from insanity.storage.dbstorage import DBStorage, DB_SCHEME, DB_SCHEME_VERSION
-from insanity.storage.async import AsyncStorage, queuemethod, finalqueuemethod
+from insanity.storage.async import AsyncStorage, queuemethod
 try:
     # In Python 2.5, this is part of the standard library:
     from sqlite3 import dbapi2 as sqlite
@@ -275,19 +275,7 @@ class SQLiteStorage(DBStorage, AsyncStorage):
         """
         return [x[0] for x in self.con.execute(checktables).fetchall()]
 
-    # dictionnary storage methods
-    def _conformDict(self, pdict):
-        # transforms the dictionnary values to types compatible with
-        # the DB storage format
-        if pdict == None:
-            return None
-        res = {}
-        for key, value in pdict.iteritems():
-            res[key] = value
-        return res
-
     def _storeDict(self, dicttable, containerid, pdict):
-        pdict = self._conformDict(pdict)
 
         if not pdict:
             # empty dictionnary

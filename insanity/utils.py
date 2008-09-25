@@ -26,6 +26,7 @@ Miscellaneous utility functions and classes
 
 from random import randint
 import gzip
+from insanity.log import exception
 
 __uuids = []
 
@@ -64,14 +65,14 @@ def list_available_tests():
     * the test description
     * the test class
     """
-    from insanity.test import Test,DBusTest,PythonDBusTest,GStreamerTest,CmdLineTest
+    from insanity.test import Test, DBusTest, PythonDBusTest, GStreamerTest, CmdLineTest
     from insanity.scenario import Scenario
 
     def get_valid_subclasses(cls):
         res = []
         if cls == Scenario:
             return res
-        if not cls in [Test,DBusTest,PythonDBusTest,GStreamerTest,CmdLineTest]:
+        if not cls in [Test, DBusTest, PythonDBusTest, GStreamerTest, CmdLineTest]:
             res.append((cls.__test_name__.strip(), cls.__test_description__.strip(), cls))
         for i in cls.__subclasses__():
             res.extend(get_valid_subclasses(i))
@@ -85,7 +86,7 @@ def list_available_scenarios():
     * the scenario description
     * the scenario class
     """
-    from insanity.test import Test,DBusTest,PythonDBusTest,GStreamerTest,CmdLineTest
+    from insanity.test import Test, DBusTest, PythonDBusTest, GStreamerTest, CmdLineTest
     from insanity.scenario import Scenario
 
     def get_valid_subclasses(cls):
@@ -122,7 +123,7 @@ def reverse_dict(adict):
     d = {}
     if not adict:
         return d
-    for k,v in adict.iteritems():
+    for k, v in adict.iteritems():
         d[v] = k
     return d
 
@@ -137,7 +138,7 @@ def map_dict(adict, mapdict):
     d = {}
     if not mapdict:
         return d
-    for k,v in adict.iteritems():
+    for k, v in adict.iteritems():
         if k in mapdict:
             d[mapdict[k]] = v
     return d
@@ -150,7 +151,7 @@ def map_list(alist, mapdict):
     r = []
     if not mapdict:
         return r
-    for k,v in alist:
+    for k, v in alist:
         if k in mapdict:
             r.append((mapdict[k], v))
     return r
@@ -170,3 +171,23 @@ def compress_file(original, compfile):
 
     f.close()
     out.close()
+
+def unicode_dict(adict):
+    """
+    Returns a copy on the given dictionnary where all string values
+    are validated as proper unicode
+    """
+    res = {}
+    for key, val in adict.iteritems():
+        if isinstance(val, str):
+            try:
+                res[key] = unicode(val)
+            except:
+                try:
+                    res[key] = unicode(val, 'iso8859_1')
+                except:
+                    exception("Argument [%s] is not valid UTF8 (%r)",
+                              key, val)
+        else:
+            res[key] = val
+    return res

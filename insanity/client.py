@@ -294,7 +294,7 @@ class CommandLineTesterClient(TesterClient):
             clientid, starttime, stoptime = self._storage.getTestRun(key)
             print "TestRun #%d from client %d" % (key, clientid)
             softw,name,user = self._storage.getClientInfoForTestRun(key)
-            print "\t\tsoftware:%s,name:%s,user:%s" % (softw,name,user)
+            print "\t\tsoftware:%s,name:%s,user:%s" % (softw, name, user)
             print "\tStart:", time.ctime(starttime)
             print "\tStop:", time.ctime(stoptime)
             print "\tNb tests:", len(self._storage.getTestsForTestRun(key))
@@ -314,9 +314,9 @@ class CommandLineTesterClient(TesterClient):
                 if isinstance(val, dict):
                     print "\t% -30s:" % (key)
                     for dk,dv in val.iteritems():
-                        print "\t\t% -30s:\t%s" % (dk,dv)
+                        print "\t\t% -30s:\t%s" % (dk, dv)
                 else:
-                    print "\t% -30s:\t%s" % (key,val)
+                    print "\t% -30s:\t%s" % (key, val)
 
     def printSingleTestResult(self, test, offset=0, testrun=None):
         stub = " " * offset
@@ -324,7 +324,9 @@ class CommandLineTesterClient(TesterClient):
             pos = testrun.getCurrentBatchPosition()
             length = testrun.getCurrentBatchLength()
             perc = float(pos * 100.0) / float(length)
-            print stub, "Test %r is done (Success:%5.1f%%)  %5d / %5d  [%5.1f%%]" % (test, test.getSuccessPercentage(), pos, length, perc)
+            print stub, "Test %r is done (Success:%5.1f%%)  %5d / %5d  [%5.1f%%]" % (test,
+                                                                                     test.getSuccessPercentage(),
+                                                                                     pos, length, perc)
         else:
             print stub, "Test %r is done (Success:%5.1f%%)" % (test, test.getSuccessPercentage())
         if self._verbose:

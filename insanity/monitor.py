@@ -43,7 +43,6 @@ information, run extra analysis, etc...
 # * has a checklist like tests
 # * can modify timeout (i.e. with valgrind)
 
-import string
 import os
 import os.path
 import subprocess
@@ -100,7 +99,7 @@ class Monitor(object):
     Class of Test this monitor can be applied on.
     """
 
-    def __init__(self, testrun, instance, *args, **kwargs):
+    def __init__(self, testrun, instance, **kwargs):
         self.testrun = testrun
         self.test = instance
         self.arguments = kwargs
@@ -315,7 +314,7 @@ class GstDebugLogMonitor(Monitor):
         else:
             if self.arguments.get("compress-logs", True):
                 res = self._logfilepath + ".gz"
-                debug("compressing debug log to %s",res)
+                debug("compressing debug log to %s", res)
                 compress_file(self._logfilepath, res)
                 os.remove(self._logfilepath)
                 self._logfilepath = res
@@ -348,7 +347,7 @@ class ValgrindMemCheckMonitor(Monitor):
         # add the suppression files
         sups = self.arguments.get("suppression-files")
         if sups:
-            for sup in string.split(sups, ','):
+            for sup in sups.split(','):
                 ourargs.append("--suppressions=%s" % sup)
         ourargs.extend(self.test._preargs)
         self.test._preargs = ourargs
@@ -445,9 +444,10 @@ class GDBMonitor(Monitor):
                     backtracefile = open(backtracepath, "a+")
 
                     # run the backtrace script
-                    gdb = subprocess.Popen(["gdb", "--batch", "-x", self._GDBScript, "python", core],
-                                           stdout = backtracefile,
-                                           stderr = backtracefile).wait()
+                    # This blocks, which is acceptable since we're tearing down
+                    subprocess.Popen(["gdb", "--batch", "-x", self._GDBScript, "python", core],
+                                     stdout = backtracefile,
+                                     stderr = backtracefile).wait()
 
                     # cleanup
                     os.close(backtracefd)

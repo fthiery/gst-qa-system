@@ -87,12 +87,12 @@ class Arguments(object):
                 else:
                     res[keys[0]] = gen[idx]
             # update values
-            self.updateGeneratorsPosition()
+            self._updateGeneratorsPosition()
         # update global idx
         self.globalidx += 1
         return res
 
-    def updateGeneratorsPosition(self):
+    def _updateGeneratorsPosition(self):
         for key in self.genlist:
             # update the position of this generator
             apos = (self.generators[key][1] + 1) % self.generators[key][2]

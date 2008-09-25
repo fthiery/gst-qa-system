@@ -31,7 +31,6 @@ import os
 import tempfile
 import sys
 import imp
-import string
 import gobject
 gobject.threads_init()
 import gst
@@ -50,9 +49,9 @@ def _pollSubProcess(process, resfile, callback):
         return True
     # get dictionnary from resultfile
     try:
-        mf = open(resfile, "rb")
-        resdict = cPickle.load(mf)
-        mf.close()
+        wmf = open(resfile, "rb")
+        resdict = cPickle.load(wmf)
+        wmf.close()
         os.remove(resfile)
     except:
         exception("Couldn't get pickle from file %s", resfile)
@@ -98,7 +97,7 @@ def collectEnvironment(environ, callback):
 ##
 
 def _tupletostr(atup):
-    return string.join([str(x) for x in atup], ".")
+    return ".".join([str(x) for x in atup])
 
 def _getGStreamerRegistry():
     import stat
