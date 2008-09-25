@@ -86,8 +86,10 @@ def create_testrun(files=[], testscripts=[], recursive=True, topdir=None,
         generator1 = URIFileSystemGenerator(paths=files, recursive=recursive,
                                             matching=acceptlist,
                                             reject=rejectlist)
-    else:
+    elif playlist:
         generator1 = PlaylistGenerator(location=playlist)
+    else:
+        generator1 = None
 
     # get the classes corresponding to the given tests
     tests = [utils.get_test_class(name) for name in testscripts]
@@ -215,10 +217,6 @@ if __name__ == "__main__":
         for name, desc, cls in scenarios:
             print "\t% -20s : %s" % (name, desc)
         sys.exit()
-    if not len(files) and not options.playlist:
-        print "No files/directorie (or playlist) to test were given"
-    elif not len(tests):
-        print "No test was given"
     else:
         testrun = create_testrun(files=files, testscripts=tests,
                                  topdir=options.output,
