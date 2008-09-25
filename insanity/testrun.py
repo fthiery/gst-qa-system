@@ -83,7 +83,7 @@ class TestRun(gobject.GObject):
                                  (gobject.TYPE_STRING, ))
         }
 
-    def __init__(self, maxnbtests=1, workingdir=None, env=None):
+    def __init__(self, maxnbtests=1, workingdir=None, env=None, clientid=None):
         """
         maxnbtests : Maximum number of tests to run simultaneously in each batch.
         workingdir : Working directory (default : getcwd() + /workingdir/)
@@ -106,6 +106,7 @@ class TestRun(gobject.GObject):
         self._maxnbtests = maxnbtests
         self._starttime = None
         self._stoptime = None
+        self._clientid = clientid
         # disambiguation
         # _environment are the environment information
         # _environ are the environment variables (env)
@@ -209,7 +210,7 @@ class TestRun(gobject.GObject):
         self._environment = resdict
         self.emit("start")
         self._starttime = int(time.time())
-        self._storage.startNewTestRun(self)
+        self._storage.startNewTestRun(self, self._clientid)
         self._runNextBatch()
 
     def _singleTestStart(self, test):

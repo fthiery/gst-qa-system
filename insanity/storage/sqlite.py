@@ -41,10 +41,6 @@ except ImportError:
     from pysqlite2 import dbapi2 as sqlite
 from cPickle import dumps, loads
 
-#
-# FIXME : only accepts one client info at a time !
-#
-
 class SQLiteStorage(DBStorage, AsyncStorage):
     """
     Stores data in a sqlite db
@@ -60,7 +56,6 @@ class SQLiteStorage(DBStorage, AsyncStorage):
         self.path = path
         self.con = None
         self._lock = threading.Lock()
-        self.__clientid = None
 
         # key: testrun, value: testrunid
         self.__testruns = WeakKeyDictionary()
@@ -77,7 +72,6 @@ class SQLiteStorage(DBStorage, AsyncStorage):
 
 
     # DataStorage methods implementation
-    @queuemethod
     def setClientInfo(self, softwarename, clientname, user):
         # check if that triplet is already present
         debug("softwarename:%s, clientname:%s, user:%s",
@@ -97,12 +91,11 @@ class SQLiteStorage(DBStorage, AsyncStorage):
             key = self._ExecuteCommit(insertstr, (softwarename, clientname, user))
         debug("got id %d", key)
         # cache the key
-        self.__clientid = key
         return key
 
     @queuemethod
-    def startNewTestRun(self, testrun):
-        self._startNewTestRun(testrun)
+    def startNewTestRun(self, testrun, clientid):
+        self._startNewTestRun(testrun, clientid)
 
     @queuemethod
     def endTestRun(self, testrun):
@@ -515,11 +508,9 @@ class SQLiteStorage(DBStorage, AsyncStorage):
 
     # public storage API
 
-    def _startNewTestRun(self, testrun):
+    def _startNewTestRun(self, testrun, clientid):
         # create new testrun entry with client entry
         debug("testrun:%r", testrun)
-        if not self.__clientid:
-            raise Exception("Please specify client information before starting testruns")
         if testrun in self.__testruns.keys():
             warning("Testrun already started !")
             return
@@ -527,7 +518,7 @@ class SQLiteStorage(DBStorage, AsyncStorage):
         INSERT INTO testrun (id, clientid, starttime, stoptime) VALUES (NULL, ?, ?, NULL)
         """
         testrunid = self._ExecuteCommit(insertstr,
-                                        (self.__clientid,
+                                        (clientid,
                                          testrun._starttime))
         envdict = testrun.getEnvironment()
         if envdict:

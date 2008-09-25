@@ -83,6 +83,7 @@ class TesterClient(dbus.service.Object):
         dbus.service.Object.__init__(self, self._bus, "/here")
         self._testruns = []
         self._storage = None
+        self._clientid = None
         if storage:
             self.setStorage(storage)
         # _current is the current TestRun being executed
@@ -141,7 +142,7 @@ class TesterClient(dbus.service.Object):
             storage = SQLiteStorage(path="testrun.db")
         self._storage = storage
         # give client info, this can always be modified later on
-        self._storage.setClientInfo(*self.getClientInfo())
+        self._clientid = self._storage.setClientInfo(*self.getClientInfo())
 
     def getClientInfo(self):
         """
@@ -193,6 +194,7 @@ class TesterClient(dbus.service.Object):
         self._current.connect("aborted", self._currentAbortedCb)
         # give access to the data storage object
         self._current.setStorage(self._storage)
+        self._current._clientid = self._clientid
         # and run it!
         self._current.run()
         return False

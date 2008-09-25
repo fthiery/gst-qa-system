@@ -60,10 +60,23 @@ class DataStorage(object):
     # public storage API
 
     def setClientInfo(self, softwarename, clientname, user):
+        """
+        Set the information about the runnign client.
+        Returns a unique identifier to this client in the storage.
+
+        softwarename : the name of the software running the tests
+        clientname : the name of the (client) machine
+        user : the email or name of the user running the tests
+        """
         pass
 
-    def startNewTestRun(self, testrun):
-        """Inform the DataStorage that the given testrun has started."""
+    def startNewTestRun(self, testrun, clientid):
+        """
+        Inform the DataStorage that the given testrun has started for the given
+        client.
+
+        You may get the clientid by using setClientInfo
+        """
         pass
 
     def endTestRun(self, testrun):
