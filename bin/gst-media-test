@@ -55,8 +55,11 @@ class GstMediaTestClient(CommandLineTesterClient):
     #
     # Some options might be difficult to reproduce with the new system.
 
-    def __init__(self, testrun, verbose=False):
+    def __init__(self, testrun, verbose=False, usemysql=False):
         CommandLineTesterClient.__init__(self, verbose=verbose, singlerun=True)
+        if usemysql:
+            from insanity.storage.mysql import MySQLStorage
+            self.setStorage(MySQLStorage())
         self.addTestRun(testrun)
 
 def create_testrun(files=[], testscripts=[], recursive=True, topdir=None,
@@ -185,6 +188,9 @@ if __name__ == "__main__":
     parser.add_option("-p", "--playlist", dest="playlist",
                       default=None, metavar="PLAYLIST",
                       help="Playlist file containing one URI per line")
+    parser.add_option("-m", "--mysql", dest="usemysql",
+                      default=False, action="store_true",
+                      help="Connect to a MySQL database for storage")
     (options, args) = parser.parse_args(sys.argv[1:])
     files = options.files
     tests = options.tests
@@ -226,5 +232,7 @@ if __name__ == "__main__":
                                  maxnbtests=options.maxnbtests,
                                  rerun=options.rerun,
                                  playlist=options.playlist)
-        tester = GstMediaTestClient(testrun, verbose=options.verbose)
+
+        tester = GstMediaTestClient(testrun, verbose=options.verbose,
+                                    usemysql=options.usemysql)
         tester.run()

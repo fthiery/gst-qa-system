@@ -29,6 +29,7 @@ import sys
 import time
 from optparse import OptionParser
 from insanity.storage.sqlite import SQLiteStorage
+from insanity.storage.mysql import MySQLStorage
 from insanity.log import initLogging
 
 def printTestRunInfo(db, testrunid, verbose=False):
@@ -137,13 +138,19 @@ if __name__ == "__main__":
     parser.add_option("-x", "--hidescenarios", dest="hidescenarios",
                       help="Do not show scenarios",
                       action="store_true", default=False)
+    parser.add_option("-m", "--mysql", dest="usemysql",
+                      default=False, action="store_true",
+                      help="Connect to a MySQL database for storage")
     (options, args) = parser.parse_args(sys.argv[1:])
-    if len(args) != 1:
+    if not options.usemysql and len(args) != 1:
         print "You need to specify a database file !"
         parser.print_help()
         sys.exit()
     initLogging()
-    db = SQLiteStorage(path=args[0], async=False)
+    if options.usemysql:
+        db = MySQLStorage(async=False)
+    else:
+        db = SQLiteStorage(path=args[0], async=False)
     if options.list:
         # list all available test rus
         testruns = db.listTestRuns()
