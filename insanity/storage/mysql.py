@@ -1,6 +1,6 @@
 # GStreamer QA system
 #
-#       storage/sqlite.py
+#       storage/mysql.py
 #
 # Copyright (c) 2008, Edward Hervey <bilboed@bilboed.com>
 #
@@ -20,64 +20,39 @@
 # Boston, MA 02111-1307, USA.
 
 """
-SQLite based DBStorage
+MySQL based DBStorage
+
+Requires the mysql-python module
+http://mysql-python.sourceforge.net/
 """
 
 from insanity.log import error, warning, debug
 from insanity.storage.dbstorage import DBStorage
+import MySQLdb
 
-try:
-    # In Python 2.5, this is part of the standard library:
-    from sqlite3 import dbapi2 as sqlite
-except ImportError:
-    # Previous versions have this as external dependency...
-    from pysqlite2 import dbapi2 as sqlite
-from cPickle import dumps
-
-class SQLiteStorage(DBStorage):
+class MySQLStorage(DBStorage):
     """
-    Stores data in a sqlite db
-
-    The 'async' setting will allow all writes to be serialized in a separate thread,
-    allowing the testing to carry on.
-
-    If you are only using the database for reading information, you should use
-    async=False and only use the storage object from one thread.
+    MySQL based DBStorage
     """
 
-    def __init__(self, path, *args, **kwargs):
-        self.path = path
+    def __init__(self, host="localhost", username="insanity",
+                 passwd="madness", port=3306,
+                 dbname="insanity",
+                 *args, **kwargs):
+        self.__host = host
+        self.__port = port
+        self.__username = username
+        self.__passwd = passwd
+        self.__dbname = dbname
         DBStorage.__init__(self, *args, **kwargs)
 
-
-
-    # DBStorage methods implementation
     def _openDatabase(self):
-        debug("opening sqlite db for path '%s'", self.path)
-        con = sqlite.connect(self.path, check_same_thread=False)
-        # we do this so that we can store UTF8 strings in the database
-        con.text_factory = str
+        con = MySQLdb.connect(host=self.__host,
+                              port=self.__port,
+                              user=self.__username,
+                              passwd=self.__passwd,
+                              db=self.__dbname)
         return con
-
-    def _ExecuteScript(self, instructions, *args, **kwargs):
-        """
-        Executes the given script.
-        """
-        commit = kwargs.pop("commit", True)
-        threadsafe = kwargs.pop("threadsafe", False)
-        debug("%s args:%r kwargs:%r", instructions, args, kwargs)
-        if not threadsafe:
-            self._lock.acquire()
-        try:
-            cur = self.con.cursor()
-            cur.executescript(instructions, *args, **kwargs)
-            if commit:
-                self.con.commit()
-        finally:
-            if not threadsafe:
-                self._lock.release()
-        return cur.lastrowid
-
 
     def _getDatabaseSchemeVersion(self):
         """
@@ -101,144 +76,144 @@ class SQLiteStorage(DBStorage):
         loaded database.
         """
         checktables = """
-        SELECT name FROM sqlite_master
-        WHERE type='table'
-        ORDER BY name;
+        SHOW TABLES;
         """
-        return [x[0] for x in self.con.execute(checktables).fetchall()]
+        cursor = self.con.cursor()
+        cursor.execute(checktables)
+        res = cursor.fetchall()
+        if not res:
+            return []
+        res = list(zip(*res)[0])
+        return res
 
+    def _ExecuteCommit(self, instruction, *args, **kwargs):
+        """
+        Calls .execute(instruction, *args, **kwargs) and .commit()
 
-    def findTestsByArgument(self, testtype, arguments, testrunid=None, monitorids=None):
-        searchstr = """
-        SELECT test.id
-        FROM test, test_arguments_dict
-        WHERE test.id=test_arguments_dict.containerid """
-        searchargs = []
-        if not testrunid == None:
-            searchstr += "AND test.testrunid=? "
-            searchargs.append(testrunid)
-        searchstr += "AND test.type=? "
-        searchargs.append(testtype)
+        Returns the last row id
 
-        # we'll now recursively search for the compatible tests
-        # we first start to look for all tests matching the first argument
-        # then from those tests, find those that match the second,...
-        # Break out from the loop whenever there's nothing more matching
+        Threadsafe
+        """
+        commit = kwargs.pop("commit", True)
+        threadsafe = kwargs.pop("threadsafe", False)
+        instruction = instruction.replace('?', '%s')
+        #if len(args):
+        #    args = args[0]
+        debug("%s args:%r kwargs:%r", instruction, args, kwargs)
+        if not threadsafe:
+            self._lock.acquire()
+        try:
+            cur = self.con.cursor()
+            cur.execute(instruction, *args, **kwargs)
+            if commit:
+                self.con.commit()
+        finally:
+            if not threadsafe:
+                self._lock.release()
+        return cur.lastrowid
 
-        res = []
+    def _FetchAll(self, instruction, *args, **kwargs):
+        """
+        Executes the given SQL query and returns a list
+        of tuples of the results
 
-        for key, val in arguments.iteritems():
-            if not res == []:
-                tmpsearch = "AND test.id in (%s) " % ', '.join([str(x) for x in res])
-            else:
-                tmpsearch = ""
-            value = val
-            if isinstance(val, int):
-                valstr = "intvalue"
-            elif isinstance(val, basestring):
-                valstr = "txtvalue"
-            else:
-                valstr = "blobvalue"
-                value = str(dumps(val))
-            tmpsearch += "AND test_arguments_dict.name=? AND test_arguments_dict.%s=?" % valstr
-            tmpargs = searchargs[:]
-            tmpargs.extend([key, value])
-            tmpres = self._FetchAll(searchstr + tmpsearch, tuple(tmpargs))
-            res = []
-            if tmpres == []:
-                break
-            tmp2 = list(zip(*tmpres)[0])
-            # transform this into a unique list
-            for i in tmp2:
-                if not i in res:
-                    res.append(i)
+        Threadsafe
+        """
+        self._lock.acquire()
+        try:
+            instruction = instruction.replace('?', '%s')
+            #if len(args):
+            #    args = args[0]
+            debug("%s args:%r kwargs:%r", instruction, args, kwargs)
+            cur = self.con.cursor()
+            cur.execute(instruction, *args, **kwargs)
+            res = cur.fetchall()
+            debug("Result %r", res)
+        finally:
+            self._lock.release()
+        return list(res)
 
-        # finally... make sure that for the monitors that both test
-        # share, they have the same arguments
-        if not monitorids == None:
-            tmp = []
-            monitors = [self.getFullMonitorInfo(x) for x in monitorids]
-            for pid in res:
-                similar = True
-                pm = [self.getFullMonitorInfo(x) for x in self.getMonitorsIDForTest(pid)]
+    def _FetchOne(self, instruction, *args, **kwargs):
+        """
+        Executes the given SQL query and returns a unique
+        tuple of result
 
-                samemons = []
-                # for each candidate monitors
-                for tid, mtype, margs, mres, mresperc, mextra, mout in pm:
-                    # for each original monitor
-                    for mon in monitors:
-                        if mon[1] == mtype:
-                            # same type of monitor, now check arguments
-                            samemons.append(((tid, mtype, margs, mres,
-                                              mresperc, mextra, mout), mon))
-                if not samemons == []:
-                    for cand, mon in samemons:
-                        if not cand[2] ==  mon[2]:
-                            similar = False
-                if similar:
-                    tmp.append(pid)
-            res = tmp
+        Threadsafe
+        """
+        self._lock.acquire()
+        try:
+            instruction = instruction.replace('?', '%s')
+            #if len(args):
+            #    args = args[0]
+            cur = self.con.cursor()
+            debug("%s args:%r kwargs:%r", instruction, args, kwargs)
+            cur.execute(instruction, *args, **kwargs)
+            res = cur.fetchone()
+            debug("Result %r", res)
+        finally:
+            self._lock.release()
         return res
 
     def _getDBScheme(self):
         return DB_SCHEME
 
+
 DB_SCHEME = """
 CREATE TABLE version (
-   version INTEGER,
+   version integer NOT NULL AUTO_INCREMENT PRIMARY KEY,
    modificationtime INTEGER
 );
 
 CREATE TABLE testrun (
-   id INTEGER PRIMARY KEY,
+   id integer NOT NULL AUTO_INCREMENT PRIMARY KEY,
    clientid INTEGER,
    starttime INTEGER,
    stoptime INTEGER
 );
 
 CREATE TABLE client (
-   id INTEGER PRIMARY KEY,
+   id integer NOT NULL AUTO_INCREMENT PRIMARY KEY,
    software TEXT,
    name TEXT,
    user TEXT
 );
 
 CREATE TABLE test (
-   id INTEGER PRIMARY KEY,
+   id integer NOT NULL AUTO_INCREMENT PRIMARY KEY,
    testrunid INTEGER,
    type INTEGER,
    resultpercentage FLOAT
 );
 
 CREATE TABLE subtests (
-   testid INTEGER PRIMARY KEY,
+   testid integer NOT NULL AUTO_INCREMENT PRIMARY KEY,
    scenarioid INTEGER
 );
 
 CREATE TABLE monitor (
-   id INTEGER PRIMARY KEY,
+   id integer NOT NULL AUTO_INCREMENT PRIMARY KEY,
    testid INTEGER,
    type INTEGER,
    resultpercentage FLOAT
 );
 
+CREATE TABLE monitorclassinfo (
+   id integer NOT NULL AUTO_INCREMENT PRIMARY KEY,
+   type VARCHAR(255),
+   parent VARCHAR(255),
+   description TEXT
+);
+
 CREATE TABLE testclassinfo (
-   id INTEGER PRIMARY KEY,
+   id integer NOT NULL AUTO_INCREMENT PRIMARY KEY,
    type TEXT,
-   parent TEXT,
+   parent VARCHAR(255),
    description TEXT,
    fulldescription TEXT
 );
 
-CREATE TABLE monitorclassinfo (
-   id INTEGER PRIMARY KEY,
-   type TEXT,
-   parent TEXT,
-   description TEXT
-);
-
 CREATE TABLE testrun_environment_dict (
-   id INTEGER PRIMARY KEY,
+   id integer NOT NULL AUTO_INCREMENT PRIMARY KEY,
    containerid INTEGER,
    name TEXT,
    intvalue INTEGER,
@@ -247,7 +222,7 @@ CREATE TABLE testrun_environment_dict (
 );
 
 CREATE TABLE test_arguments_dict (
-   id INTEGER PRIMARY KEY,
+   id integer NOT NULL AUTO_INCREMENT PRIMARY KEY,
    containerid INTEGER,
    name INTEGER,
    intvalue INTEGER,
@@ -256,14 +231,14 @@ CREATE TABLE test_arguments_dict (
 );
 
 CREATE TABLE test_checklist_list (
-   id INTEGER PRIMARY KEY,
+   id integer NOT NULL AUTO_INCREMENT PRIMARY KEY,
    containerid INTEGER,
    name INTEGER,
    intvalue INTEGER
 );
 
 CREATE TABLE test_extrainfo_dict (
-   id INTEGER PRIMARY KEY,
+   id integer NOT NULL AUTO_INCREMENT PRIMARY KEY,
    containerid INTEGER,
    name INTEGER,
    intvalue INTEGER,
@@ -272,14 +247,14 @@ CREATE TABLE test_extrainfo_dict (
 );
 
 CREATE TABLE test_outputfiles_dict (
-   id INTEGER PRIMARY KEY,
+   id integer NOT NULL AUTO_INCREMENT PRIMARY KEY,
    containerid INTEGER,
    name INTEGER,
    txtvalue TEXT
 );
 
 CREATE TABLE monitor_arguments_dict (
-   id INTEGER PRIMARY KEY,
+   id integer NOT NULL AUTO_INCREMENT PRIMARY KEY,
    containerid INTEGER,
    name INTEGER,
    intvalue INTEGER,
@@ -288,14 +263,14 @@ CREATE TABLE monitor_arguments_dict (
 );
 
 CREATE TABLE monitor_checklist_dict (
-   id INTEGER PRIMARY KEY,
+   id integer NOT NULL AUTO_INCREMENT PRIMARY KEY,
    containerid INTEGER,
    name INTEGER,
    intvalue INTEGER
 );
 
 CREATE TABLE monitor_extrainfo_dict (
-   id INTEGER PRIMARY KEY,
+   id integer NOT NULL AUTO_INCREMENT PRIMARY KEY,
    containerid INTEGER,
    name INTEGER,
    intvalue INTEGER,
@@ -304,63 +279,63 @@ CREATE TABLE monitor_extrainfo_dict (
 );
 
 CREATE TABLE monitor_outputfiles_dict (
-   id INTEGER PRIMARY KEY,
+   id integer NOT NULL AUTO_INCREMENT PRIMARY KEY,
    containerid INTEGER,
    name INTEGER,
    txtvalue TEXT
 );
 
 CREATE TABLE testclassinfo_arguments_dict (
-   id INTEGER PRIMARY KEY,
+   id integer NOT NULL AUTO_INCREMENT PRIMARY KEY,
    containerid INTEGER,
    name TEXT,
    blobvalue BLOB
 );
 
 CREATE TABLE testclassinfo_checklist_dict (
-   id INTEGER PRIMARY KEY,
+   id integer NOT NULL AUTO_INCREMENT PRIMARY KEY,
    containerid INTEGER,
    name TEXT,
    txtvalue TEXT
 );
 
 CREATE TABLE testclassinfo_extrainfo_dict (
-   id INTEGER PRIMARY KEY,
+   id integer NOT NULL AUTO_INCREMENT PRIMARY KEY,
    containerid INTEGER,
    name TEXT,
    txtvalue TEXT
 );
 
 CREATE TABLE testclassinfo_outputfiles_dict (
-   id INTEGER PRIMARY KEY,
+   id integer NOT NULL AUTO_INCREMENT PRIMARY KEY,
    containerid INTEGER,
    name TEXT,
    txtvalue TEXT
 );
 
 CREATE TABLE monitorclassinfo_arguments_dict (
-   id INTEGER PRIMARY KEY,
+   id integer NOT NULL AUTO_INCREMENT PRIMARY KEY,
    containerid INTEGER,
    name TEXT,
    txtvalue TEXT
 );
 
 CREATE TABLE monitorclassinfo_checklist_dict (
-   id INTEGER PRIMARY KEY,
+   id integer NOT NULL AUTO_INCREMENT PRIMARY KEY,
    containerid INTEGER,
    name TEXT,
    txtvalue TEXT
 );
 
 CREATE TABLE monitorclassinfo_extrainfo_dict (
-   id INTEGER PRIMARY KEY,
+   id integer NOT NULL AUTO_INCREMENT PRIMARY KEY,
    containerid INTEGER,
    name TEXT,
    txtvalue TEXT
 );
 
 CREATE TABLE monitorclassinfo_outputfiles_dict (
-   id INTEGER PRIMARY KEY,
+   id integer NOT NULL AUTO_INCREMENT PRIMARY KEY,
    containerid INTEGER,
    name TEXT,
    txtvalue TEXT

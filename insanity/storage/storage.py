@@ -28,10 +28,10 @@ class DataStorage(object):
     Base class for storing data
     """
     def __init__(self):
-        self.setUp()
+        self._setUp()
 
     # methods to implement in subclasses
-    def setUp(self):
+    def _setUp(self):
         raise NotImplementedError
 
     def findTestsByArgument(self, testtype, arguments, testrunid=None, monitors=None):
@@ -68,7 +68,7 @@ class DataStorage(object):
         clientname : the name of the (client) machine
         user : the email or name of the user running the tests
         """
-        pass
+        raise NotImplementedError
 
     def startNewTestRun(self, testrun, clientid):
         """
@@ -77,23 +77,23 @@ class DataStorage(object):
 
         You may get the clientid by using setClientInfo
         """
-        pass
+        raise NotImplementedError
 
     def endTestRun(self, testrun):
         """Inform the DataStorage that the given testrun is closed and done."""
         # mark the testrun as closed and done
-        pass
+        raise NotImplementedError
 
     def newTestStarted(self, testrun, test):
         """Inform the DataStorage that the given test has started for the
         given testrun."""
         # create new entry in tests table
-        pass
+        raise NotImplementedError
 
     def newTestFinished(self, testrun, test):
         """Inform the DataStorage that the given test of the given testrun
         has finished."""
-        pass
+        raise NotImplementedError
 
     # public retrieval API
 
@@ -101,7 +101,7 @@ class DataStorage(object):
         """
         Returns the list of testruns ID currently available
         """
-        pass
+        raise NotImplementedError
 
     def getTestRun(self, testrunid):
         """
@@ -111,7 +111,7 @@ class DataStorage(object):
         If the testrun doesn't exist, it will return the following tuple:
         (None, None, None)
         """
-        pass
+        raise NotImplementedError
 
     def getTestsForTestRun(self, testrunid, withscenarios=True):
         """
@@ -120,7 +120,7 @@ class DataStorage(object):
         If withscenarios is True, scenarios will also be returned.
         If withscenarios is False, only non-scenario tests will be returned.
         """
-        pass
+        raise NotImplementedError
 
     def getScenariosForTestRun(self, testrunid):
         """
@@ -130,6 +130,7 @@ class DataStorage(object):
         * key : the testid of the scenario
         * value : A list of testid of the subtests
         """
+        raise NotImplementedError
 
     def getClientInfoForTestRun(self, testrunid):
         """
@@ -140,7 +141,83 @@ class DataStorage(object):
         * name
         * user
         """
-        pass
+        raise NotImplementedError
+
+    def getEnvironmentForTestRun(self, testrunid):
+        """
+        Returns a dictionnary of the environment of the given testrunid.
+        """
+        raise NotImplementedError
+
+    def getFailedTestsForTestRun(self, testrunid):
+        """
+        Returns the list of failed tests in the given testrun
+        """
+        raise NotImplementedError
+
+    def getSucceededTestsForTestRun(self, testrunid):
+        """
+        Returns the list of succeeded tests in the given testrun.
+        """
+        raise NotImplementedError
+
+    def getFullTestInfo(self, testid, rawinfo=False):
+        """
+        Returns a tuple with the following info:
+        * the testrun id in which it was executed
+        * the type of the test
+        * the arguments (dictionnary)
+        * the results (checklist list)
+        * the result percentage
+        * the extra information (dictionnary)
+        * the output files (dictionnary)
+
+        If rawinfo is set to True, then the keys of the following
+        dictionnaries will be integer identifiers (and not strings):
+        * arguments, results, extra information, output files
+        Also, the testtype will be the testclass ID (and not a string)
+        """
+        raise NotImplementedError
+
+    def getTestClassInfo(self, testtype):
+        """
+        Returns a tuple with the following info:
+        * Description of the Test class
+        * Full description of the Test class
+        * the argumenbts (dictionnary)
+        * the checks (dictionnary)
+        * the extra information (dictionnary)
+        * the output files (dictionnary)
+        """
+        raise NotImplementedError
+
+    def getMonitorsIDForTest(self, testid):
+        """
+        Returns the list of monitor ID for the given testid
+        """
+        raise NotImplementedError
+
+    def getFullMonitorInfo(self, monitorid):
+        """
+        Returns a tuple with the following info:
+        * the ID of the test on which this monitor was applied
+        * the type of the monitor
+        * the arguments (dictionnary)
+        * the results (dictionnary)
+        * the result percentage
+        * the extra information (dictionnary)
+        * the output files (dictionnary)
+        """
+        raise NotImplementedError
+
+    def getMonitorInfo(self, monitorid):
+        """
+        Returns a tuple with the following info:
+        * the ID of the test on which the monitor was applied
+        * the type of the monitor
+        * the result percentage
+        """
+        raise NotImplementedError
 
 class FileStorage(DataStorage):
     """
