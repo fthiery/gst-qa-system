@@ -46,6 +46,12 @@ class MySQLStorage(DBStorage):
         self.__dbname = dbname
         DBStorage.__init__(self, *args, **kwargs)
 
+    def __repr__(self):
+        return "<%s %s@%s:%d>" % (type(self),
+                                  self.__dbname,
+                                  self.__host,
+                                  self.__port)
+
     def _openDatabase(self):
         con = MySQLdb.connect(host=self.__host,
                               port=self.__port,

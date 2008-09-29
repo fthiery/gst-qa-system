@@ -49,7 +49,8 @@ class SQLiteStorage(DBStorage):
         self.path = path
         DBStorage.__init__(self, *args, **kwargs)
 
-
+    def __repr__(self):
+        return "<%s %s>" % (type(self), self.path)
 
     # DBStorage methods implementation
     def _openDatabase(self):
