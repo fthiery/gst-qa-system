@@ -24,6 +24,7 @@ import sys
 import os
 import os.path
 import time
+import ConfigParser
 
 import pygtk
 pygtk.require("2.0")
@@ -248,9 +249,77 @@ class TestStatusWidget(gtk.Frame):
         label_text = self._check_shortname(check)
         label.props.label = "<span background='%s'>%s</span>" % (color, label_text,) # FIXME: escape
 
+class StateValue(object):
+
+    """Descriptor for binding to the State class."""
+
+    def __init__(self, name, default = None):
+
+        self.name = name
+        self.default = default
+
+    def __get__(self, state, state_class = None):
+
+        if state is None:
+            return self
+
+        try:
+            return state.parser.get("state", self.name)
+        except ConfigParser.NoOptionError:
+            return self.default
+
+    def __set__(self, state, value):
+
+        state.parser.set("state", self.name, value)
+
+class State(object):
+
+    test_name = StateValue("test-name")
+    uri_gen = StateValue("uri-generator", "folder")
+    uri_folder = StateValue("uri-folder")
+    uri_file = StateValue("uri-file")
+    uri_playlist = StateValue("uri-playlist")
+
+    @classmethod
+    def get_filename(cls):
+
+        return os.path.expanduser("~/.config/insanity-gtk")
+
+    def __init__(self):
+
+        self.parser = ConfigParser.RawConfigParser()
+
+        self.parser.read([self.get_filename()])
+
+        try:
+            self.parser.add_section("state")
+        except ConfigParser.DuplicateSectionError:
+            pass
+
+    def save(self):
+
+        tmpname = "%s.tmp" % (self.get_filename(),)
+
+        dirname = os.path.dirname(tmpname)
+        try:
+            os.makedirs(dirname)
+        except OSError:
+            pass
+
+        fp = None
+        try:
+            fp = file(tmpname, "wt")
+            self.parser.write(fp)
+        finally:
+            if fp:
+                fp.close()
+                os.rename(tmpname, self.get_filename())
+
 class Window(object):
 
     def __init__ (self):
+
+        self.state = State()
 
         self.started = False
         self.update_id = None
@@ -311,26 +380,34 @@ class Window(object):
 
         button = gtk.FileChooserButton("Select directory")
         button.props.action = gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER
+        button.connect("current-folder-changed", self.handle_uri_folder_button_changed)
         self.uri_generator_widgets["Folder"] = button
         self.uri_generator_all_widgets.append(button)
         notebook.append_page(button, None)
+        if self.state.uri_folder:
+            button.set_current_folder_uri(self.state.uri_folder)
 
         button = gtk.FileChooserButton("Select file")
         button.props.action = gtk.FILE_CHOOSER_ACTION_OPEN
+        button.connect("current-folder-changed", self.handle_uri_file_button_changed)
         self.uri_generator_widgets["File"] = button
         self.uri_generator_all_widgets.append(button)
         notebook.append_page(button, None)
+        if self.state.uri_file:
+            button.set_uri(self.state.uri_file)
 
         button = gtk.FileChooserButton("Select playlist")
         button.props.action = gtk.FILE_CHOOSER_ACTION_OPEN
+        button.connect("current-folder-changed", self.handle_uri_playlist_button_changed)
         self.uri_generator_widgets["Playlist"] = button
         self.uri_generator_all_widgets.append(button)
         notebook.append_page(button, None)
+        if self.state.uri_playlist:
+            button.set_uri(self.state.uri_playlist)
 
         size_group2.add_widget(hbox)
         table.attach(hbox, 1, 2, 2, 3, (), gtk.FILL, 3, 0)
         combo.connect("changed", self.handle_uri_generator_combo_changed)
-        combo.set_active(0)
 
         button = gtk.Button("Start testrun")
         button.connect("clicked", self.handle_start_testrun_button_clicked)
@@ -377,7 +454,18 @@ class Window(object):
 
         self.size_groups = [size_group1, size_group2]
 
-        self.test_combo.set_active(0)
+        default_test_name = self.state.test_name
+        if default_test_name in tests:
+            self.test_combo.props.active = tests.index(default_test_name)
+        else:
+            self.test_combo.props.active = 0
+
+        default_uri_gen = self.state.uri_gen
+        uri_gen_list = ["folder", "file", "playlist"]
+        if not default_uri_gen in uri_gen_list:
+            combo.set_active(0)
+        else:
+            combo.set_active(uri_gen_list.index(default_uri_gen))
 
     def handle_gtk_window_delete_event(self, gtk_window, event):
 
@@ -407,6 +495,9 @@ class Window(object):
         for widget in self.uri_generator_all_widgets:
             widget.props.sensitive = uri_arg
 
+        self.state.test_name = test
+        self.state.save()
+
     def handle_uri_generator_combo_changed(self, combo):
 
         notebook = self.uri_generator_notebook
@@ -415,6 +506,30 @@ class Window(object):
         widget = self.uri_generator_widgets[text]
         page_num = notebook.page_num(widget)
         notebook.props.page = page_num
+
+        self.state.uri_gen = text.lower()
+        self.state.save()
+
+    def handle_uri_folder_button_changed(self, chooser_button):
+
+        uri = chooser_button.get_current_folder_uri()
+        if uri:
+            self.state.uri_folder = uri
+            self.state.save()
+
+    def handle_uri_file_button_changed(self, chooser_button):
+
+        uri = chooser_button.get_uri()
+        if uri:
+            self.state.uri_file = uri
+            self.state.save()
+
+    def handle_uri_playlist_button_changed(self, chooser_button):
+
+        uri = chooser_button.get_uri()
+        if uri:
+            self.state.uri_playlist = uri
+            self.state.save()
 
     def build_test_arguments(self):
 
