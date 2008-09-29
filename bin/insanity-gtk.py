@@ -36,9 +36,7 @@ import insanity
 import insanity.utils
 
 from insanity.client import TesterClient
-from insanity.scenario import Scenario
 from insanity.testrun import TestRun
-from tests.scenarios.gstmediatest import GstMediaTestScenario
 
 class GtkTesterClient(TesterClient):
 
@@ -81,9 +79,8 @@ class GtkTestRunner(object):
         self.client = GtkTesterClient(self)
         self.run = None
 
-        self.scenario_class = None
         self.test_class = None
-        self.path = None
+        self.test_arguments = {}
 
     def get_test_names(self):
 
@@ -93,46 +90,41 @@ class GtkTestRunner(object):
 
         return [s[0] for s in insanity.utils.list_available_scenarios()]
 
-    def set_scenario(self, scenario_name):
-
-        self.scenario_class = insanity.utils.get_test_class(scenario_name)
-
     def set_test(self, test_name):
 
         self.test_class = insanity.utils.get_test_class(test_name)
+
+    def set_arguments(self, test_args):
+
+        self.test_arguments = test_args.copy()
 
     def set_folder(self, path):
 
         self.path = path
 
-    def get_generator(self):
+    def get_n_tests(self):
 
-        assert self.path
+        n = 1
+        test_args = self.test_arguments
+        for arg_name, generator in test_args.iteritems():
+             n *= len(generator.generate())
 
-        from insanity.generators.filesystem import URIFileSystemGenerator
+        return n
 
-        return URIFileSystemGenerator(paths=[self.path], recursive=True)
+    def setup_test_run(self):
 
-    def get_n_files(self):
+        run = TestRun(maxnbtests = 1)
 
-        generator = self.get_generator()
-        return len(generator.generate())
+        run.addTest(self.test_class, arguments = self.test_arguments)
+
+        return run
 
     def start(self):
 
         assert not self.run
-        assert self.scenario_class or self.test_class
+        assert self.test_class
 
-        self.run = TestRun(maxnbtests = 1)
-
-        if not self.scenario_class:
-            generator = self.get_generator()
-            self.run.addTest(self.test_class,
-                             arguments = {"uri" : generator})
-        else:
-            self.run.addTest(self.scenario_class,
-                             arguments = {})
-
+        self.run = self.setup_test_run()
         self.client.addTestRun(self.run)
         self.client.run()
 
@@ -265,13 +257,15 @@ class Window(object):
         self.runner = GtkTestRunner(self)
 
         insanity.utils.scan_for_tests()
-        tests = self.runner.get_test_names()
-        scenarios = self.runner.get_scenario_names()
+        tests = self.runner.get_test_names() + self.runner.get_scenario_names()
 
         self.gtk_window = gtk.Window()
         self.gtk_window.connect("delete-event", self.handle_gtk_window_delete_event)
         self.gtk_window.props.title = "Insanity"
         self.gtk_window.show()
+
+        self.uri_generator_widgets = {}
+        self.uri_generator_all_widgets = []
 
         window_box = gtk.VBox()
         window_box.props.border_width = 6
@@ -279,20 +273,6 @@ class Window(object):
         table = gtk.Table(7, 4, False)
         size_group1 = gtk.SizeGroup(gtk.SIZE_GROUP_HORIZONTAL)
         size_group2 = gtk.SizeGroup(gtk.SIZE_GROUP_HORIZONTAL)
-
-        label = gtk.Label("Scenario:")
-        label.props.xalign = 0.
-        size_group1.add_widget(label)
-        table.attach(label, 0, 1, 0, 1, gtk.FILL, (), 0, 0)
-
-        combo = gtk.combo_box_new_text()
-        combo.append_text("(no scenario)")
-        for scenario in scenarios:
-            combo.append_text(scenario)
-        size_group2.add_widget(combo)
-        combo.set_active(0)
-        table.attach(combo, 1, 2, 0, 1, gtk.FILL, (), 3, 0)
-        self.scenario_combo = combo
 
         label = gtk.Label("Test:")
         label.props.xalign = 0.
@@ -303,20 +283,54 @@ class Window(object):
         for test in tests:
             combo.append_text(test)
         size_group2.add_widget(combo)
-        combo.set_active(0)
+        combo.connect("changed", self.handle_test_combo_changed)
         table.attach(combo, 1, 2, 1, 2, gtk.FILL, (), 3, 0)
         self.test_combo = combo
 
-        label = gtk.Label("Folder:")
+        label = gtk.Label("URI:")
         label.props.xalign = 0.
         size_group1.add_widget(label)
         table.attach(label, 0, 1, 2, 3, gtk.FILL, (), 0, 0)
+        self.uri_generator_all_widgets.append(label)
+
+        hbox = gtk.HBox()
+
+        combo = gtk.combo_box_new_text()
+        combo.append_text("Folder")
+        combo.append_text("File")
+        combo.append_text("Playlist")
+        hbox.pack_start(combo, False, False)
+        self.uri_generator_combo = combo
+        self.uri_generator_all_widgets.append(combo)
+
+        notebook = gtk.Notebook()
+        notebook.props.show_tabs = False
+        notebook.props.show_border = False
+        hbox.pack_start(notebook, True, True)
+        self.uri_generator_notebook = notebook
 
         button = gtk.FileChooserButton("Select directory")
         button.props.action = gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER
-        size_group2.add_widget(button)
-        table.attach(button, 1, 2, 2, 3, (), gtk.FILL, 3, 0)
-        self.folder_chooser = button
+        self.uri_generator_widgets["Folder"] = button
+        self.uri_generator_all_widgets.append(button)
+        notebook.append_page(button, None)
+
+        button = gtk.FileChooserButton("Select file")
+        button.props.action = gtk.FILE_CHOOSER_ACTION_OPEN
+        self.uri_generator_widgets["File"] = button
+        self.uri_generator_all_widgets.append(button)
+        notebook.append_page(button, None)
+
+        button = gtk.FileChooserButton("Select playlist")
+        button.props.action = gtk.FILE_CHOOSER_ACTION_OPEN
+        self.uri_generator_widgets["Playlist"] = button
+        self.uri_generator_all_widgets.append(button)
+        notebook.append_page(button, None)
+
+        size_group2.add_widget(hbox)
+        table.attach(hbox, 1, 2, 2, 3, (), gtk.FILL, 3, 0)
+        combo.connect("changed", self.handle_uri_generator_combo_changed)
+        combo.set_active(0)
 
         button = gtk.Button("Start testrun")
         button.connect("clicked", self.handle_start_testrun_button_clicked)
@@ -363,6 +377,8 @@ class Window(object):
 
         self.size_groups = [size_group1, size_group2]
 
+        self.test_combo.set_active(0)
+
     def handle_gtk_window_delete_event(self, gtk_window, event):
 
         self.stop_test()
@@ -376,6 +392,54 @@ class Window(object):
         else:
             self.start_test()
 
+    def handle_test_combo_changed(self, combo):
+
+        test = self.test_combo.get_active_text()
+        self.runner.set_test(test)
+        test_class = self.runner.test_class
+        self.test_status.set_checklist(test_class.getFullCheckList())
+
+        test_args = test_class.getFullArgumentList()
+        if "uri" in test_args:
+            uri_arg = True
+        else:
+            uri_arg = False
+        for widget in self.uri_generator_all_widgets:
+            widget.props.sensitive = uri_arg
+
+    def handle_uri_generator_combo_changed(self, combo):
+
+        notebook = self.uri_generator_notebook
+
+        text = combo.get_active_text()
+        widget = self.uri_generator_widgets[text]
+        page_num = notebook.page_num(widget)
+        notebook.props.page = page_num
+
+    def build_test_arguments(self):
+
+        test_args = {}
+
+        if self.uri_generator_combo.props.sensitive:
+            uri_gen = self.uri_generator_combo.get_active_text()
+            uri_widget = self.uri_generator_widgets[uri_gen]
+            if uri_gen == "Folder":
+                from insanity.generators.filesystem import URIFileSystemGenerator
+                folder = uri_widget.get_filename()
+                test_args["uri"] = URIFileSystemGenerator(paths=[folder], recursive=True)
+            elif uri_gen == "File":
+                from insanity.generators.filesystem import URIFileSystemGenerator
+                filename = uri_widget.get_filename()
+                test_args["uri"] = URIFileSystemGenerator(paths=[filename], recursive=False)
+            elif uri_gen == "Playlist":
+                from insanity.generators.playlist import PlaylistGenerator
+                filename = uri_widget.get_filename()
+                test_args["uri"] = PlaylistGenerator(location=filename)
+            else:
+                assert False
+
+        return test_args
+
     def start_test(self):
 
         self.started = True
@@ -385,20 +449,11 @@ class Window(object):
             print >> sys.stderr, "insanity-gtk: Current directory %s not writable, changing to ~" % (os.getcwd(),)
             os.chdir(os.path.expanduser("~"))
 
-        scenario = self.scenario_combo.get_active_text()
-        if scenario != "(no scenario)":
-            self.runner.set_scenario(scenario)
-
-        test = self.test_combo.get_active_text()
-        self.runner.set_test(test)
-        test_class = self.runner.test_class
-        self.test_status.set_checklist(test_class.getFullCheckList())
-
-        folder = self.folder_chooser.get_filename()
-        self.runner.set_folder(folder)
+        test_args = self.build_test_arguments()
+        self.runner.set_arguments(test_args)
 
         self.start_time = time.time()
-        self.n_files = self.runner.get_n_files()
+        self.n_tests = self.runner.get_n_tests()
         self.n_completed = 0
 
         def update():
@@ -458,7 +513,7 @@ class Window(object):
 
         self.n_completed += 1
 
-        self.progress.props.fraction = float(self.n_completed) / float(self.n_files)
+        self.progress.props.fraction = float(self.n_completed) / float(self.n_tests)
         self.test_status.reset_status()
 
     def handle_testrun_done(self, testrun):
