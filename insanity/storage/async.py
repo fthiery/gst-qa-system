@@ -61,6 +61,11 @@ class AsyncStorage:
             self._actionthread = ActionQueueThread()
             self._actionthread.start()
 
+    @property
+    def async(self):
+        """True if write operations are asynchronous"""
+        return self._async
+
     def queueAction(self, cb, *args, **kwargs):
         if self._async:
             self._actionthread.queueAction(cb, *args, **kwargs)
