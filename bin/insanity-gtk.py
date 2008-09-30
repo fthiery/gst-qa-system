@@ -55,6 +55,10 @@ class GtkTesterClient(TesterClient):
         testrun.connect("single-test-start", self.handle_single_test_start)
         testrun.connect("single-test-done", self.handle_single_test_done)
 
+    def test_run_done(self, testrun):
+
+        self.runner.handle_testrun_done(testrun)
+
     def handle_single_test_start(self, testrun, test):
 
         self.runner.handle_test_started(test)
@@ -136,6 +140,11 @@ class GtkTestRunner(object):
 
         self.run = None
         self.client.quit()
+
+    def handle_testrun_done(self, testrun):
+
+        self.stop()
+        self.window.handle_testrun_done(testrun)
 
     def handle_test_started(self, test):
 
@@ -402,6 +411,10 @@ class Window(object):
 
         self.progress.props.fraction = float(self.n_completed) / float(self.n_files)
         self.test_status.reset_status()
+
+    def handle_testrun_done(self, testrun):
+
+        self.stop_test()
 
 def main():
 
