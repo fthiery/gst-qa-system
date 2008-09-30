@@ -91,6 +91,10 @@ class GtkTestRunner(object):
 
         return [s[0] for s in insanity.utils.list_available_scenarios()]
 
+    def set_storage(self, storage):
+
+        self.client.setStorage(storage)
+
     def set_test(self, test_name):
 
         self.test_class = insanity.utils.get_test_class(test_name)
@@ -274,6 +278,8 @@ class StateValue(object):
 
 class State(object):
 
+    storage = StateValue("storage")
+    sqlite_path = StateValue("storage-sqlite-path")
     test_name = StateValue("test-name")
     uri_gen = StateValue("uri-generator", "folder")
     uri_folder = StateValue("uri-folder")
@@ -339,27 +345,57 @@ class Window(object):
         window_box = gtk.VBox()
         window_box.props.border_width = 6
 
-        table = gtk.Table(7, 4, False)
+        table = gtk.Table(8, 4, False)
         size_group1 = gtk.SizeGroup(gtk.SIZE_GROUP_HORIZONTAL)
         size_group2 = gtk.SizeGroup(gtk.SIZE_GROUP_HORIZONTAL)
+        size_group3 = gtk.SizeGroup(gtk.SIZE_GROUP_HORIZONTAL)
+
+        label = gtk.Label("Storage:")
+        label.props.xalign = 0.
+        table.attach(label, 0, 1, 1, 2, gtk.FILL, (), 0, 0)
+
+        box = gtk.HBox()
+
+        combo = gtk.combo_box_new_text()
+        combo.append_text("SQLite")
+        combo.set_active(0)
+        # TODO: Support more storage backends.
+        self.state.storage = "sqlite"
+        box.pack_start(combo, False, False)
+        size_group3.add_widget(combo)
+        self.storage_combo = combo
+
+        button = gtk.FileChooserButton("Select database location")
+        button.props.action = gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER
+        if self.state.sqlite_path:
+            button.set_current_folder(self.state.sqlite_path)
+        elif os.access(os.getcwd(), os.W_OK):
+            button.set_current_folder(os.getcwd())
+        else:
+            button.set_current_folder(os.path.expanduser("~"))
+        box.pack_start(button, True, True)
+        self.storage_path_chooser = button
+        button.connect("current-folder-changed", self.handle_storage_chooser_changed)
+
+        table.attach(box, 1, 2, 1, 2, gtk.FILL, (), 3, 0)
 
         label = gtk.Label("Test:")
         label.props.xalign = 0.
         size_group1.add_widget(label)
-        table.attach(label, 0, 1, 1, 2, gtk.FILL, (), 0, 0)
+        table.attach(label, 0, 1, 2, 3, gtk.FILL, (), 0, 0)
 
         combo = gtk.combo_box_new_text()
         for test in tests:
             combo.append_text(test)
         size_group2.add_widget(combo)
         combo.connect("changed", self.handle_test_combo_changed)
-        table.attach(combo, 1, 2, 1, 2, gtk.FILL, (), 3, 0)
+        table.attach(combo, 1, 2, 2, 3, gtk.FILL, (), 3, 0)
         self.test_combo = combo
 
         label = gtk.Label("URI:")
         label.props.xalign = 0.
         size_group1.add_widget(label)
-        table.attach(label, 0, 1, 2, 3, gtk.FILL, (), 0, 0)
+        table.attach(label, 0, 1, 3, 4, gtk.FILL, (), 0, 0)
         self.uri_generator_all_widgets.append(label)
 
         hbox = gtk.HBox()
@@ -369,6 +405,7 @@ class Window(object):
         combo.append_text("File")
         combo.append_text("Playlist")
         hbox.pack_start(combo, False, False)
+        size_group3.add_widget(combo)
         self.uri_generator_combo = combo
         self.uri_generator_all_widgets.append(combo)
 
@@ -406,37 +443,37 @@ class Window(object):
             button.set_uri(self.state.uri_playlist)
 
         size_group2.add_widget(hbox)
-        table.attach(hbox, 1, 2, 2, 3, (), gtk.FILL, 3, 0)
+        table.attach(hbox, 1, 2, 3, 4, (), gtk.FILL, 3, 0)
         combo.connect("changed", self.handle_uri_generator_combo_changed)
 
         button = gtk.Button("Start testrun")
         button.connect("clicked", self.handle_start_testrun_button_clicked)
-        table.attach(button, 2, 3, 2, 3, (), gtk.FILL, 3, 0)
+        table.attach(button, 2, 3, 3, 4, (), gtk.FILL, 3, 0)
         self.start_testrun_button = button
 
         label = gtk.Label("Run time:")
         label.props.xalign = 0.
         size_group1.add_widget(label)
-        table.attach(label, 0, 1, 3, 4, gtk.FILL, (), 0, 0)
+        table.attach(label, 0, 1, 4, 5, gtk.FILL, (), 0, 0)
 
         label = gtk.Label("")
         label.props.xalign = 0.
         size_group1.add_widget(label)
-        table.attach(label, 1, 2, 3, 4, gtk.FILL, (), 3, 0)
+        table.attach(label, 1, 2, 4, 5, gtk.FILL, (), 3, 0)
         self.run_time_label = label
 
         label = gtk.Label("Progress:")
         label.props.xalign = 0.
         size_group1.add_widget(label)
-        table.attach(label, 0, 1, 4, 5, gtk.FILL, (), 0, 0)
+        table.attach(label, 0, 1, 5, 6, gtk.FILL, (), 0, 0)
 
         progress = gtk.ProgressBar()
-        table.attach(progress, 1, 2, 4, 5, gtk.FILL, (), 3, 0)
+        table.attach(progress, 1, 2, 5, 6, gtk.FILL, (), 3, 0)
         self.progress = progress
 
         label = gtk.Label("")
         label.props.xalign = 0.
-        #table.attach(label, 0, 4, 5, 6, gtk.FILL, (), 3, 3)
+        #table.attach(label, 0, 4, 6, 7, gtk.FILL, (), 3, 3)
         window_box.pack_end(label)
         self.current_uri_label = label
 
@@ -452,7 +489,7 @@ class Window(object):
         self.gtk_window.add(window_box)
         self.gtk_window.show_all()
 
-        self.size_groups = [size_group1, size_group2]
+        self.size_groups = [size_group1, size_group2, size_group3]
 
         default_test_name = self.state.test_name
         if default_test_name in tests:
@@ -497,6 +534,13 @@ class Window(object):
 
         self.state.test_name = test
         self.state.save()
+
+    def handle_storage_chooser_changed(self, chooser_button):
+
+        path = chooser_button.get_current_folder()
+        if path:
+            self.state.sqlite_path = path
+            self.state.save()
 
     def handle_uri_generator_combo_changed(self, combo):
 
@@ -563,6 +607,15 @@ class Window(object):
         if not os.access(os.getcwd(), os.W_OK):
             print >> sys.stderr, "insanity-gtk: Current directory %s not writable, changing to ~" % (os.getcwd(),)
             os.chdir(os.path.expanduser("~"))
+
+        storage = None
+        storage_name = self.storage_combo.get_active_text().lower()
+        if storage_name == "sqlite":
+            storage_path = os.path.join(self.storage_path_chooser.get_filename(), "testrun.db")
+            from insanity.storage.sqlite import SQLiteStorage
+            storage = SQLiteStorage(path=storage_path)
+        if storage:
+            self.runner.set_storage(storage)
 
         test_args = self.build_test_arguments()
         self.runner.set_arguments(test_args)
