@@ -28,8 +28,6 @@ Dumps the results of a test results DB
 import sys
 import time
 from optparse import OptionParser
-from insanity.storage.sqlite import SQLiteStorage
-from insanity.storage.mysql import MySQLStorage
 from insanity.log import initLogging
 
 def printTestRunInfo(db, testrunid, verbose=False):
@@ -148,8 +146,10 @@ if __name__ == "__main__":
         sys.exit()
     initLogging()
     if options.usemysql:
+        from insanity.storage.mysql import MySQLStorage
         db = MySQLStorage(async=False)
     else:
+        from insanity.storage.sqlite import SQLiteStorage
         db = SQLiteStorage(path=args[0], async=False)
     if options.list:
         # list all available test rus
