@@ -72,13 +72,18 @@ class SimpleEncoderTest(GStreamerTest):
         enc.props.bitrate = self._bitrate
 
         if self._out_file:
-            mux = gst.element_factory_make("matroskamux")
-            sink = gst.element_factory_make("filesink")
-            sink.props.location = self._out_file
+            try:
+                mux = gst.element_factory_make("matroskamux")
+                sink = gst.element_factory_make("filesink")
+            except gst.ElementNotFoundError:
+                self._out_file = None
+            else:
+                sink.props.location = self._out_file
 
-            p.add(src, enc, mux, sink)
-            gst.element_link_many(src, enc, mux, sink)
-        else:
+                p.add(src, enc, mux, sink)
+                gst.element_link_many(src, enc, mux, sink)
+
+        if not self._out_file:
             mux = None
             sink = gst.element_factory_make("fakesink")
 
