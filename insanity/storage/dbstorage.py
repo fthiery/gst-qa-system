@@ -69,6 +69,25 @@ class DBStorage(DataStorage, AsyncStorage):
         DataStorage.__init__(self, *args, **kwargs)
         AsyncStorage.__init__(self, async)
 
+    def merge(self, otherdb, testruns=None):
+        """
+        Merges the contents of 'otherdb' into ourselves.
+
+        If no list of testrun id from otherdb are specified, then all testruns
+        from otherdb are merged into ourselves.
+
+        Currently only supports DBStorage as other database.
+        """
+        # FIXME : Add option to only merge some testruns
+        if not isinstance(otherdb, DBStorage):
+            raise TypeError("otherdb is not a DBStorage !")
+        # testruns needs to be a list or tuple
+        if not testruns == None:
+            if not isinstance(testruns, list) and not isinstance(testruns, tuple):
+                raise TypeError("testruns needs to be a list of testrun id")
+        if self.async:
+            raise Exception("Can not merge into an Asynchronous DBStorage, use async=False")
+        self.__merge(otherdb, testruns=testruns)
 
     # DataStorage methods implementation
 
@@ -281,29 +300,37 @@ class DBStorage(DataStorage, AsyncStorage):
                            reverse_dict(self.__getTestClassOutputFileMapping(ttype)))
         return (testrunid, ttype, args, results, resperc, extras, ofs)
 
-    def getTestClassInfo(self, testtype):
+    def getTestClassInfoFull(self, testtype, withparents=True):
         searchstr = """SELECT id,parent,description,fulldescription
         FROM testclassinfo WHERE type=?"""
         res = self._FetchOne(searchstr, (testtype, ))
         if not res:
-            return (None, None)
-        tcid, rp, desc, fulldesc = res
+            return (None, None, None, None, None, None)
+        tcid, parent, desc, fulldesc = res
         args = self.__getDict("testclassinfo_arguments_dict", tcid, blobonly=True)
         checks = self.__getDict("testclassinfo_checklist_dict", tcid, txtonly=True)
         extras = self.__getDict("testclassinfo_extrainfo_dict", tcid, txtonly=True)
         outputfiles = self.__getDict("testclassinfo_outputfiles_dict",
                                     tcid, txtonly=True)
-        while rp:
-            ptcid, prp = self._FetchOne(searchstr, (rp, ))[:2]
-            args.update(self.__getDict("testclassinfo_arguments_dict",
-                                      ptcid, blobonly=True))
-            checks.update(self.__getDict("testclassinfo_checklist_dict",
-                                        ptcid, txtonly=True))
-            extras.update(self.__getDict("testclassinfo_extrainfo_dict",
-                                        ptcid, txtonly=True))
-            outputfiles.update(self.__getDict("testclassinfo_outputfiles_dict",
-                                             ptcid, txtonly=True))
-            rp = prp
+        if withparents:
+            rp = parent
+            while rp:
+                ptcid, prp = self._FetchOne(searchstr, (rp, ))[:2]
+                args.update(self.__getDict("testclassinfo_arguments_dict",
+                                          ptcid, blobonly=True))
+                checks.update(self.__getDict("testclassinfo_checklist_dict",
+                                            ptcid, txtonly=True))
+                extras.update(self.__getDict("testclassinfo_extrainfo_dict",
+                                            ptcid, txtonly=True))
+                outputfiles.update(self.__getDict("testclassinfo_outputfiles_dict",
+                                                 ptcid, txtonly=True))
+                rp = prp
+
+        return (desc, fulldesc, args, checks, extras, outputfiles, parent)
+
+    def getTestClassInfo(self, testtype, withparents=True):
+        fargs = self.getTestClassInfoFull(testtype, withparents)
+        desc, fulldesc, args, checks, extras, outputfiles, parent = fargs
 
         return (desc, fulldesc, args, checks, extras, outputfiles)
 
@@ -480,6 +507,20 @@ class DBStorage(DataStorage, AsyncStorage):
                 self._lock.release()
         return cur.lastrowid
 
+    def _ExecuteMany(self, instruction, *args, **kwargs):
+        commit = kwargs.pop("commit", True)
+        threadsafe = kwargs.pop("threadsafe", False)
+        if not threadsafe:
+            self._lock.acquire()
+        try:
+            cur = self.con.cursor()
+            cur.executemany(instruction, *args, **kwargs)
+            if commit:
+                self.con.commit()
+        finally:
+            if not threadsafe:
+                self._lock.release()
+
     def _FetchAll(self, instruction, *args, **kwargs):
         """
         Executes the given SQL query and returns a list
@@ -487,6 +528,9 @@ class DBStorage(DataStorage, AsyncStorage):
 
         Threadsafe
         """
+        debug("instruction %s", instruction)
+        debug("args: %r", args)
+        debug("kwargs: %r", kwargs)
         self._lock.acquire()
         try:
             cur = self.con.cursor()
@@ -494,6 +538,7 @@ class DBStorage(DataStorage, AsyncStorage):
             res = cur.fetchall()
         finally:
             self._lock.release()
+        debug("returning %r", res)
         return res
         return list(res)
 
@@ -538,6 +583,25 @@ class DBStorage(DataStorage, AsyncStorage):
         return res[0]
 
 
+    def getTestTypeUsed(self, testrunid):
+        """
+        Returns a list of test type names being used in the given testrunid
+        """
+        getstr = """SELECT DISTINCT testclassinfo.type FROM test,testclassinfo WHERE test.type=testclassinfo.id AND test.testrunid=?"""
+        res = self._FetchAll(getstr, (testrunid, ))
+        if len(res):
+            return list(zip(*res)[0])
+        return []
+
+    def getMonitorTypesUsed(self, testrunid):
+        """
+        Returns a list of monitor type names being used in the given testrunid
+        """
+        getstr = """SELECT DISTINCT monitorclassinfo.type FROM monitor,monitorclassinfo,test WHERE monitor.type=monitorclassinfo.id AND monitor.testid=test.id AND test.testrunid=?"""
+        res = self._FetchAll(getstr, (testrunid, ))
+        if len(res):
+            return list(zip(*res)[0])
+        return []
 
 
     # PRIVATE METHODS
@@ -554,6 +618,203 @@ class DBStorage(DataStorage, AsyncStorage):
         self.con.executescript(create1to2)
         self.con.commit()
 
+    def __merge(self, otherdb, testruns=None):
+        # FIXME : This is a straight-forward method that could be optimized
+        # We just :
+        # * Get some data from otherdb
+        # * Save it into self (modifying key id on the fly)
+        debug("otherdb : %r", otherdb)
+        debug("testruns : %r", testruns)
+        if testruns == None:
+            testruns = otherdb.listTestRuns()
+        for trid in testruns:
+            self.__mergeTestRun(otherdb, trid)
+
+    def __mergeTestRun(self, otherdb, othertrid):
+        debug("othertrid:%d", othertrid)
+        # FIXME : Try to figure out (by some way) if we're not merging an
+        # existing testrun (same client, dates, etc...)
+
+        debug("Merging client info")
+        # 1. Client info
+        # if it already exists, don't insert but get back the new clientid
+        oclsoft, oclname, ocluser = otherdb.getClientInfoForTestRun(othertrid)
+        clid = self.setClientInfo(oclsoft, oclname, ocluser)
+
+        debug("Creating TestRun Entry")
+        # 2. Create the TestRun entry, and get the id back for further usage
+        unused_clid, starttime, stoptime = otherdb.getTestRun(othertrid)
+        trid = self.__rawStartNewTestRun(clid, starttime)
+        self.__rawEndTestRun(trid, stoptime)
+
+        debug("copying over Environment")
+        # 3. Environment
+        env = otherdb.getEnvironmentForTestRun(othertrid)
+        if env:
+            self._storeEnvironmentDict(trid, env)
+
+        debug("Ensuring all TestClassInfo are present in self")
+        # We need to figure out which test and monitor types are being used
+        # in this testrun.
+        testclasses = otherdb.getTestTypeUsed(othertrid)
+        for tclass in testclasses:
+            if not self.__hasTestClassInfo(tclass):
+                self.__mergeTestClassInfo(tclass, otherdb)
+
+        debug("Ensuring all MonitorClassInfo are present in self")
+        monitorclasses = otherdb.getMonitorTypesUsed(othertrid)
+        for mclass in monitorclasses:
+            if not self.__hasMonitorClassInfo(mclass):
+                self.__mergeMonitorClassInfo(mclass, otherdb)
+
+        debug("Getting Class/Monitor mappings")
+        testclassmap = self.__getTestClassRemoteMapping(otherdb)
+        monitorclassmap = self.__getMonitorClassRemoteMapping(otherdb)
+        testmapping = {}
+
+        debug("Inserting tests")
+        for othertestid in otherdb.getTestsForTestRun(othertrid):
+            # this includes both tests and scenarios
+            # to properly re-map subtests we need to have the mapping of
+            # oldtestid => newtestid
+            newtestid = self.__mergeTest(otherdb, othertestid, trid,
+                                         testclassmap, monitorclassmap)
+            testmapping[othertestid] = newtestid
+
+        debug("Merging subtest table")
+        # Finnally move all subtests using the testmapping
+        selectstr = """
+        SELECT testid, scenarioid FROM subtests
+        WHERE testid IN ( %s )""" % ','.join([str(x) for x in testmapping.keys()])
+        insertstr = """
+        INSERT INTO subtests (testid, scenarioid) VALUES (?, ?)"""
+        subtests = otherdb._FetchAll(selectstr, ())
+        # convert the subtests from old testid to new testid
+        tocommit = []
+        for testid, scenarioid in subtests:
+            tocommit.append((testmapping[testid], testmapping[scenarioid]))
+        self._ExecuteMany(insertstr, tocommit)
+
+        debug("done merging testrun")
+
+    def __mergeTest(self, otherdb, otid, testrunid, testclassmap,
+                    monitorclassmap):
+        """
+        Copy all information about test 'otid' from otherdb into self, including monitor.
+
+        Returns the id of the new test entry
+        """
+        debug("otid:%d, testrunid:%d", otid, testrunid)
+        insertstr = """
+        INSERT INTO test (testrunid, type, resultpercentage)
+        VALUES (?, ?, ?)
+        """
+
+        oldtr, testname, args, checks, resperc, extras, outputfiles = otherdb.getFullTestInfo(otid)
+        # convert testname (str) to testtype (int)
+        debug("testname %s", testname)
+        tmp = testclassmap[testname]
+        ttype = tmp[0]
+
+        newtid = self._ExecuteCommit(insertstr, (testrunid, ttype, resperc))
+
+        # store the dictionnaries
+        self.__storeTestArgumentsDict(newtid, args, testname)
+        self.__storeTestCheckListList(newtid, checks, testname)
+        self.__storeTestExtraInfoDict(newtid, extras, testname)
+        self.__storeTestOutputFileDict(newtid, outputfiles, testname)
+
+        # and on to the monitors
+        monitorids = otherdb.getMonitorsIDForTest(otid)
+        for oldmid in monitorids:
+            un_tid, omtype, margs, mres, mresperc, mextras, moutputs = otherdb.getFullMonitorInfo(oldmid)
+            # convert omtype to self
+            debug("omtype:%r", omtype)
+            debug("monitorclassmap:%r", monitorclassmap)
+            monitorname = None
+            for mname,mtypes in monitorclassmap.iteritems():
+                if omtype == mname:
+                    id_self, id_other = mtypes
+                    mtype = id_self
+                    break
+            self.__rawStoreMonitor(newtid, mtype, omtype,
+                                   mresperc, margs, mres, mextras, moutputs)
+        return newtid
+
+    def __mergeTestClassInfo(self, ttype, otherdb):
+        """
+        Copy all information about ttype from otherdb into self
+
+        Returns the new TestClassInfo ID in self for the given test type.
+        """
+        debug("ttype:%s", ttype)
+        res = None
+        fargs = otherdb.getTestClassInfoFull(ttype, withparents=False)
+        desc, fdesc, args, checks, extras, outputfiles, ptype = fargs
+
+        # figure out if we have ttype's parent already in self
+        if ptype and not self.__hasTestClassInfo(ptype):
+            self.__mergeTestClassInfo(ptype, otherdb)
+
+        self.__rawInsertTestClassInfo(ttype, desc, fdesc, args, checks, extras,
+                                      outputfiles, ptype)
+
+    def __mergeMonitorClassInfo(self, ttype, otherdb):
+        """
+        Copy all information about ttype from otherdb into self
+
+        Returns the new MonitorClassInfo ID in self for the given monitor type.
+        """
+        res = None
+        fargs = otherdb.getMonitorClassInfoFull(ttype, withparents=False)
+        desc, args, checks, extras, outputfiles, ptype = fargs
+
+        # figure out if we have ttype's parent already in self
+        if ptype and not self.__hasMonitorClassInfo(ptype):
+            self.__mergeMonitorClassInfo(ptype, otherdb)
+
+        self.__rawInsertMonitorClassInfo(ttype, ptype, desc, args, checks, extras,
+                                         outputfiles)
+
+    def __getRemoteMapping(self, tablename, otherdb, field1='type', field2='id'):
+        # field1 is the common field
+        # field2 is the one that varies
+        getstr = """SELECT %s, %s FROM %s""" % (field1, field2, tablename)
+        selfcl = dict(self._FetchAll(getstr, ( )))
+        othercl = dict(otherdb._FetchAll(getstr, ( )))
+        # we now have two dicts with name:id
+        res = {}
+        for selftype, selfid in selfcl.iteritems():
+            if othercl.has_key(selftype):
+                res[selftype] = (selfid, othercl[selftype])
+        debug("returning mapping %r", res)
+        return res
+
+    def __getTestClassRemoteMapping(self, otherdb):
+        """
+        Returns the mapping of all common testclassinfo between self and otherdb
+
+        Key : testname
+        Value : (id in selfdb, id in otherdb)
+        """
+        return self.__getRemoteMapping("testclassinfo", otherdb)
+        # now that we have the class mappings, we can get the maps for 
+
+    def __getMonitorClassRemoteMapping(self, otherdb):
+        """
+        Returns a mapping of all common monitorclassinfo between self and otherdb.
+
+        Key : monitorname
+        Value : (id in selfdb, id in otherdb)
+        """
+        return self.__getRemoteMapping("monitorclassinfo", otherdb)
+
+    def __rawStartNewTestRun(self, clientid, starttime):
+        insertstr = """
+        INSERT INTO testrun (clientid, starttime) VALUES (?, ?)
+        """
+        return self._ExecuteCommit(insertstr,(clientid, starttime))
+
     def __startNewTestRun(self, testrun, clientid):
         # create new testrun entry with client entry
         debug("testrun:%r", testrun)
@@ -564,12 +825,7 @@ class DBStorage(DataStorage, AsyncStorage):
             self.__clients[testrun] = clientid
         else:
             clientid = self.__clients.get(testrun, 0)
-        insertstr = """
-        INSERT INTO testrun (clientid, starttime) VALUES (?, ?)
-        """
-        testrunid = self._ExecuteCommit(insertstr,
-                                        (clientid,
-                                         testrun._starttime))
+        testrunid = self.__rawStartNewTestRun(clientid, testrun._starttime)
         envdict = testrun.getEnvironment()
         if envdict:
             self._storeEnvironmentDict(testrunid, envdict)
@@ -577,14 +833,24 @@ class DBStorage(DataStorage, AsyncStorage):
         debug("Got testrun id %d", testrunid)
         return testrunid
 
+    def __rawEndTestRun(self, testrunid, stoptime):
+        updatestr = "UPDATE testrun SET stoptime=? WHERE id=?"
+        self._ExecuteCommit(updatestr, (stoptime, testrunid))
+
     def __endTestRun(self, testrun):
         debug("testrun:%r", testrun)
         if not testrun in self.__testruns.keys():
             # add the testrun since it wasn't done before
             self.__startNewTestRun(testrun, None)
-        updatestr = "UPDATE testrun SET stoptime=? WHERE id=?"
-        self._ExecuteCommit(updatestr, (testrun._stoptime, self.__testruns[testrun]))
+        self.__rawEndTestRun(self.__testruns[testrun],
+                             testrun._stoptime)
         debug("updated")
+
+    def __rawNewTestStarted(self, testrunid, testtype, commit=True):
+        insertstr = "INSERT INTO test (testrunid, type) VALUES (?, ?)"
+        return self._ExecuteCommit(insertstr,
+                                   (testrunid, testtype),
+                                   commit=commit)
 
     def __newTestStarted(self, testrun, test, commit=True):
         if not isinstance(test, Test):
@@ -594,35 +860,44 @@ class DBStorage(DataStorage, AsyncStorage):
         debug("test:%r", test)
         self.__storeTestClassInfo(test)
         testtid = self._getTestTypeID(test.__test_name__)
-        insertstr = "INSERT INTO test (testrunid, type) VALUES (?, ?)"
-        testid = self._ExecuteCommit(insertstr,
-                                     (self.__testruns[testrun], testtid),
-                                     commit=commit)
+        testid = self.__rawNewTestStarted(self.__testruns[testrun],
+                                          testtid, commit)
         debug("got testid %d", testid)
         self.__tests[test] = testid
 
 
-    def __storeMonitor(self, monitor, testid):
+    def __rawStoreMonitor(self, testid, monitortype, monitorname,
+                          resperc, args, checks, extras, outputfiles):
         insertstr = """
         INSERT INTO monitor (testid, type, resultpercentage)
         VALUES (?, ?, ?)
         """
+        mid = self._ExecuteCommit(insertstr, (testid, monitortype,
+                                              resperc))
+        debug("testid:%d, monitortype:%s, monitorname:%s, resperc:%f",
+              testid, monitortype, monitorname, resperc)
+        debug("args:%r", args)
+        debug("checks:%r", checks)
+        debug("extras:%r", extras)
+        debug("outputfiles:%r", outputfiles)
+        # store related dictionnaries
+        self.__storeMonitorArgumentsDict(mid, args, monitorname)
+        self.__storeMonitorCheckListDict(mid, checks, monitorname)
+        self.__storeMonitorExtraInfoDict(mid, extras, monitorname)
+        self.__storeMonitorOutputFileDict(mid, outputfiles, monitorname)
+
+    def __storeMonitor(self, monitor, testid):
         debug("monitor:%r:%d", monitor, testid)
         # store monitor
         self.__storeMonitorClassInfo(monitor)
 
         monitortype = self._getMonitorTypeID(monitor.__monitor_name__)
-        mid = self._ExecuteCommit(insertstr, (testid, monitortype,
-                                              monitor.getSuccessPercentage()))
-        # store related dictionnaries
-        self.__storeMonitorArgumentsDict(mid, monitor.getArguments(),
-                                        monitor.__monitor_name__)
-        self.__storeMonitorCheckListDict(mid, monitor.getCheckList(),
-                                        monitor.__monitor_name__)
-        self.__storeMonitorExtraInfoDict(mid, monitor.getExtraInfo(),
-                                        monitor.__monitor_name__)
-        self.__storeMonitorOutputFileDict(mid, monitor.getOutputFiles(),
-                                         monitor.__monitor_name__)
+        self.__rawStoreMonitor(testid, monitortype, monitor.__monitor_name__,
+                               monitor.getSuccessPercentage(),
+                               monitor.getArguments(),
+                               monitor.getCheckList(),
+                               monitor.getExtraInfo(),
+                               monitor.getOutputFiles())
 
     def __newTestFinished(self, testrun, test):
         debug("testrun:%r, test:%r", testrun, test)
@@ -634,6 +909,7 @@ class DBStorage(DataStorage, AsyncStorage):
             self.__newTestStarted(testrun, test, commit=False)
         tid = self.__tests[test]
         debug("test:%r:%d", test, tid)
+
         # if it's a scenario, fill up the subtests
         if isinstance(test, Scenario):
             debug("test is a scenario, adding subtests")
@@ -872,6 +1148,21 @@ class DBStorage(DataStorage, AsyncStorage):
         return self.__storeDict("testrun_environment_dict",
                                testrunid, dic)
 
+    def __rawInsertTestClassInfo(self, ctype, desc, fdesc, args, checklist,
+                                 extrainfo, outputfiles, parent):
+        # insert into db
+        insertstr = """INSERT INTO testclassinfo
+        (type, parent, description, fulldescription)
+        VALUES (?, ?, ?, ?)"""
+        tcid = self._ExecuteCommit(insertstr, (ctype, parent, desc, fdesc))
+
+        # store the dicts
+        self.__storeTestClassArgumentsDict(tcid, args)
+        self.__storeTestClassCheckListDict(tcid, checklist)
+        self.__storeTestClassExtraInfoDict(tcid, extrainfo)
+        self.__storeTestClassOutputFileDict(tcid, outputfiles)
+
+
     def __insertTestClassInfo(self, tclass):
         ctype = tclass.__dict__.get("__test_name__").strip()
         searchstr = "SELECT * FROM testclassinfo WHERE type=?"
@@ -891,27 +1182,23 @@ class DBStorage(DataStorage, AsyncStorage):
         else:
             parent = tclass.__base__.__dict__.get("__test_name__").strip()
 
-        # insert into db
-        insertstr = """INSERT INTO testclassinfo
-        (type, parent, description, fulldescription)
-        VALUES (?, ?, ?, ?)"""
-        tcid = self._ExecuteCommit(insertstr, (ctype, parent, desc, fdesc))
-
-        # store the dicts
-        self.__storeTestClassArgumentsDict(tcid, args)
-        self.__storeTestClassCheckListDict(tcid, checklist)
-        self.__storeTestClassExtraInfoDict(tcid, extrainfo)
-        self.__storeTestClassOutputFileDict(tcid, outputfiles)
+        self.__rawInsertTestClassInfo(ctype, desc, fdesc, args, checklist,
+                                      extrainfo, outputfiles, parent)
         debug("done adding class info for %s [%d]", ctype, tcid)
         return True
+
+    def __hasTestClassInfo(self, testtype):
+        existstr = "SELECT * FROM testclassinfo WHERE type=?"
+        res = self._FetchAll(existstr, (testtype, ))
+        if len(res) > 0:
+            # type already exists, returning
+            return True
+        return False
 
     def __storeTestClassInfo(self, testinstance):
         # check if we don't already have info for this class
         debug("test name: %s", testinstance.__test_name__)
-        existstr = "SELECT * FROM testclassinfo WHERE type=?"
-        res = self._FetchAll(existstr, (testinstance.__test_name__, ))
-        if len(res) > 0:
-            # type already exists, returning
+        if not self.__hasTestClassInfo(testinstance.__test_name__):
             return
         # we need an inverted mro (so we can know the parent class)
         for cl in testinstance.__class__.mro():
@@ -920,10 +1207,32 @@ class DBStorage(DataStorage, AsyncStorage):
             if cl == Test:
                 break
 
+    def __hasMonitorClassInfo(self, monitortype):
+        existstr = "SELECT * FROM monitorclassinfo WHERE type=?"
+        res = self._FetchAll(existstr, (monitortype, ))
+        if len(res) > 0:
+            # type already exists, returning
+            return True
+        return False
+
+    def __rawInsertMonitorClassInfo(self, ctype, parent, desc, args, checklist,
+                                    extrainfo, outputfiles):
+        # insert into db
+        debug("ctype:%r, parent:%r, desc:%r", ctype, parent, desc)
+        insertstr = """
+        INSERT INTO monitorclassinfo (type, parent, description) VALUES (?, ?, ?)
+        """
+        tcid = self._ExecuteCommit(insertstr, (ctype, parent, desc))
+
+        # store the dicts
+        self.__storeMonitorClassArgumentsDict(tcid, args)
+        self.__storeMonitorClassCheckListDict(tcid, checklist)
+        self.__storeMonitorClassExtraInfoDict(tcid, extrainfo)
+        self.__storeMonitorClassOutputFileDict(tcid, outputfiles)
+
     def __insertMonitorClassInfo(self, tclass):
         ctype = tclass.__dict__.get("__monitor_name__").strip()
-        searchstr = "SELECT * FROM monitorclassinfo WHERE type=?"
-        if len(self._FetchAll(searchstr, (ctype, ))) >= 1:
+        if self.__hasMonitorClassInfo(ctype):
             return False
         # get info
         desc = tclass.__dict__.get("__monitor_description__").strip()
@@ -935,26 +1244,13 @@ class DBStorage(DataStorage, AsyncStorage):
             parent = None
         else:
             parent = tclass.__base__.__dict__.get("__monitor_name__").strip()
-
-        # insert into db
-        insertstr = """
-        INSERT INTO monitorclassinfo (type, parent, description) VALUES (?, ?, ?)
-        """
-        tcid = self._ExecuteCommit(insertstr, (ctype, parent, desc))
-
-        # store the dicts
-        self.__storeMonitorClassArgumentsDict(tcid, args)
-        self.__storeMonitorClassCheckListDict(tcid, checklist)
-        self.__storeMonitorClassExtraInfoDict(tcid, extrainfo)
-        self.__storeMonitorClassOutputFileDict(tcid, outputfiles)
+        self.__rawInsertMonitorClassInfo(ctype, parent, desc, args, checklist,
+                                         extrainfo, outputfiles)
         return True
 
     def __storeMonitorClassInfo(self, monitorinstance):
         # check if we don't already have info for this class
-        existstr = "SELECT * FROM monitorclassinfo WHERE type=?"
-        res = self._FetchAll(existstr, (monitorinstance.__monitor_name__, ))
-        if len(res) >= 1:
-            # type already exists, returning
+        if self.__hasMonitorClassInfo(monitorinstance.__monitor_name__):
             return
         # we need an inverted mro (so we can now the parent class)
         for cl in monitorinstance.__class__.mro():
