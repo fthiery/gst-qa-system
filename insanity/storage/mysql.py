@@ -118,6 +118,21 @@ class MySQLStorage(DBStorage):
                 self._lock.release()
         return cur.lastrowid
 
+    def _ExecuteMany(self, instruction, *args, **kwargs):
+        commit = kwargs.pop("commit", True)
+        threadsafe = kwargs.pop("threadsafe", False)
+        instruction = instruction.replace('?', '%s')
+        if not threadsafe:
+            self._lock.acquire()
+        try:
+            cur = self.con.cursor()
+            cur.executemany(instruction, *args, **kwargs)
+            if commit:
+                self.con.commit()
+        finally:
+            if not threadsafe:
+                self._lock.release()
+
     def _FetchAll(self, instruction, *args, **kwargs):
         """
         Executes the given SQL query and returns a list
