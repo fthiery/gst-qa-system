@@ -105,21 +105,39 @@ class distcheck (sdist):
 cmdclass = {"clean" : clean_custom,
             "distcheck" : distcheck}
 
+data_files = {}
+def add_data_file(destination, source):
+    if not destination in data_files:
+        data_files[destination] = []
+    data_files[destination].append(source)
+
+# Keep trailing comma on last entry to stay merge friendly:
+
+packages = [
+    "insanity",
+    "insanity.generators",
+    "insanity.storage",
+    "tests",
+    "tests.scenarios",
+    ]
+
+scripts = [
+    "bin/compare.py",
+    "bin/dumpresults.py",
+    "bin/grouper.py",
+    "bin/gst-media-test",
+    "bin/insanity-gtk.py",
+    ]
+
+add_data_file("share/applications", "insanity-gtk.desktop")
+add_data_file("share/insanity", "bin/gdb.instructions")
+add_data_file("share/insanity", "bin/gst.supp")
+add_data_file("share/insanity/libexec", "bin/insanity-pythondbusrunner.py")
+
 setup (cmdclass = cmdclass,
-       packages = ["insanity",
-                   "insanity.generators",
-                   "insanity.storage",
-                   "tests",
-                   "tests.scenarios"],
-       scripts = ["bin/compare.py",
-                  "bin/dumpresults.py",
-                  "bin/grouper.py",
-                  "bin/gst-media-test",
-                  "bin/insanity-gtk.py"],
-       data_files = [("share/insanity", ["bin/gdb.instructions",
-                                         "bin/gst.supp"]),
-                     ("share/insanity/libexec", ["bin/insanity-pythondbusrunner.py"]),
-                     ("share/applications", ["insanity-gtk.desktop"])],
+       packages = packages,
+       scripts = scripts,
+       data_files = data_files.items(),
        name = "insanity",
        version = "0.0",
        description = "",
