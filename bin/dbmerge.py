@@ -98,5 +98,5 @@ if __name__ == "__main__":
     if options.testrun != -1:
         runs = [ options.testrun ]
     else:
-        runs = []
+        runs = None
     destination.merge(origin, runs)
