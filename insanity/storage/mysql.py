@@ -100,38 +100,12 @@ class MySQLStorage(DBStorage):
 
         Threadsafe
         """
-        commit = kwargs.pop("commit", True)
-        threadsafe = kwargs.pop("threadsafe", False)
         instruction = instruction.replace('?', '%s')
-        #if len(args):
-        #    args = args[0]
-        debug("%s args:%r kwargs:%r", instruction, args, kwargs)
-        if not threadsafe:
-            self._lock.acquire()
-        try:
-            cur = self.con.cursor()
-            cur.execute(instruction, *args, **kwargs)
-            if commit:
-                self.con.commit()
-        finally:
-            if not threadsafe:
-                self._lock.release()
-        return cur.lastrowid
+        return DBStorage._ExecuteCommit(self, instruction, *args, **kwargs)
 
     def _ExecuteMany(self, instruction, *args, **kwargs):
-        commit = kwargs.pop("commit", True)
-        threadsafe = kwargs.pop("threadsafe", False)
         instruction = instruction.replace('?', '%s')
-        if not threadsafe:
-            self._lock.acquire()
-        try:
-            cur = self.con.cursor()
-            cur.executemany(instruction, *args, **kwargs)
-            if commit:
-                self.con.commit()
-        finally:
-            if not threadsafe:
-                self._lock.release()
+        return DBStorage._ExecuteMany(self, instruction, *args, **kwargs)
 
     def _FetchAll(self, instruction, *args, **kwargs):
         """
@@ -140,19 +114,8 @@ class MySQLStorage(DBStorage):
 
         Threadsafe
         """
-        self._lock.acquire()
-        try:
-            instruction = instruction.replace('?', '%s')
-            #if len(args):
-            #    args = args[0]
-            debug("%s args:%r kwargs:%r", instruction, args, kwargs)
-            cur = self.con.cursor()
-            cur.execute(instruction, *args, **kwargs)
-            res = cur.fetchall()
-            debug("Result %r", res)
-        finally:
-            self._lock.release()
-        return list(res)
+        instruction = instruction.replace('?', '%s')
+        return DBStorage._FetchAll(self, instruction, *args, **kwargs)
 
     def _FetchOne(self, instruction, *args, **kwargs):
         """
@@ -161,19 +124,8 @@ class MySQLStorage(DBStorage):
 
         Threadsafe
         """
-        self._lock.acquire()
-        try:
-            instruction = instruction.replace('?', '%s')
-            #if len(args):
-            #    args = args[0]
-            cur = self.con.cursor()
-            debug("%s args:%r kwargs:%r", instruction, args, kwargs)
-            cur.execute(instruction, *args, **kwargs)
-            res = cur.fetchone()
-            debug("Result %r", res)
-        finally:
-            self._lock.release()
-        return res
+        instruction = instruction.replace('?', '%s')
+        return DBStorage._FetchOne(self, instruction, *args, **kwargs)
 
     def _getDBScheme(self):
         return DB_SCHEME
