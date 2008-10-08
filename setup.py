@@ -127,6 +127,7 @@ scripts = [
     "bin/grouper.py",
     "bin/gst-media-test",
     "bin/insanity-gtk.py",
+    "bin/insanity-run",
     ]
 
 add_data_file("share/applications", "insanity-gtk.desktop")

@@ -1,0 +1,242 @@
+#!/usr/bin/env python
+# -*- mode: python; -*-
+#
+# Copyright (c) 2008 Nokia Corporation
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this program; if not, write to the
+# Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+# Boston, MA 02111-1307, USA.
+#
+# Authors: Rene Stadler <rene.stadler@nokia.com>
+#
+
+import sys
+import os
+import os.path
+import optparse
+
+import pygtk
+pygtk.require("2.0")
+del pygtk
+
+import gobject
+import gtk
+
+import insanity
+import insanity.utils
+
+from insanity.client import CommandLineTesterClient
+from insanity.scenario import Scenario
+from insanity.testrun import TestRun
+
+from insanity.storage.sqlite import SQLiteStorage
+from insanity.generators.filesystem import FileSystemGenerator, URIFileSystemGenerator
+from insanity.generators.playlist import PlaylistGenerator
+
+class Client(CommandLineTesterClient):
+
+    __software_name__ = "insanity-run"
+
+    def __init__(self, verbose=False, singlerun=True, *a, **kw):
+
+        CommandLineTesterClient.__init__(self, verbose=verbose, singlerun=singlerun, *a, **kw)
+
+class OptionParser(optparse.OptionParser):
+
+    def __init__(self):
+
+        optparse.OptionParser.__init__(self)
+
+        self.add_option("-s",
+                        "--storage",
+                        dest="storage",
+                        type="string",
+                        action="store",
+                        help="configure data storage (default: sqlite:testrun.db)",
+                        metavar="SPEC",
+                        default="sqlite:testrun.db")
+        self.add_option("-o",
+                        "--output",
+                        dest="output",
+                        type="string",
+                        action="store",
+                        help="output directory (default: current)",
+                        metavar="DIRECTORY",
+                        default=".")
+        self.add_option("-t",
+                        "--test",
+                        dest="test",
+                        type="string",
+                        help="test or scenario to run (pass help for list of tests)",
+                        metavar="TESTNAME",
+                        default=None)
+        self.add_option("-a",
+                        "--args",
+                        dest="args",
+                        type="string",
+                        action="store",
+                        help="set test arguments (pass help for list of arguments)",
+                        metavar="SPEC",
+                        default=None)
+
+    def parse_args(self, *a, **kw):
+
+        options, args = optparse.OptionParser.parse_args(self, *a, **kw)
+
+        options.storage = self.__parse_storage(options.storage)
+        options.args = self.__parse_args(options.args)
+
+        return (options, args,)
+
+    def __parse_storage(self, value):
+
+        if not value or value == "help" or not ":" in value:
+            return "help"
+
+        type_ = value.split(":")[0]
+        arg = value[len(type_)+1:]
+
+        return (type_, arg,)
+
+    def __parse_args(self, value):
+
+        if value is None:
+            return None
+
+        if value == "help":
+            return "help"
+
+        result = []
+        args = value.split(",")
+        for arg in args:
+            if not ":" in arg:
+                return "help"
+            arg_name = arg.split(":")[0]
+            rest = arg[len(arg_name)+1:]
+            if not ":" in rest:
+                gen_name = rest
+                gen_args = None
+            else:
+                gen_name = rest.split(":")[0]
+                gen_args = rest[len(gen_name)+1:]
+            result.append((arg_name, gen_name, gen_args,))
+
+        return result
+
+def storage_help():
+
+    print "Possible arguments for --storage (-s):"
+    # TODO: Just supporting sqlite for now:
+    print "  sqlite:<DATABASE-FILENAME>"
+
+def test_help():
+
+    print "Possible arguments for --test (-t):"
+    all_tests = list(insanity.utils.list_available_tests())
+    all_tests.extend(insanity.utils.list_available_scenarios())
+    for test_name, test_description, test_class in sorted(all_tests):
+        all_args = test_class.getFullArgumentList()
+        if not all_args:
+            arg_desc = "no arguments"
+        else:
+            arg_desc = ", ".join(sorted(all_args.keys()))
+        print "  %s (%s)" % (test_name, arg_desc,)
+
+        # This prints the full info, but the output is a bit messy then:
+        ## if all_args:
+        ##     for arg_name, arg_info in sorted(all_args.iteritems()):
+        ##         arg_doc, arg_default = arg_info[:2]
+        ##         if arg_default is not None:
+        ##             print "      %s: %s (default: %r)" % (arg_name, arg_doc, arg_default,)
+        ##         else:
+        ##             print "      %s: %s" % (arg_name, arg_doc,)
+        ## else:
+        ##     print "      (no arguments)"
+
+def args_help():
+
+    # FIXME: Hardcoded list!
+    print "Usage for --args (-a) option:"
+    print "  ARGNAME:GENERATOR[:GENERATOR-ARGUMENTS]"
+    print "Possible generators and arguments:"
+    print "  filesystem:PATH"
+    print "  urifilesystem:PATH"
+    print "  playlist:PATH"
+    print "Examples:"
+    print "  uri:urifilesystem:/testclips"
+    print "  uri:playlist:/home/user/playlist.txt"
+
+def main():
+
+    parser = OptionParser()
+    (options, args) = parser.parse_args(sys.argv[1:])
+
+    if options.storage == "help":
+        storage_help()
+        sys.exit(1)
+
+    if options.args == "help":
+        args_help()
+        sys.exit(1)
+
+    if options.test == "help":
+        test_help()
+        sys.exit(1)
+    elif options.test is None:
+        parser.print_help()
+        sys.exit(1)
+    else:
+        test_class = insanity.utils.get_test_class(options.test)
+
+    storage_name, storage_args = options.storage
+    if storage_name == "sqlite":
+        storage = SQLiteStorage(path=storage_args)
+    else:
+        # FIXME: Support other storage backends.
+        storage_help()
+        sys.exit(1)
+
+    test_arguments = {}
+    for arg_name, gen_name, gen_args in options.args or []:
+        # FIXME: Hardcoded list.
+        if gen_name == "filesystem":
+            gen_class = FileSystemGenerator
+        elif gen_name == "urifilesystem":
+            gen_class = URIFileSystemGenerator
+        elif gen_name == "playlist":
+            gen_class = PlaylistGenerator
+        else:
+            args_help()
+            sys.exit(1)
+        if gen_args:
+            # FIXME:
+            if gen_class == PlaylistGenerator:
+                gen = gen_class(location=gen_args)
+            else:
+                gen = gen_class(paths=[gen_args])
+        else:
+            gen = gen_class()
+
+        test_arguments[arg_name] = gen
+
+    test_run = TestRun(maxnbtests=1, workingdir=options.output)
+    test_run.addTest(test_class, test_arguments)
+    
+    client = Client()
+    client.setStorage(storage)
+    client.addTestRun(test_run)
+    client.run()
+
+if __name__ == "__main__":
+    main()
