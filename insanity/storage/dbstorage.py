@@ -1184,7 +1184,7 @@ class DBStorage(DataStorage, AsyncStorage):
 
         self.__rawInsertTestClassInfo(ctype, desc, fdesc, args, checklist,
                                       extrainfo, outputfiles, parent)
-        debug("done adding class info for %s [%d]", ctype, tcid)
+        debug("done adding class info for %s", ctype)
         return True
 
     def __hasTestClassInfo(self, testtype):
@@ -1198,7 +1198,7 @@ class DBStorage(DataStorage, AsyncStorage):
     def __storeTestClassInfo(self, testinstance):
         # check if we don't already have info for this class
         debug("test name: %s", testinstance.__test_name__)
-        if not self.__hasTestClassInfo(testinstance.__test_name__):
+        if self.__hasTestClassInfo(testinstance.__test_name__):
             return
         # we need an inverted mro (so we can know the parent class)
         for cl in testinstance.__class__.mro():
