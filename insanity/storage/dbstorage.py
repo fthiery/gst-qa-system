@@ -307,6 +307,34 @@ class DBStorage(DataStorage, AsyncStorage):
 
         return (desc, fulldesc, args, checks, extras, outputfiles)
 
+    def getMonitorClassInfoFull(self, monitortype, withparents=True):
+        searchstr = """SELECT id,parent,description
+        FROM monitorclassinfo WHERE type=?"""
+        res = self._FetchOne(searchstr, (monitortype, ))
+        if not res:
+            return (None, None, None, None, None, None)
+        tcid, parent, desc = res
+        args = self.__getDict("monitorclassinfo_arguments_dict", tcid, txtonly=True)
+        checks = self.__getDict("monitorclassinfo_checklist_dict", tcid, txtonly=True)
+        extras = self.__getDict("monitorclassinfo_extrainfo_dict", tcid, txtonly=True)
+        outputfiles = self.__getDict("monitorclassinfo_outputfiles_dict",
+                                    tcid, txtonly=True)
+        if withparents:
+            rp = parent
+            while rp:
+                ptcid, prp = self._FetchOne(searchstr, (rp, ))[:2]
+                args.update(self.__getDict("monitorclassinfo_arguments_dict",
+                                           ptcid, txtonly=True))
+                checks.update(self.__getDict("monitorclassinfo_checklist_dict",
+                                             ptcid, txtonly=True))
+                extras.update(self.__getDict("monitorclassinfo_extrainfo_dict",
+                                             ptcid, txtonly=True))
+                outputfiles.update(self.__getDict("monitorclassinfo_outputfiles_dict",
+                                                  ptcid, txtonly=True))
+                rp = prp
+
+        return (desc, args, checks, extras, outputfiles, parent)
+
     def getMonitorsIDForTest(self, testid):
         """
         Returns a list of monitorid for the given test
