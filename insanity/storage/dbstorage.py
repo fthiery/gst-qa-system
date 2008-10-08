@@ -211,7 +211,7 @@ class DBStorage(DataStorage, AsyncStorage):
         return res[0]
 
     def getEnvironmentForTestRun(self, testrunid):
-        debug("testrunid", testrunid)
+        debug("testrunid:%d", testrunid)
         return self.__getDict("testrun_environment_dict", testrunid)
 
     def getFailedTestsForTestRun(self, testrunid):
@@ -455,7 +455,7 @@ class DBStorage(DataStorage, AsyncStorage):
         """
         Executes the given script.
         """
-        self._ExecuteCommit(instructions, *args, **kwargs)
+        self._ExecuteCommit(instructions, commit=False, *args, **kwargs)
 
     def _ExecuteCommit(self, instruction, *args, **kwargs):
         """
@@ -495,6 +495,7 @@ class DBStorage(DataStorage, AsyncStorage):
         finally:
             self._lock.release()
         return res
+        return list(res)
 
     def _FetchOne(self, instruction, *args, **kwargs):
         """
