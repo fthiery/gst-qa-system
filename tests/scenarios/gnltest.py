@@ -59,6 +59,13 @@ class FullGnlFileSourceScenario(Scenario):
         if not 'total-uri-duration' in infos.keys():
             return False
 
+        checks = dict(test.getCheckList())
+        for item in ['duration-available', 'no-timeout', 'subprocess-exited-normally']:
+            if not item in checks.keys():
+                return False
+            if checks[item] == False:
+                return False
+
         uriduration = infos['total-uri-duration']
         if uriduration <= 0:
             return False
