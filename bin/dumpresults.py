@@ -110,7 +110,8 @@ def printTestRun(db, testrunid, failedonly=False, hidescenarios=False):
     cid, starttime, stoptime = db.getTestRun(testrunid)
     softname, clientname, clientuser = db.getClientInfoForTestRun(testrunid)
     environ = db.getEnvironmentForTestRun(testrunid)
-    tests = db.getTestsForTestRun(testrunid, not hidescenarios)
+    tests = db.getTestsForTestRun(testrunid, withscenarios=not hidescenarios,
+                                  failedonly=failedonly)
     print "TestRun #% 3d:" % testrunid
     print "Started:%s\nStopped:%s" % (time.ctime(starttime), time.ctime(stoptime))
     if environ:
