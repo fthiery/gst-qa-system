@@ -113,12 +113,15 @@ class DataStorage(object):
         """
         raise NotImplementedError
 
-    def getTestsForTestRun(self, testrunid, withscenarios=True):
+    def getTestsForTestRun(self, testrunid, withscenarios=True, failedonly=False):
         """
         Returns the list of testid for the given testrunid
 
         If withscenarios is True, scenarios will also be returned.
         If withscenarios is False, only non-scenario tests will be returned.
+
+        If failedonly is True, only failed tests and/or scenarios will be returned.
+        If failedonly is False, all tests and/or scenarios will be returned.
         """
         raise NotImplementedError
 

@@ -187,9 +187,11 @@ class DBStorage(DataStorage, AsyncStorage):
             return (None, None, None)
         return res[0]
 
-    def getTestsForTestRun(self, testrunid, withscenarios=True):
+    def getTestsForTestRun(self, testrunid, withscenarios=True, failedonly=False):
         debug("testrunid:%d", testrunid)
         liststr = "SELECT id FROM test WHERE testrunid=?"
+        if failedonly:
+            liststr += " AND resultpercentage <> 100.0"
         res = self._FetchAll(liststr, (testrunid, ))
         if not res:
             return []
@@ -197,7 +199,8 @@ class DBStorage(DataStorage, AsyncStorage):
         if not withscenarios:
             scenarios = self.getScenariosForTestRun(testrunid)
             for sc in scenarios.keys():
-                tmp.remove(sc)
+                if sc in tmp:
+                    tmp.remove(sc)
         return tmp
 
     def getScenariosForTestRun(self, testrunid):
@@ -549,6 +552,9 @@ class DBStorage(DataStorage, AsyncStorage):
 
         Threadsafe
         """
+        debug("instruction %s", instruction)
+        debug("args: %r", args)
+        debug("kwargs: %r", kwargs)
         self._lock.acquire()
         try:
             cur = self.con.cursor()
@@ -556,6 +562,7 @@ class DBStorage(DataStorage, AsyncStorage):
             res = cur.fetchone()
         finally:
             self._lock.release()
+        debug("returning %r", res)
         return res
 
     def _getTestTypeID(self, testtype):
@@ -847,6 +854,8 @@ class DBStorage(DataStorage, AsyncStorage):
         debug("updated")
 
     def __rawNewTestStarted(self, testrunid, testtype, commit=True):
+        debug("testrunid: %d, testtype: %r, commit: %r",
+              testrunid, testtype, commit)
         insertstr = "INSERT INTO test (testrunid, type) VALUES (?, ?)"
         return self._ExecuteCommit(insertstr,
                                    (testrunid, testtype),
