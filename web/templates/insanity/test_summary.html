@@ -26,7 +26,7 @@
 
       <tr>
 	<th class="side">Success rate</th>
-	<td>{{test.resultpercentage}}%</td>
+	<td>{{test.resultpercentage|floatformat:1}}%</td>
       </tr>
 
       {% if test.is_scenario %}
@@ -35,7 +35,7 @@
 	<th class="side">Subtests</th>
 	<td>
 	  {% for subtest in test.subtest.all %}
-	  Test <a href={{subtest.testid.get_absolute_url}}>#{{ subtest.testid.id }}</a> Success:{{subtest.testid.resultpercentage}}%<br/>
+	  Test <a href={{subtest.testid.get_absolute_url}}>#{{ subtest.testid.id }}</a> Success:{{subtest.testid.resultpercentage|floatformat:1}}%<br/>
 	  {% endfor %}
 	</td>
       </tr>

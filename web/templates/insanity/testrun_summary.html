@@ -6,7 +6,7 @@
 {% endif %}
 {% for test in testrun.test_set.all %}
   {% if not toplevel_only or not test.is_subtest %}
-  <li><a href={{ test.get_absolute_url }}>Test</a> #{{ test.id }} [{{ test.type.type }}] Success:{{test.resultpercentage}}%</li>
+  <li><a href={{ test.get_absolute_url }}>Test</a> #{{ test.id }} [{{ test.type.type }}] Success:{{test.resultpercentage|floatformat:1}}%</li>
   {% endif %}
 {% endfor %}
 </ul>

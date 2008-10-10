@@ -42,7 +42,7 @@
 	      <td>{{ arg.value.value }}</td>
 	      {% endif %}
 	      {% endfor %}
-	      <td class="{% if test.is_success %}result-OK{% else %}result-FAIL{% endif %}">{{test.resultpercentage}}%</td>
+	      <td class="{% if test.is_success %}result-OK{% else %}result-FAIL{% endif %}">{{test.resultpercentage|floatformat:1}}%</td>
 	      {% for item in test.results %}
 	      {% if item.skipped %}
 	      <td class="result-skipped">
