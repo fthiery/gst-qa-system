@@ -278,7 +278,7 @@ class DBStorage(DataStorage, AsyncStorage):
             return (None, None, None)
         return res
 
-    def getFullTestInfo(self, testid, rawinfo=False):
+    def getFullTestInfo(self, testid, rawinfo=False, onlyargs=False):
         """
         Returns a tuple with the following info:
         * the testrun id in which it was executed
@@ -298,18 +298,22 @@ class DBStorage(DataStorage, AsyncStorage):
         if testrunid == None:
             return (None, None, None, None, None, None, None)
         args = self.__getDict("test_arguments_dict", testid)
-        results = self.__getList("test_checklist_list", testid, intonly=True)
-        extras = self.__getDict("test_extrainfo_dict", testid)
-        ofs = self.__getDict("test_outputfiles_dict", testid, txtonly=True)
+        if onlyargs:
+            results, extras, ofs = [], [], {}
+        else:
+            results = self.__getList("test_checklist_list", testid, intonly=True)
+            extras = self.__getDict("test_extrainfo_dict", testid)
+            ofs = self.__getDict("test_outputfiles_dict", testid, txtonly=True)
         if not rawinfo:
             args = map_dict(args,
                             reverse_dict(self.__getTestClassArgumentMapping(ttype)))
-            results = map_list(results,
-                               reverse_dict(self.__getTestClassCheckListMapping(ttype)))
-            extras = map_dict(extras,
-                              reverse_dict(self.__getTestClassExtraInfoMapping(ttype)))
-            ofs = map_dict(ofs,
-                           reverse_dict(self.__getTestClassOutputFileMapping(ttype)))
+            if not onlyargs:
+                results = map_list(results,
+                                   reverse_dict(self.__getTestClassCheckListMapping(ttype)))
+                extras = map_dict(extras,
+                                  reverse_dict(self.__getTestClassExtraInfoMapping(ttype)))
+                ofs = map_dict(ofs,
+                               reverse_dict(self.__getTestClassOutputFileMapping(ttype)))
         return (testrunid, ttype, args, results, resperc, extras, ofs)
 
     def getTestClassInfoFull(self, testtype, withparents=True):
