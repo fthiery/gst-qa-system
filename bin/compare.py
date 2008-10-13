@@ -128,8 +128,8 @@ def compare(storage, testrun1, testrun2):
     imps = []
     for new, olds in newmapping.iteritems():
         old = olds[0]
-        tid1, x1, a1, res1, perc1, extra1, output1 = storage.getFullTestInfo(old)
-        tid2, x2, a2, res2, perc2, extra2, output2 = storage.getFullTestInfo(new)
+        tid1, a1, perc1 = storage.getTestInfo(old, rawinfo=True)
+        tid2, a2, perc2 = storage.getTestInfo(new, rawinfo=True)
         if perc1 == 100 and perc2 == 100:
             continue
         if perc1 < perc2:
