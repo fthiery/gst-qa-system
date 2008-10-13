@@ -1186,7 +1186,6 @@ class DBStorage(DataStorage, AsyncStorage):
 
         dc = []
         for row in res:
-            containerid, name = row[1:3]
             if intonly or txtonly:
                 val = row[3]
             elif blobonly:
@@ -1200,7 +1199,7 @@ class DBStorage(DataStorage, AsyncStorage):
                     val = str(tval)
                 else:
                     val = loads(str(bval))
-            dc.append((name, val))
+            dc.append((row[2], val))
         return dc
 
     def __storeTestArgumentsDict(self, testid, dic, testtype):
