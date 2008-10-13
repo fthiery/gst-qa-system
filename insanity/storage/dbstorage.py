@@ -262,6 +262,22 @@ class DBStorage(DataStorage, AsyncStorage):
             return []
         return list(zip(*res)[0])
 
+    def getTestInfo(self, testid, rawinfo=False):
+        if not rawinfo:
+            searchstr = """
+            SELECT test.testrunid,testclassinfo.type,test.resultpercentage
+            FROM test,testclassinfo
+            WHERE test.id=? AND test.type=testclassinfo.id"""
+        else:
+            searchstr = """
+            SELECT test.testrunid,test.type,test.resultpercentage
+            FROM test
+            WHERE test.id=?"""
+        res = self._FetchOne(searchstr, (testid, ))
+        if not res:
+            return (None, None, None)
+        return res
+
     def getFullTestInfo(self, testid, rawinfo=False):
         """
         Returns a tuple with the following info:
@@ -278,20 +294,9 @@ class DBStorage(DataStorage, AsyncStorage):
         * arguments, results, extra information, output files
         Also, the testtype will be the testclass ID (and not a string)
         """
-        if not rawinfo:
-            searchstr = """
-            SELECT test.testrunid,testclassinfo.type,test.resultpercentage
-            FROM test,testclassinfo
-            WHERE test.id=? AND test.type=testclassinfo.id"""
-        else:
-            searchstr = """
-            SELECT test.testrunid,test.type,test.resultpercentage
-            FROM test
-            WHERE test.id=?"""
-        res = self._FetchOne(searchstr, (testid, ))
-        if not res:
+        testrunid, ttype, resperc = self.getTestInfo(testid, rawinfo)
+        if testrunid == None:
             return (None, None, None, None, None, None, None)
-        testrunid, ttype, resperc = res
         args = self.__getDict("test_arguments_dict", testid)
         results = self.__getList("test_checklist_list", testid, intonly=True)
         extras = self.__getDict("test_extrainfo_dict", testid)
