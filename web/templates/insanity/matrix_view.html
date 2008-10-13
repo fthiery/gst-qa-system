@@ -1,13 +1,12 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-	  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
-  <head>
-    <link rel="stylesheet" href="/site_media/style.css" rel="stylesheet" />
-    <title>Matrix View of Testrun #{{testrun.id}}</title>
-  </head>
+{% extends "insanity/base.html" %}
+{% load insanity_extra %}
 
-  {% load insanity_extra %}
-  <body>
+{% block title %}
+Matrix View of Testrun #{{testrun.id}}
+{% endblock %}
+
+{% block content %}
+
     <!-- We're supposing we only have one test type and we ignore scenarios -->
     <table width="98%">
       <tr>
@@ -66,5 +65,5 @@
       </tr>
       {% endfor %}
     </table>
-  </body>
-</html>
+
+{% endblock %}
