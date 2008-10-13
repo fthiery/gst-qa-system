@@ -1,4 +1,36 @@
 
+body {
+    margin: 0;
+    padding: 0;
+}
+
+div.header {
+    margin: 0em 0em 2em 0em;
+    padding: 1em;
+
+    color: white;
+    background-color: blue;
+}
+
+div.header h1 {
+    margin: 0;
+    padding: 0;
+}
+
+div.header a {
+    color: inherit;
+    text-decoration: none;
+}
+
+div.header a:hover {
+    text-decoration: underline;
+}
+
+div.content {
+    margin: 1em;
+    padding: 0;
+}
+
 table {
     border-collapse: collapse;
 }
