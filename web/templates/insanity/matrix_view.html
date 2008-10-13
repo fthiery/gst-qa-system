@@ -8,6 +8,35 @@ Matrix View of Testrun #{{testrun.id}}
 {% block content %}
 
     <h2>Results for Testrun #{{testrun.id}}</h2>
+    <table class="testrun-info">
+      <tr>
+        <th>Date</th>
+        <th>Time</th>
+        <th>Client</th>
+      </tr>
+      <tr>
+        <td>
+          <!-- YYYY-mm-dd, (weekday, week nn) -->
+          {{testrun.starttime|date:"Y-m-d"}}
+          ({{testrun.starttime|date:"l"}}, week {{ testrun.starttime|date:"W"}})
+        </td>
+
+        <td>
+          {{ testrun.starttime|time:"H:i:s" }}
+          {% if testrun.stoptime %}
+          to {{ testrun.stoptime|time:"H:i:s" }}
+          ({{ testrun.starttime|timesince:testrun.stoptime}})
+          {% endif %}
+        </td>
+
+        <td>
+          {{ testrun.clientid.software }} /
+          {{ testrun.clientid.name }} /
+          {{ testrun.clientid.user }}
+        </td>
+      </tr>
+    </table>
+
     <!-- We're supposing we only have one test type and we ignore scenarios -->
     Total results : {{ totalnb }}
     {% matrix_navigation %}
