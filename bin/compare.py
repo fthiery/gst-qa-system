@@ -107,9 +107,10 @@ def compare(storage, testrun1, testrun2):
     newtests = []
 
     for newid in tests2:
-        tid, ttype, args, results, resperc, extras, outputfiles = storage.getFullTestInfo(newid, rawinfo=True)
-        monitors = storage.getMonitorsIDForTest(newid)
-        ancestors = storage.findTestsByArgument(ttype, args, testrun1, monitors)
+        tid, ttype, args, results, resperc, extras, outputfiles = storage.getFullTestInfo(newid,
+                                                                                          rawinfo=True,
+                                                                                          onlyargs=True)
+        ancestors = storage.findTestsByArgument(ttype, args, testrun1, previd=newid)
         if ancestors == []:
             newtests.append(newid)
         else:
