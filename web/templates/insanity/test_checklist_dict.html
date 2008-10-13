@@ -1,5 +1,9 @@
 <table width="100%" class="inside">
-  <tr><th/><th/><th>Description</th></tr>
+  <tr>
+    <th></th>
+    <th></th>
+    <th>Description</th>
+  </tr>
   {% for result in results %}
   <tr class="{% cycle row1,row2 %}">
     <th class="side">{{result.type.name}}</th>
