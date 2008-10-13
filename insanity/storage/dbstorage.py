@@ -542,7 +542,6 @@ class DBStorage(DataStorage, AsyncStorage):
         finally:
             self._lock.release()
         debug("returning %r", res)
-        return res
         return list(res)
 
     def _FetchOne(self, instruction, *args, **kwargs):
