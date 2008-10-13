@@ -294,32 +294,32 @@ CREATE TABLE monitorclassinfo_outputfiles_dict (
    txtvalue TEXT
 );
 
-CREATE INDEX test_testrunid_idx ON test(testrunid);
+CREATE INDEX test_testrunid_idx ON test(testrunid, resultpercentage);
 CREATE INDEX subtests_scenarioid_idx ON subtests(scenarioid);
 CREATE INDEX monitor_testid_idx ON monitor(testid);
 CREATE INDEX testclassinfo_parent_idx ON testclassinfo (parent);
 CREATE INDEX monitorclassinfo_parent_idx ON monitorclassinfo (parent);
 CREATE INDEX testrun_env_dict_container_idx ON testrun_environment_dict (containerid);
 
-CREATE INDEX t_a_dict_containerid_idx ON test_arguments_dict (containerid);
-CREATE INDEX t_c_list_containerid_idx ON test_checklist_list (containerid);
-CREATE INDEX t_ei_dict_containerid_idx ON test_extrainfo_dict (containerid);
-CREATE INDEX t_of_dict_containerid_idx ON test_outputfiles_dict (containerid);
+CREATE INDEX t_a_dict_containerid_idx ON test_arguments_dict (containerid, name);
+CREATE INDEX t_c_list_containerid_idx ON test_checklist_list (containerid, name);
+CREATE INDEX t_ei_dict_containerid_idx ON test_extrainfo_dict (containerid, name);
+CREATE INDEX t_of_dict_containerid_idx ON test_outputfiles_dict (containerid, name);
 
-CREATE INDEX m_a_dict_containerid_idx ON monitor_arguments_dict (containerid);
-CREATE INDEX m_c_dict_containerid_idx ON monitor_checklist_dict (containerid);
-CREATE INDEX m_ei_dict_containerid_idx ON monitor_extrainfo_dict (containerid);
-CREATE INDEX m_of_dict_containerid_idx ON monitor_outputfiles_dict (containerid);
+CREATE INDEX m_a_dict_containerid_idx ON monitor_arguments_dict (containerid, name);
+CREATE INDEX m_c_dict_containerid_idx ON monitor_checklist_dict (containerid, name);
+CREATE INDEX m_ei_dict_containerid_idx ON monitor_extrainfo_dict (containerid, name);
+CREATE INDEX m_of_dict_containerid_idx ON monitor_outputfiles_dict (containerid, name);
 
-CREATE INDEX tc_a_dict_c_idx ON testclassinfo_arguments_dict (containerid);
-CREATE INDEX tc_c_dict_c_idx ON testclassinfo_checklist_dict (containerid);
-CREATE INDEX tc_ei_dict_c_idx ON testclassinfo_extrainfo_dict (containerid);
-CREATE INDEX tc_of_dict_c_idx ON testclassinfo_outputfiles_dict (containerid);
+CREATE INDEX tc_a_dict_c_idx ON testclassinfo_arguments_dict (containerid, name);
+CREATE INDEX tc_c_dict_c_idx ON testclassinfo_checklist_dict (containerid, name);
+CREATE INDEX tc_ei_dict_c_idx ON testclassinfo_extrainfo_dict (containerid, name);
+CREATE INDEX tc_of_dict_c_idx ON testclassinfo_outputfiles_dict (containerid, name);
 
-CREATE INDEX mc_a_dict_c_idx ON monitorclassinfo_arguments_dict (containerid);
-CREATE INDEX mc_c_dict_c_idx ON monitorclassinfo_checklist_dict (containerid);
-CREATE INDEX mc_ei_dict_c_idx ON monitorclassinfo_extrainfo_dict (containerid);
-CREATE INDEX mc_of_dict_c_idx ON monitorclassinfo_outputfiles_dict (containerid);
+CREATE INDEX mc_a_dict_c_idx ON monitorclassinfo_arguments_dict (containerid, name);
+CREATE INDEX mc_c_dict_c_idx ON monitorclassinfo_checklist_dict (containerid, name);
+CREATE INDEX mc_ei_dict_c_idx ON monitorclassinfo_extrainfo_dict (containerid, name);
+CREATE INDEX mc_of_dict_c_idx ON monitorclassinfo_outputfiles_dict (containerid, name);
 
 CREATE INDEX test_type_idx ON test (type);
 """
