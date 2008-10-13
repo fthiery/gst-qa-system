@@ -199,15 +199,12 @@ class DBStorage(DataStorage, AsyncStorage):
         liststr = "SELECT id FROM test WHERE testrunid=?"
         if failedonly:
             liststr += " AND resultpercentage <> 100.0"
+        if withscenarios == False:
+            liststr += " AND NOT id in (SELECT scenarioid FROM subtests)"
         res = self._FetchAll(liststr, (testrunid, ))
         if not res:
             return []
         tmp = list(zip(*res)[0])
-        if not withscenarios:
-            scenarios = self.getScenariosForTestRun(testrunid)
-            for sc in scenarios.keys():
-                if sc in tmp:
-                    tmp.remove(sc)
         return tmp
 
     def getScenariosForTestRun(self, testrunid):
