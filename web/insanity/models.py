@@ -1,10 +1,22 @@
 import time
 import string
+import datetime
 import os.path
 from cPickle import dumps, loads
 from django.db import models
 from django.db.models import permalink
 from django.db import connection
+
+class DateTimeIntegerField(models.DateTimeField):
+
+    """Like DateTimeField, but reads the value from an integer UNIX timestamp."""
+
+    __metaclass__ = models.SubfieldBase
+
+    def to_python(self, value):
+        if isinstance(value, int) or isinstance(value, long):
+            value = datetime.datetime.fromtimestamp(value)
+        return models.DateTimeField.to_python(self, value)
 
 class CustomSQLInterface:
 
@@ -209,8 +221,8 @@ class TestClassInfoOutputFilesDict(models.Model):
 class TestRun(models.Model, CustomSQLInterface):
     id = models.IntegerField(null=True, primary_key=True, blank=True)
     clientid = models.ForeignKey(Client, db_column="clientid")
-    starttime = models.IntegerField(null=True, blank=True)
-    stoptime = models.IntegerField(null=True, blank=True)
+    starttime = DateTimeIntegerField(null=True, blank=True)
+    stoptime = DateTimeIntegerField(null=True, blank=True)
     class Meta:
         db_table = 'testrun'
 
@@ -288,7 +300,7 @@ class TestRun(models.Model, CustomSQLInterface):
         return newmapping
 
     def __str__(self):
-        return "Testrun #%d [%s]" % (self.id, time.ctime(self.starttime))
+        return "Testrun #%d [%s]" % (self.id, self.starttime)
 
 class Test(models.Model):
     id = models.IntegerField(null=True, primary_key=True, blank=True)
