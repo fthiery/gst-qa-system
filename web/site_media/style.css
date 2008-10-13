@@ -53,6 +53,9 @@ th.side {
     #border-bottom: 1px solid black;
     #border-left-width: 0px;
 }
+td.numeric {
+    text-align: right;
+}
 td.result-FAIL {
     background: #FF0000;
 }

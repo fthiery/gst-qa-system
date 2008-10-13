@@ -9,18 +9,18 @@ Insanity QA system (latest {{nbruns}} runs)
     {% if latest_runs %}
     <table>
       <tr>
-	<th class="side"/>
+	<th class="side"></th>
 	<th>Test(s)</th>
-	<th colspan=4>Views</th>
+	<th colspan="4">Views</th>
       </tr>
       {% for run in latest_runs.reverse %}
       <tr>
 	<th class="side">TestRun #{{ run.id }}</th>
-	<td align=right>{{ run.test_set.count }}</td>
-	<td><a href={{run.get_matrix_view_url}}?showscenario=0>Tests only</a></td>
-	<td><a href={{run.get_matrix_view_url}}?onlyfailed=1&showscenario=0>Failed Tests</a></td>
-	<td><a href={{run.get_matrix_view_url}}>Tests+Scenarios</a></td>
-	<td><a href={{run.get_matrix_view_url}}?onlyfailed=1>Failed Tests+Scenarios</a></td>
+	<td class="numeric">{{ run.test_set.count }}</td>
+	<td><a href="{{run.get_matrix_view_url}}?showscenario=0">Tests only</a></td>
+	<td><a href="{{run.get_matrix_view_url}}?onlyfailed=1&showscenario=0">Failed Tests</a></td>
+	<td><a href="{{run.get_matrix_view_url}}">Tests+Scenarios</a></td>
+	<td><a href="{{run.get_matrix_view_url}}?onlyfailed=1">Failed Tests+Scenarios</a></td>
       </tr>
       {% endfor %}
     </table>
