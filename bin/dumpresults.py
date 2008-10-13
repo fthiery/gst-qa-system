@@ -44,10 +44,8 @@ def printTestRunInfo(db, testrunid, verbose=False):
                                                                            clientname,
                                                                            clientuser)
 
-def printTestInfo(db, testid, failedonly=False):
+def printTestInfo(db, testid):
     trid, ttype, args, checks, resperc, extras, outputfiles = db.getFullTestInfo(testid)
-    if failedonly and resperc == 100.0:
-        return
     if resperc == None:
         # test didn't end in the database
         return
@@ -118,7 +116,7 @@ def printTestRun(db, testrunid, failedonly=False, hidescenarios=False):
         printEnvironment(environ)
     print "Number of tests:", len(tests)
     for testid in tests:
-        printTestInfo(db, testid, failedonly)
+        printTestInfo(db, testid)
 
 if __name__ == "__main__":
     usage = "usage: %prog database [options]"
