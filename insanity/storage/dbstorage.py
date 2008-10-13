@@ -384,7 +384,52 @@ class DBStorage(DataStorage, AsyncStorage):
             return []
         return list(zip(*res)[0])
 
-    def getFullMonitorInfo(self, monitorid):
+    def getMonitorInfo(self, monitorid, rawinfo=False):
+        """
+        Returns a tuple with the following info:
+        * the ID of the test on which the monitor was applied
+        * the type of the monitor
+        * the result percentage
+
+        If rawinfo is True, the ID of the monitortype will be returned instead
+        of the name of the monitortype.
+        """
+        if rawinfo == False:
+            searchstr = """
+            SELECT monitor.testid,monitorclassinfo.type,monitor.resultpercentage
+            FROM monitor,monitorclassinfo
+            WHERE monitor.id=? AND monitorclassinfo.id=monitor.type"""
+        else:
+            searchstr = """
+            SELECT monitor.testid,monitor.type,monitor.resultpercentage
+            FROM monitor
+            WHERE monitor.id=?"""
+        res = self._FetchOne(searchstr, (monitorid, ))
+        if not res:
+            return (None, None, None)
+        return res
+
+    def __getExtendedMonitorInfo(self, monitorid, mtype=None, rawinfo=False):
+        args = self.__getDict("monitor_arguments_dict", monitorid)
+        results = self.__getDict("monitor_checklist_dict",
+                                 monitorid, intonly=True)
+        extras = self.__getDict("monitor_extrainfo_dict", monitorid)
+        outputfiles = self.__getDict("monitor_outputfiles_dict",
+                                     monitorid, txtonly=True)
+        if rawinfo == False:
+            if mtype == None:
+                raise Exception("The monitortype must be specified when using rawinfo=False")
+            args = map_dict(args,
+                            reverse_dict(self.__getMonitorClassArgumentMapping(mtype)))
+            results = map_dict(results,
+                               reverse_dict(self.__getMonitorClassCheckListMapping(mtype)))
+            extras = map_dict(extras,
+                              reverse_dict(self.__getMonitorClassExtraInfoMapping(mtype)))
+            outputfiles = map_dict(outputfiles,
+                                   reverse_dict(self.__getMonitorClassOutputFileMapping(mtype)))
+        return (args, results, extras, outputfiles)
+
+    def getFullMonitorInfo(self, monitorid, rawinfo=False):
         """
         Returns a tuple with the following info:
         * the ID of the test on which this monitor was applied
@@ -395,36 +440,31 @@ class DBStorage(DataStorage, AsyncStorage):
         * the extra information (dictionnary)
         * the output files (dictionnary)
         """
-        res = self.getMonitorInfo(monitorid)
+        res = self.getMonitorInfo(monitorid, rawinfo)
         if res == (None, None, None):
             return (None, None, None, None, None, None, None)
         testid, mtype, resperc = res
-        args = map_dict(self.__getDict("monitor_arguments_dict", monitorid),
-                        reverse_dict(self.__getMonitorClassArgumentMapping(mtype)))
-        results = map_dict(self.__getDict("monitor_checklist_dict",
-                                         monitorid, intonly=True),
-                           reverse_dict(self.__getMonitorClassCheckListMapping(mtype)))
-        extras = map_dict(self.__getDict("monitor_extrainfo_dict", monitorid),
-                          reverse_dict(self.__getMonitorClassExtraInfoMapping(mtype)))
-        outputfiles = map_dict(self.__getDict("monitor_outputfiles_dict",
-                                             monitorid, txtonly=True),
-                               reverse_dict(self.__getMonitorClassOutputFileMapping(mtype)))
+        args, results, extras, outputfiles = self.__getExtendedMonitorInfo(monitorid, mtype, rawinfo)
         return (testid, mtype, args, results, resperc, extras, outputfiles)
 
-    def getMonitorInfo(self, monitorid):
-        """
-        Returns a tuple with the following info:
-        * the ID of the test on which the monitor was applied
-        * the type of the monitor
-        * the result percentage
-        """
-        searchstr = """
-        SELECT monitor.testid,monitorclassinfo.type,monitor.resultpercentage
-        FROM monitor,monitorclassinfo
-        WHERE monitor.id=? AND monitorclassinfo.id=monitor.type"""
-        res = self._FetchOne(searchstr, (monitorid, ))
-        if not res:
-            return (None, None, None)
+    def getFullMonitorsInfoForTest(self, testid, rawinfo=False):
+        if rawinfo == False:
+            searchstr = """
+            SELECT monitor.id,monitorclassinfo.type,monitor.resultpercentage
+            FROM monitor,monitorclassinfo
+            WHERE monitor.testid=? AND monitorclassinfo.id=monitor.type"""
+        else:
+            searchstr = """
+            SELECT monitor.id,monitor.type,monitor.resultpercentage
+            FROM monitor
+            WHERE monitor.testid=?"""
+        res1 = self._FetchAll(searchstr, (testid, ))
+        if not res1:
+            return []
+        res = []
+        for mid,mtype,mperc in res1:
+            args, results, extras, outputfiles = self.__getExtendedMonitorInfo(mid, mtype, rawinfo)
+            res.append((mid, mtype, mperc, args, results, extras, outputfiles))
         return res
 
     def findTestsByArgument(self, testtype, arguments, testrunid=None, monitorids=None):
