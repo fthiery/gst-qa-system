@@ -178,13 +178,20 @@ class DBStorage(DataStorage, AsyncStorage):
         liststr = """
         SELECT clientid,starttime,stoptime
         FROM testrun WHERE id=?"""
-        res = self._FetchAll(liststr, (testrunid, ))
+        res = self._FetchOne(liststr, (testrunid, ))
         if len(res) == 0:
             debug("Testrun not available in DB")
             return (None, None, None)
-        if len(res) > 1:
-            warning("More than one testrun with the same id ! Fix DB !!")
-            return (None, None, None)
+        return res
+
+    def getNbTestsForTestrun(self, testrunid, withscenarios=True, failedonly=False):
+        debug("testrunid:%d", testrunid)
+        liststr = "SELECT COUNT(*) FROM test WHERE testrunid=?"
+        if failedonly:
+            liststr += " AND resultpercentage <> 100.0"
+        res = self._FetchOne(liststr, (testrunid, ))
+        if not res:
+            return 0
         return res[0]
 
     def getTestsForTestRun(self, testrunid, withscenarios=True, failedonly=False):
@@ -229,8 +236,8 @@ class DBStorage(DataStorage, AsyncStorage):
         SELECT client.software,client.name,client.user
         FROM client,testrun
         WHERE client.id=testrun.clientid AND testrun.id=?"""
-        res = self._FetchAll(liststr, (testrunid,))
-        return res[0]
+        res = self._FetchOne(liststr, (testrunid,))
+        return res
 
     def getEnvironmentForTestRun(self, testrunid):
         debug("testrunid:%d", testrunid)

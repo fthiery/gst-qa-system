@@ -34,12 +34,12 @@ def printTestRunInfo(db, testrunid, verbose=False):
     # id , date, nbtests, client
     cid, starttime, stoptime = db.getTestRun(testrunid)
     softname, clientname, clientuser = db.getClientInfoForTestRun(testrunid)
-    tests = db.getTestsForTestRun(testrunid)
-    failed = db.getFailedTestsForTestRun(testrunid)
+    nbtests = db.getNbTestsForTestrun(testrunid)
+    nbfailed = db.getNbTestsForTestrun(testrunid, failedonly=True)
     print "[% 3d]\tDate:%s\tNbTests:% 5d\tFailed:% 5d\tClient: %s/%s/%s" % (testrunid,
                                                                            time.ctime(starttime),
-                                                                           len(tests),
-                                                                           len(failed),
+                                                                           nbtests,
+                                                                           nbfailed,
                                                                            softname,
                                                                            clientname,
                                                                            clientuser)
