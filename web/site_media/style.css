@@ -21,20 +21,11 @@ th.side {
     #border-bottom: 1px solid black;
     #border-left-width: 0px;
 }
-td.result-ERROR {
-    background: #FF0000;
-}
 td.result-FAIL {
     background: #FF0000;
 }
 td.result-skipped {
     background: #FFF650;
-}
-td.result-excluded * {
-    color: #00FF00;
-}
-td.result-excluded {
-    background: #00FF00;
 }
 td.result-OK {
     background: #00FF00;
