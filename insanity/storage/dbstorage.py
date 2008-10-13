@@ -471,9 +471,9 @@ class DBStorage(DataStorage, AsyncStorage):
             res.append((mid, mtype, mperc, args, results, extras, outputfiles))
         return res
 
-    def findTestsByArgument(self, testtype, arguments, testrunid=None, monitorids=None):
+    def findTestsByArgument(self, testtype, arguments, testrunid=None, monitorids=None, previd=None):
         searchstr = """
-        SELECT test.id
+        SELECT DISTINCT test.id
         FROM test, test_arguments_dict
         WHERE test.id=test_arguments_dict.containerid """
         searchargs = []
@@ -510,20 +510,19 @@ class DBStorage(DataStorage, AsyncStorage):
             res = []
             if tmpres == []:
                 break
-            tmp2 = list(zip(*tmpres)[0])
-            # transform this into a unique list
-            for i in tmp2:
-                if not i in res:
-                    res.append(i)
+            res = [x[0] for x in tmpres]
 
         # finally... make sure that for the monitors that both test
         # share, they have the same arguments
-        if not monitorids == None:
+        if res != [] and (previd != None or monitorids != None):
             tmp = []
-            monitors = [self.getFullMonitorInfo(x) for x in monitorids]
+            if previd and not monitorids:
+                monitors = self.getFullMonitorsInfoForTest(previd, rawinfo=True)
+            else:
+                monitors = [self.getFullMonitorInfo(x) for x in monitorids]
             for pid in res:
                 similar = True
-                pm = [self.getFullMonitorInfo(x) for x in self.getMonitorsIDForTest(pid)]
+                pm = self.getFullMonitorsInfoForTest(pid, rawinfo=True)
 
                 samemons = []
                 # for each candidate monitors
