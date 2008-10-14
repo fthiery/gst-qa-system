@@ -1,4 +1,12 @@
 
+a {
+    color: #204a87;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
 body {
     margin: 0;
     padding: 0;
@@ -9,7 +17,7 @@ div.header {
     padding: 1em;
 
     color: white;
-    background-color: blue;
+    background-color: #3465a4;
 }
 
 div.header h1 {
@@ -45,7 +53,7 @@ table {
 td {
     font-size: 90%%;
     line-height: 1.15em;
-    border: 1px solid black;
+    border: 1px solid #888a85;
 }
 th {
     font-size: 90%%;
@@ -65,13 +73,13 @@ td.numeric {
     text-align: right;
 }
 td.result-FAIL {
-    background: #FF0000;
+    background: #ff2020;
 }
 td.result-skipped {
     background: #FFF650;
 }
 td.result-OK {
-    background: #00FF00;
+    background: #20ff20;
 }
 td.arg-default {
     background: #DDDDDD;
