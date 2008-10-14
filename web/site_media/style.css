@@ -31,6 +31,14 @@ div.content {
     padding: 0;
 }
 
+table.testruns {
+    margin: 1em 1em;
+}
+
+td {
+    padding: .1em .2em;
+}
+
 table {
     border-collapse: collapse;
 }
