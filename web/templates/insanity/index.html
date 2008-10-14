@@ -15,7 +15,7 @@ Insanity QA system (latest {{nbruns}} runs)
 	<th colspan="6">Views</th>
       </tr>
       {% for run in latest_runs %}
-      <tr>
+	<tr class="{% cycle row1,row2 %}">
 	<th class="side">TestRun #{{ run.id }}</th>
         <td>{{ run.starttime|date:"Y-m-d H:i:s" }}</td>
 	<td class="numeric">{{ run.nbtests }}</td>
