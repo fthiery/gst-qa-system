@@ -28,9 +28,6 @@ import threading
 from cPickle import dumps, loads
 from weakref import WeakKeyDictionary
 from insanity.log import error, warning, debug
-from insanity.scenario import Scenario
-from insanity.test import Test
-from insanity.monitor import Monitor
 from insanity.utils import reverse_dict, map_dict, map_list
 from insanity.storage.storage import DataStorage
 from insanity.storage.async import AsyncStorage, queuemethod
@@ -985,6 +982,7 @@ class DBStorage(DataStorage, AsyncStorage):
                                    commit=commit)
 
     def __newTestStarted(self, testrun, test, commit=True):
+        from insanity.test import Test
         if not isinstance(test, Test):
             raise TypeError("test isn't a Test instance !")
         if not testrun in self.__testruns.keys():
@@ -1042,6 +1040,7 @@ class DBStorage(DataStorage, AsyncStorage):
         tid = self.__tests[test]
         debug("test:%r:%d", test, tid)
 
+        from insanity.scenario import Scenario
         # if it's a scenario, fill up the subtests
         if isinstance(test, Scenario):
             debug("test is a scenario, adding subtests")
@@ -1308,6 +1307,7 @@ class DBStorage(DataStorage, AsyncStorage):
         checklist = tclass.__dict__.get("__test_checklist__")
         extrainfo = tclass.__dict__.get("__test_extra_infos__")
         outputfiles = tclass.__dict__.get("__test_output_files__")
+        from insanity.test import Test
         if tclass == Test:
             parent = None
         else:
@@ -1327,6 +1327,7 @@ class DBStorage(DataStorage, AsyncStorage):
         return False
 
     def __storeTestClassInfo(self, testinstance):
+        from insanity.test import Test
         # check if we don't already have info for this class
         debug("test name: %s", testinstance.__test_name__)
         if self.__hasTestClassInfo(testinstance.__test_name__):
@@ -1362,6 +1363,7 @@ class DBStorage(DataStorage, AsyncStorage):
         self.__storeMonitorClassOutputFileDict(tcid, outputfiles)
 
     def __insertMonitorClassInfo(self, tclass):
+        from insanity.monitor import Monitor
         ctype = tclass.__dict__.get("__monitor_name__").strip()
         if self.__hasMonitorClassInfo(ctype):
             return False
@@ -1380,6 +1382,7 @@ class DBStorage(DataStorage, AsyncStorage):
         return True
 
     def __storeMonitorClassInfo(self, monitorinstance):
+        from insanity.monitor import Monitor
         # check if we don't already have info for this class
         if self.__hasMonitorClassInfo(monitorinstance.__monitor_name__):
             return
