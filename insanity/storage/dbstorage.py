@@ -745,7 +745,7 @@ class DBStorage(DataStorage, AsyncStorage):
         CREATE INDEX test_type_idx ON test (type);
         """
         # Add usedtests_testrun table and index
-        self.con.executescript(create1to2)
+        self._ExecuteScript(create1to2)
         self.con.commit()
 
     def __merge(self, otherdb, testruns=None):
