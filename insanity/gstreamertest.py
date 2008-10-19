@@ -73,6 +73,8 @@ class GStreamerTestBase(PythonDBusTest):
         self._errors = []
         self._tags = {}
         self._elements = []
+        self._reachedInitialState = False
+        self._waitcb = None
         PythonDBusTest.__init__(self, env=env, *args, **kwargs)
 
     def setUp(self):
@@ -113,6 +115,9 @@ class GStreamerTestBase(PythonDBusTest):
             return False
         gst.log("Tearing Down")
         # unref pipeline and so forth
+        if self._waitcb:
+            gobject.source_remove(self._waitcb)
+            self._waitcb = None
         if self.pipeline:
             self.pipeline.set_state(gst.STATE_NULL)
         self.validateStep("no-errors-seen", self._errors == [])
@@ -172,17 +177,28 @@ class GStreamerTestBase(PythonDBusTest):
             self._gotTags(message.parse_tag())
         elif message.src == self.pipeline:
             if message.type == gst.MESSAGE_EOS:
+                # it's not 100% sure we want to stop here, because of the
+                # race between the final state-change message and the eos message
+                # arriving on the bus.
                 debug("Saw EOS, stopping")
-                self.stop()
+                if self._reachedInitialState:
+                    self.stop()
+                else:
+                    self._waitcb = gobject.timeout_add(1000, self._waitForInitialState)
             elif message.type == gst.MESSAGE_STATE_CHANGED:
                 prev, cur, pending = message.parse_state_changed()
                 if cur == self.__pipeline_initial_state__ and pending == gst.STATE_VOID_PENDING:
                     gst.log("Reached initial state")
                     self.validateStep("reached-initial-state")
+                    self._reachedInitialState = True
                     if self.pipelineReachedInitialState():
                         debug("Stopping test because we reached initial state")
                         gst.log("Stopping test because we reached initial state")
                         self.stop()
+
+    def _waitForInitialState(self):
+        debug("We were waiting for the initial state... in vain")
+        self.stop()
 
     def _gotTags(self, tags):
         for key in tags.keys():
