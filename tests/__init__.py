@@ -23,5 +23,3 @@
 Collection of tests
 """
 
-__all__ = ["gnltest", "ismedia", "playbin", "typefind", "encoder"]
-__all__ += ["simple_encoder"]

@@ -23,5 +23,3 @@
 Collection of standard scenarios
 """
 
-__all__ = ['mediascenario', "gstmediatest", "gnltest"]
-__all__ += ["simple_encoder"]
