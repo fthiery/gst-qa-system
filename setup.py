@@ -122,18 +122,18 @@ packages = [
     ]
 
 scripts = [
-    "bin/compare.py",
-    "bin/dumpresults.py",
-    "bin/grouper.py",
     "bin/gst-media-test",
-    "bin/insanity-gtk.py",
+    "bin/insanity-compare",
+    "bin/insanity-dumpresults",
+    "bin/insanity-grouper",
+    "bin/insanity-gtk",
     "bin/insanity-run",
     ]
 
 add_data_file("share/applications", "insanity-gtk.desktop")
 add_data_file("share/insanity", "bin/gdb.instructions")
 add_data_file("share/insanity", "bin/gst.supp")
-add_data_file("share/insanity/libexec", "bin/insanity-pythondbusrunner.py")
+add_data_file("share/insanity/libexec", "bin/insanity-pythondbusrunner")
 
 setup (cmdclass = cmdclass,
        packages = packages,

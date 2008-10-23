@@ -1120,9 +1120,9 @@ class PythonDBusTest(DBusTest):
         # locate the python dbus runner
         # HACK : take top-level-dir/bin/pythondbusrunner.py
         rootdir = os.path.split(os.path.dirname(os.path.abspath(__file__)))[0]
-        path = os.path.join(rootdir, "bin", "insanity-pythondbusrunner.py")
+        path = os.path.join(rootdir, "bin", "insanity-pythondbusrunner")
         if not os.path.isfile(path):
-            path = "/usr/share/insanity/libexec/insanity-pythondbusrunner.py"
+            path = "/usr/share/insanity/libexec/insanity-pythondbusrunner"
         return [sys.executable, path, self.uuid]
 
     def __excepthook(self, exc_type, exc_value, exc_traceback):
