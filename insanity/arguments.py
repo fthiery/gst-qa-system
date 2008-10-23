@@ -51,6 +51,14 @@ class Arguments(object):
         for key, value in self.args.iteritems():
             info("key:%s, type:%r" % (key, value))
             if isinstance(value, Generator):
+                try:
+                    # Checking that the generator is not empty, which can
+                    # happen easily if you mistype the filename passed to the
+                    # filesystemgenerator for example.
+                    iter(value).next()
+                except StopIteration:
+                    raise ValueError("generator %r for argument %r produced no items" % \
+                                     (value, key,))
                 self.generators[key] = [value, 0, 0]
             else:
                 self.statics[key] = value
