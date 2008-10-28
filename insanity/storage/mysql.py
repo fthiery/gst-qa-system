@@ -46,20 +46,23 @@ class MySQLStorage(DBStorage):
         """
         Parse a given string of format
 
-          username:password@hostname:port/database
+          mysql://username:password@hostname:port/database
 
         into a dictionary {"hostname":...} suitable for passing as kwargs to
         MySQLStorage(**kwargs).
 
         Omitted fields will be filled with default values from
 
-          insanity:madness@localhost:3306/insanity
+          mysql://insanity:madness@localhost:3306/insanity
         """
         username=cls._default_user
         passwd=cls._default_pass
         port=cls._default_port
         host=cls._default_host
         dbname=cls._default_db
+
+        if uri.startswith("mysql://"):
+            uri = uri[8:]
 
         if '@' in uri:
             userpass, uri = uri.split('@', 1)
