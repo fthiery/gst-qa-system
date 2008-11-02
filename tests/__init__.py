@@ -23,3 +23,6 @@
 Collection of tests
 """
 
+from insanity.utils import scan_directory_for_tests
+
+__all__ = scan_directory_for_tests(__path__[0])

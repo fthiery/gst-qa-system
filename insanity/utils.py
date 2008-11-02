@@ -24,6 +24,8 @@
 Miscellaneous utility functions and classes
 """
 
+import os
+import imp
 from random import randint
 import gzip
 from insanity.log import exception
@@ -97,6 +99,28 @@ def list_available_scenarios():
             res.extend(get_valid_subclasses(i))
         return res
     return get_valid_subclasses(Scenario)
+
+def scan_directory_for_tests(directory):
+
+    source_ext = [t[0] for t in imp.get_suffixes() if t[2] == imp.PY_SOURCE]
+    import_names = []
+
+    for dirpath, dirnames, filenames in os.walk(directory):
+
+        for filename in filenames:
+            basename, ext = os.path.splitext(filename)
+            if ext in source_ext and basename != "__init__":
+                import_names.append(basename)
+
+        for dirname in dirnames:
+            for ext in source_ext:
+                if os.path.exists(os.path.join(dirpath, dirname, "__init__%s" % (ext,))):
+                    import_names.append(dirname)
+
+        # Don't descent to subdirectories:
+        break
+
+    return import_names
 
 def scan_for_tests():
     from tests import *
