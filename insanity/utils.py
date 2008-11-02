@@ -123,8 +123,14 @@ def scan_directory_for_tests(directory):
     return import_names
 
 def scan_for_tests():
-    from tests import *
-    from tests.scenarios import *
+
+    import tests
+    __import__("tests", fromlist=tests.__all__,
+               globals=globals(), locals=locals())
+
+    import tests.scenarios
+    __import__("tests.scenarios", fromlist=tests.scenarios.__all__,
+               globals=globals(), locals=locals())
 
 def get_test_class(testname):
     """
