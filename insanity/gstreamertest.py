@@ -66,8 +66,9 @@ class GStreamerTestBase(PythonDBusTest):
         #
         # This feature is only available since 0.10.19.1 (24th April 2008) in
         # GStreamer core
-        if env:
-            env["GST_REGISTRY_UPDATE"] = "no"
+        if env == None:
+            env = {}
+        env["GST_REGISTRY_UPDATE"] = "no"
         self.pipeline = None
         self.bus = None
         self._errors = []
