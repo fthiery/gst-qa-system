@@ -74,8 +74,8 @@ class GStreamerTestBase(PythonDBusTest):
         self._errors = []
         self._tags = {}
         self._elements = []
-        self._reachedInitialState = False
         self._waitcb = None
+        self._reachedInitialState = False
         PythonDBusTest.__init__(self, env=env, *args, **kwargs)
 
     def setUp(self):
@@ -182,10 +182,12 @@ class GStreamerTestBase(PythonDBusTest):
                 # race between the final state-change message and the eos message
                 # arriving on the bus.
                 debug("Saw EOS, stopping")
+                # we give an extra 3s for the stat change to complete all the same
                 if self._reachedInitialState:
                     self.stop()
                 else:
-                    self._waitcb = gobject.timeout_add(1000, self._waitForInitialState)
+                    gst.debug("Saw EOS but not yet in initial state, allowing an extra 3s to see it")
+                    self._waitcb = gobject.timeout_add(3000, self._waitingForStateChange)
             elif message.type == gst.MESSAGE_STATE_CHANGED:
                 prev, cur, pending = message.parse_state_changed()
                 if cur == self.__pipeline_initial_state__ and pending == gst.STATE_VOID_PENDING:
@@ -197,9 +199,10 @@ class GStreamerTestBase(PythonDBusTest):
                         gst.log("Stopping test because we reached initial state")
                         self.stop()
 
-    def _waitForInitialState(self):
-        debug("We were waiting for the initial state... in vain")
+    def _waitingForStateChange(self):
+        gst.debug("timeout waiting for initial state to be reached")
         self.stop()
+        return False
 
     def _gotTags(self, tags):
         for key in tags.keys():
