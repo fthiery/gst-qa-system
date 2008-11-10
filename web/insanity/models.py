@@ -238,6 +238,7 @@ class TestRun(models.Model, CustomSQLInterface):
         """Returns tests which have the similar arguments as atest"""
         # this query is too complex to do with DJango code
         # if somebody can convert it to django code, you're welcome
+        # FIXME : This can be done in one SQL query
         res = [x.id for x in self.test_set.filter(type__id=atest.type.id)]
         searchstr = """
         SELECT test.id
@@ -269,6 +270,7 @@ class TestRun(models.Model, CustomSQLInterface):
 
         return [Test.objects.get(pk=i) for i in res]
 
+    # FIXME : This is insanely crufty and not performant at all
     def compare(self, other):
         """
         Compares the tests from self and the tests from other.
@@ -302,7 +304,31 @@ class TestRun(models.Model, CustomSQLInterface):
     def __str__(self):
         return "Testrun #%d [%s]" % (self.id, self.starttime)
 
+class TestManager(models.Manager):
+    def failed(self):
+        """Only returns the tests that succeeded"""
+        return self.exclude(resultpercentage=100.0)
+
+    def succeeded(self):
+        """Only returns the tests that failed (either totally or partially)"""
+        return self.filter(resultpercentage=100.0)
+
+    def scenarios(self):
+        """Filters the QuerySet to only contain scenarios (i.e. container tests)"""
+        return self.extra(where=["subtests.scenarioid=test.id"], tables=["subtests"])
+
+    def leaftests(self):
+        """Filters the QuerySet to only contain leaf tests (i.e. not scenarios)"""
+        return self.filter(subtest=None)
+
+    def timedout(self):
+        """Filters the QuerySet to only return tests that timed out"""
+        # timed-out tests are definitely failed
+        return self.failed().exclude(checklist__name__name="no-timeout",
+                                     checklist__value=1)
+
 class Test(models.Model):
+    objects = TestManager()
     id = models.IntegerField(null=True, primary_key=True, blank=True)
     testrunid = models.ForeignKey(TestRun, db_column="testrunid")
     type = models.ForeignKey(TestClassInfo, db_column="type",
