@@ -26,6 +26,7 @@ Base Test Classes
 import os
 import sys
 import subprocess
+import resource
 import signal
 import time
 import dbus
@@ -622,7 +623,8 @@ class DBusTest(Test, dbus.service.Object):
     __test_extra_infos__ = {
     "subprocess-return-code":"The exit value returned by the subprocess",
     "subprocess-spawn-time":"How long it took to spawn the subprocess in seconds",
-    "remote-instance-creation-delay":"How long it took to create the remote instance"
+    "remote-instance-creation-delay":"How long it took to create the remote instance",
+    "cpu-load" : "CPU load in percent (can exceed 100% on multi core systems)"
     }
 
     __async_setup__ = True
@@ -676,6 +678,7 @@ class DBusTest(Test, dbus.service.Object):
             self._subprocessconnecttime = 0
             self._pid = 0
         else:
+            self.rusage_start = None
             self._remotetimeoutid = 0
             self._remotetimedout = False
             # connect to bus
@@ -782,6 +785,7 @@ class DBusTest(Test, dbus.service.Object):
                     while self._returncode == None:
                         info("Process isn't done yet, killing it")
                         os.kill(self._process.pid, signal.SIGKILL)
+                        time.sleep(0.1)
                         self._returncode = self._process.poll()
                     info("Process returned %d", self._returncode)
                     self._process = None
@@ -937,6 +941,10 @@ class DBusTest(Test, dbus.service.Object):
         remoteSetUp() method at the *end* of their implementation.
         """
         info("%s", self.uuid)
+
+        usage = resource.getrusage (resource.RUSAGE_SELF)
+        self.rusage_start = (time.time (), usage.ru_utime, usage.ru_stime,)
+
         # if not overriden, we just emit the "ready" signal
         self.remoteReadySignal()
 
@@ -965,6 +973,16 @@ class DBusTest(Test, dbus.service.Object):
             return False
         self._remote_tearing_down = True
         info("%s remoteTimeoutId:%r", self.uuid, self._remotetimeoutid)
+
+        if self.rusage_start:
+            usage = resource.getrusage (resource.RUSAGE_SELF)
+            rusage_end = (time.time (), usage.ru_utime, usage.ru_stime,)
+            rusage_diffs = [end - start for start, end in zip(self.rusage_start, rusage_end)]
+            real_time, user_time, system_time = rusage_diffs
+            if real_time:
+                cpu_load = float(user_time + system_time) / real_time * 100.
+                self.extraInfo("cpu-load", cpu_load)
+
         # remote the timeout
         if self._remotetimeoutid:
             gobject.source_remove(self._remotetimeoutid)
@@ -1102,9 +1120,9 @@ class PythonDBusTest(DBusTest):
         # locate the python dbus runner
         # HACK : take top-level-dir/bin/pythondbusrunner.py
         rootdir = os.path.split(os.path.dirname(os.path.abspath(__file__)))[0]
-        path = os.path.join(rootdir, "bin", "insanity-pythondbusrunner.py")
+        path = os.path.join(rootdir, "bin", "insanity-pythondbusrunner")
         if not os.path.isfile(path):
-            path = "/usr/share/insanity/libexec/insanity-pythondbusrunner.py"
+            path = "/usr/share/insanity/libexec/insanity-pythondbusrunner"
         return [sys.executable, path, self.uuid]
 
     def __excepthook(self, exc_type, exc_value, exc_traceback):

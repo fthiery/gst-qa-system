@@ -35,9 +35,58 @@ class MySQLStorage(DBStorage):
     MySQL based DBStorage
     """
 
-    def __init__(self, host="localhost", username="insanity",
-                 passwd="madness", port=3306,
-                 dbname="insanity",
+    _default_host = "localhost"
+    _default_user = "insanity"
+    _default_pass = "madness"
+    _default_port = 3306
+    _default_db = "insanity"
+
+    @classmethod
+    def parse_uri(cls, uri):
+        """
+        Parse a given string of format
+
+          mysql://username:password@hostname:port/database
+
+        into a dictionary {"hostname":...} suitable for passing as kwargs to
+        MySQLStorage(**kwargs).
+
+        Omitted fields will be filled with default values from
+
+          mysql://insanity:madness@localhost:3306/insanity
+        """
+        username=cls._default_user
+        passwd=cls._default_pass
+        port=cls._default_port
+        host=cls._default_host
+        dbname=cls._default_db
+
+        if uri.startswith("mysql://"):
+            uri = uri[8:]
+
+        if '@' in uri:
+            userpass, uri = uri.split('@', 1)
+            if ':' in userpass:
+                username, passwd = userpass.split(':', 1)
+            else:
+                username = userpass
+        if '/' in uri:
+            uri, dbname = uri.rsplit('/', 1)
+        if ':' in uri:
+            host, port = uri.split(':', 1)
+            port = int(port)
+        else:
+            host = uri
+
+        return {"username":username,
+                "passwd":passwd,
+                "port":port,
+                "host":host,
+                "dbname":dbname}
+
+    def __init__(self, host=_default_host, username=_default_user,
+                 passwd=_default_pass, port=_default_port,
+                 dbname=_default_db,
                  *args, **kwargs):
         self.__host = host
         self.__port = port

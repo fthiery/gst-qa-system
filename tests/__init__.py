@@ -23,5 +23,6 @@
 Collection of tests
 """
 
-__all__ = ["gnltest", "ismedia", "playbin", "typefind", "encoder"]
-__all__ += ["simple_encoder"]
+from insanity.utils import scan_directory_for_tests
+
+__all__ = scan_directory_for_tests(__path__[0])

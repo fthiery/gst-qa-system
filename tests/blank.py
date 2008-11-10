@@ -23,11 +23,12 @@
 Blank QA test for development purposes only
 """
 
-from insanity.test import GStreamerTest
+from insanity.test import Test
 
 class BlankTest(Test):
 
     __test_name__ = "blank-test"
     __test_description__ = """Blank QA test"""
 
-    pass
+    def test(self):
+        self.stop()

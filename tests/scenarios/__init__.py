@@ -23,5 +23,6 @@
 Collection of standard scenarios
 """
 
-__all__ = ['mediascenario', "gstmediatest", "gnltest"]
-__all__ += ["simple_encoder"]
+from insanity.utils import scan_directory_for_tests
+
+__all__ = scan_directory_for_tests(__path__[0])

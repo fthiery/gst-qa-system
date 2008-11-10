@@ -38,27 +38,8 @@ def make_sqlite_storage(location):
     return SQLiteStorage(path=location, async=False)
 
 def make_mysql_storage(uri):
-    username="insanity"
-    passwd="madness"
-    port=3306
-    host="localhost"
-    dbname="insanity"
-    if '@' in uri:
-        userpass, uri = uri.split('@', 1)
-        if ':' in userpass:
-            username, passwd = userpass.split(':', 1)
-        else:
-            username = userpass
-    if '/' in uri:
-        uri, dbname = uri.rsplit('/', 1)
-    if ':' in uri:
-        host, port = uri.split(':', 1)
-        port = int(port)
-    else:
-        host = uri
-    return MySQLStorage(username=username, passwd=passwd,
-                        port=port, host=host, dbname=dbname,
-                        async=False)
+    kw = MySQLStorage.parse_uri(uri)
+    return MySQLStorage(async=False, **kw)
 
 if __name__ == "__main__":
     usage = "usage: %prog"

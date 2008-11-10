@@ -146,7 +146,8 @@ if __name__ == "__main__":
     initLogging()
     if options.usemysql:
         from insanity.storage.mysql import MySQLStorage
-        db = MySQLStorage(async=False)
+        kw = MySQLStorage.parse_uri(args[0])
+        db = MySQLStorage(async=False, **kw)
     else:
         from insanity.storage.sqlite import SQLiteStorage
         db = SQLiteStorage(path=args[0], async=False)
