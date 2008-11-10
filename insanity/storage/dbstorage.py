@@ -413,24 +413,30 @@ class DBStorage(DataStorage, AsyncStorage):
             return (None, None, None)
         return res
 
-    def __getExtendedMonitorInfo(self, monitorid, mtype=None, rawinfo=False):
+    def __getExtendedMonitorInfo(self, monitorid, mtype=None, rawinfo=False, onlyargs=False):
         args = self.__getDict("monitor_arguments_dict", monitorid)
-        results = self.__getDict("monitor_checklist_dict",
-                                 monitorid, intonly=True)
-        extras = self.__getDict("monitor_extrainfo_dict", monitorid)
-        outputfiles = self.__getDict("monitor_outputfiles_dict",
-                                     monitorid, txtonly=True)
+        if onlyargs:
+            results = {}
+            extras = {}
+            outputfiles = {}
+        else:
+            results = self.__getDict("monitor_checklist_dict",
+                                     monitorid, intonly=True)
+            extras = self.__getDict("monitor_extrainfo_dict", monitorid)
+            outputfiles = self.__getDict("monitor_outputfiles_dict",
+                                         monitorid, txtonly=True)
         if rawinfo == False:
             if mtype == None:
                 raise Exception("The monitortype must be specified when using rawinfo=False")
             args = map_dict(args,
                             reverse_dict(self.__getMonitorClassArgumentMapping(mtype)))
-            results = map_dict(results,
-                               reverse_dict(self.__getMonitorClassCheckListMapping(mtype)))
-            extras = map_dict(extras,
-                              reverse_dict(self.__getMonitorClassExtraInfoMapping(mtype)))
-            outputfiles = map_dict(outputfiles,
-                                   reverse_dict(self.__getMonitorClassOutputFileMapping(mtype)))
+            if onlyargs == False:
+                results = map_dict(results,
+                                   reverse_dict(self.__getMonitorClassCheckListMapping(mtype)))
+                extras = map_dict(extras,
+                                  reverse_dict(self.__getMonitorClassExtraInfoMapping(mtype)))
+                outputfiles = map_dict(outputfiles,
+                                       reverse_dict(self.__getMonitorClassOutputFileMapping(mtype)))
         return (args, results, extras, outputfiles)
 
     def getFullMonitorInfo(self, monitorid, rawinfo=False):
@@ -451,7 +457,7 @@ class DBStorage(DataStorage, AsyncStorage):
         args, results, extras, outputfiles = self.__getExtendedMonitorInfo(monitorid, mtype, rawinfo)
         return (testid, mtype, args, results, resperc, extras, outputfiles)
 
-    def getFullMonitorsInfoForTest(self, testid, rawinfo=False):
+    def getFullMonitorsInfoForTest(self, testid, rawinfo=False, onlyargs=False):
         if rawinfo == False:
             searchstr = """
             SELECT monitor.id,monitorclassinfo.type,monitor.resultpercentage
@@ -467,7 +473,7 @@ class DBStorage(DataStorage, AsyncStorage):
             return []
         res = []
         for mid,mtype,mperc in res1:
-            args, results, extras, outputfiles = self.__getExtendedMonitorInfo(mid, mtype, rawinfo)
+            args, results, extras, outputfiles = self.__getExtendedMonitorInfo(mid, mtype, rawinfo, onlyargs=onlyargs)
             res.append((mid, mtype, mperc, args, results, extras, outputfiles))
         return res
 
@@ -476,25 +482,29 @@ class DBStorage(DataStorage, AsyncStorage):
         SELECT DISTINCT test.id
         FROM test, test_arguments_dict
         WHERE test.id=test_arguments_dict.containerid """
-        searchargs = []
+        initialsearchargs = []
+
+        # the following are only needed for the first query (or the most nested queries)
+        initialsearchstr = searchstr
         if not testrunid == None:
-            searchstr += "AND test.testrunid=? "
-            searchargs.append(testrunid)
-        searchstr += "AND test.type=? "
-        searchargs.append(testtype)
+            initialsearchstr += "AND test.testrunid=? "
+            initialsearchargs.append(testrunid)
+        initialsearchstr += "AND test.type=? "
+        initialsearchargs.append(testtype)
 
         # we'll now recursively search for the compatible tests
         # we first start to look for all tests matching the first argument
         # then from those tests, find those that match the second,...
         # Break out from the loop whenever there's nothing more matching
 
-        res = []
+        firsttime = True
+
+        # build the query using nested queries
+
+        fullquery = initialsearchstr
+        args = initialsearchargs[:]
 
         for key, val in arguments.iteritems():
-            if not res == []:
-                tmpsearch = "AND test.id in (%s) " % ', '.join([str(x) for x in res])
-            else:
-                tmpsearch = ""
             value = val
             if isinstance(val, int):
                 valstr = "intvalue"
@@ -503,26 +513,39 @@ class DBStorage(DataStorage, AsyncStorage):
             else:
                 valstr = "blobvalue"
                 value = str(dumps(val))
-            tmpsearch += "AND test_arguments_dict.name=? AND test_arguments_dict.%s=?" % valstr
-            tmpargs = searchargs[:]
-            tmpargs.extend([key, value])
-            tmpres = self._FetchAll(searchstr + tmpsearch, tuple(tmpargs))
+            tmpsearch = "AND test_arguments_dict.name=? AND test_arguments_dict.%s=? " % valstr
+            if firsttime:
+                tmpargs = initialsearchargs[:]
+                tmpargs.extend([key, value])
+                fullquery = initialsearchstr + tmpsearch
+                args = tmpargs
+                firsttime = False
+            else:
+                # nest the previous query
+                fullquery = searchstr + tmpsearch + "AND test.id IN (" + fullquery + ")"
+                args = [key, value] + args
+
+        # do the query
+        try:
+            res = [x[0] for x in self._FetchAll(fullquery, tuple(args))]
+        except:
             res = []
-            if tmpres == []:
-                break
-            res = [x[0] for x in tmpres]
 
         # finally... make sure that for the monitors that both test
         # share, they have the same arguments
         if res != [] and (previd != None or monitorids != None):
             tmp = []
             if previd and not monitorids:
-                monitors = self.getFullMonitorsInfoForTest(previd, rawinfo=True)
+                monitors = self.getFullMonitorsInfoForTest(previd,
+                                                           rawinfo=True,
+                                                           onlyargs=True)
             else:
                 monitors = [self.getFullMonitorInfo(x) for x in monitorids]
+
             for pid in res:
                 similar = True
-                pm = self.getFullMonitorsInfoForTest(pid, rawinfo=True)
+                pm = self.getFullMonitorsInfoForTest(pid, rawinfo=True,
+                                                     onlyargs=True)
 
                 samemons = []
                 # for each candidate monitors
@@ -531,11 +554,10 @@ class DBStorage(DataStorage, AsyncStorage):
                     for mon in monitors:
                         if mon[1] == mtype:
                             # same type of monitor, now check arguments
-                            samemons.append(((tid, mtype, margs, mres,
-                                              mresperc, mextra, mout), mon))
+                            samemons.append((margs, mon[2]))
                 if not samemons == []:
                     for cand, mon in samemons:
-                        if not cand[2] ==  mon[2]:
+                        if not cand == mon:
                             similar = False
                 if similar:
                     tmp.append(pid)

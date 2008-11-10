@@ -78,7 +78,7 @@ def printTestInfo(db, testid, failedonly=False):
                     print "\t\t\t% -30s:\t%s" % (k,v)
     print ""
 
-def compare(storage, testrun1, testrun2):
+def compare(storage, testrun1, testrun2, ignoremonitors=False):
     """
     Compares the given testruns
 
@@ -95,27 +95,46 @@ def compare(storage, testrun1, testrun2):
     if not testrun1 in testruns or not testrun2 in testruns:
         print "Give testrun ids aren't available in the given storage file"
         return
+    print "Getting tests from first test run"
     tests1 = storage.getTestsForTestRun(testrun1, withscenarios=False)
 
+    print "Getting tests from second test run"
     tests2 = storage.getTestsForTestRun(testrun2, withscenarios=False)
 
     if len(tests1) == len(tests2):
         print "Both testruns have the same number of tests"
 
-    newmapping = {}
+    newmapping = []
     oldinnew = []
     newtests = []
 
-    for newid in tests2:
+    starttime = time.time()
+    nb2 = len(tests2)
+    print "Comparing %d tests from second testrun against first testrun" % nb2
+    for i in range(nb2):
+        newid = tests2[i]
+        if i and (i % 50) == 0:
+            diff = time.time() - starttime
+            percdone = float(i)/nb2*100
+            TOTAL = (100.0 * diff) / percdone
+            ETA = TOTAL - diff
+            print "[%6d/%6d] %02.2f%% %.2fs avg:%.2fms TOTAL:%04ds ETA:%04ds" % (i, nb2, percdone,
+                                                                                 diff, (diff/i) * 1000,
+                                                                                 TOTAL, ETA)
         tid, ttype, args, results, resperc, extras, outputfiles = storage.getFullTestInfo(newid,
                                                                                           rawinfo=True,
                                                                                           onlyargs=True)
-        ancestors = storage.findTestsByArgument(ttype, args, testrun1, previd=newid)
+        if ignoremonitors:
+            ancestors = storage.findTestsByArgument(ttype, args, testrun1)
+        else:
+            ancestors = storage.findTestsByArgument(ttype, args, testrun1, previd=newid)
         if ancestors == []:
             newtests.append(newid)
         else:
-            newmapping[newid] = ancestors
+            newmapping.append((newid, ancestors))
             oldinnew.extend(ancestors)
+
+    newmapping = dict(newmapping)
 
     testsgone = [x for x in tests1 if not x in oldinnew]
     print "Removed ", testsgone
@@ -155,7 +174,7 @@ if __name__ == "__main__":
         db = SQLiteStorage(path=sys.argv[1], async=False)
     # the last two arguments are the testrunid to compare
     a,b = [int(x) for x in sys.argv[-2:]]
-    new, gone, imps, regs, mapping = compare(db, a, b)
+    new, gone, imps, regs, mapping = compare(db, a, b, ignoremonitors=True)
     print "****REGRESSIONS****"
     for test in regs:
         for ptest in mapping[test]:
