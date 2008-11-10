@@ -1046,7 +1046,8 @@ class DBusTest(Test, dbus.service.Object):
         args["timeout"] = self._timeout
         if self._outputfiles:
             args["outputfiles"] = self.getOutputFiles()
-        debug("Creating remote instance with arguments %r", args)
+        debug("Creating remote instance with arguments %s %s %s %r", self.get_file(),
+              self.__module__, self.__class__.__name__, args)
         try:
             remoterunner.createTestInstance(self.get_file(),
                                             self.__module__,
