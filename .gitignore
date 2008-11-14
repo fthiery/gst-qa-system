@@ -1,4 +1,6 @@
 *~
-build
-testrun.db
-workingdir
+*.pyc
+\#*
+/build
+/testrun.db
+/workingdir
