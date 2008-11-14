@@ -142,9 +142,9 @@ def _privateCollectEnvironment():
     """
     Method called from the subprocess to collect environment
     """
-    res = {}
-    res["env-variables"] = os.environ.copy()
-    res["uname"] = os.uname()
+    # we first get the system environment variables
+    res = os.environ.copy()
+    res["uname"] = ' '.join(os.uname())
     res.update(_getGObjectEnvironment())
     res.update(_getGStreamerEnvironment())
     return res
