@@ -36,16 +36,20 @@ def matrix_view(request, testrun_id):
     testtypesid = tr.test_set.values("type").distinct()
     tests = []
     for d in testtypesid:
-        t = TestClassInfo.objects.get(pk=d["type"])
+        t = TestClassInfo.objects.select_related(depth=1).get(pk=d["type"])
         if not showscenario and t.is_scenario:
             continue
         query = Test.objects.filter(testrunid=int(testrun_id),
-                                    type=t)
+                                    type=t).select_related(depth=1)
+        if onlyfailed:
+            query = query.exclude(resultpercentage=100.0)
         if limit != -1:
             query = query[offset:offset+limit]
         # FIXME : find a way to filter out successful tests if onlyfailed
         tests.append({"type":t,
-                      "tests":query})
+                      "tests":query,
+                      "fullchecklist":t.fullchecklist,
+                      "fullarguments":t.fullarguments})
     return render_to_response('insanity/matrix_view.html',
                               {'testrun':tr,
                                'sortedtests':tests,

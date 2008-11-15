@@ -3,12 +3,15 @@ PROJECT_PATH = os.path.abspath(os.path.dirname(__file__))
 
 # Django settings for web project.
 
+SQL_DEBUG = True
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
 
 ADMINS = (
     # ('Your Name', 'your_email@domain.com'),
 )
+
+INTERNAL_IPS = ('127.0.0.1',)
 
 MANAGERS = ADMINS
 
@@ -65,7 +68,8 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.middleware.doc.XViewMiddleware',
-)
+#    'debug_toolbar.middleware.DebugToolbarMiddleware'
+    )
 
 ROOT_URLCONF = 'web.urls'
 
@@ -82,5 +86,6 @@ INSTALLED_APPS = (
     'django.contrib.sessions',
     'django.contrib.sites',
     'django.contrib.admin',
-    'web.insanity'
+    'web.insanity',
+    'debug_toolbar'
 )

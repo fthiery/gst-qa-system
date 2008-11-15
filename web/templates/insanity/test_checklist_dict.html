@@ -12,8 +12,8 @@
       ?
     </td>
     {% else %}
-    <td class="{%if result.value.value %}result-OK{% else %}result-FAIL{% endif %}">
-      {{result.value.value}}
+    <td class="{%if result.value %}result-OK{% else %}result-FAIL{% endif %}">
+      {{result.value}}
     </td>
     {% endif %}
     <td>{{result.type.description}}</td>

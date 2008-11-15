@@ -115,11 +115,14 @@ class TestClassInfo(models.Model):
         Returns the full list of checkitems (including from parents)
         The list is ordered by classes and then by id.
         """
-        if self.parent_id:
-            res = list(self.parent.fullchecklist)
-            res.extend(list(self.checklist.order_by("id")))
-        else:
-            res = list(self.checklist.order_by("id"))
+        # this should be done in two queries
+        # 1. get the list of all testclassinfo (from here to base)
+        # 2. get the checklist for all those classes
+        if hasattr(self,"__cached_fullchecklist"):
+            return self.__cached_fullchecklist
+        classes = self.__get_parentage()
+        res = TestClassInfoCheckListDict.objects.filter(containerid__in=classes)
+        self.__cached_fullchecklist = res
         return res
     fullchecklist = property(_get_fullchecklist)
 
@@ -128,11 +131,8 @@ class TestClassInfo(models.Model):
         Returns the full list of arguments (including from parents).
         The list is ordered by classes and then by id.
         """
-        if self.parent_id:
-            res = list(self.parent.fullarguments)
-            res.extend(list(self.arguments.order_by("id")))
-        else:
-            res = list(self.arguments.order_by("id"))
+        classes = self.__get_parentage()
+        res = TestClassInfoArgumentsDict.objects.filter(containerid__in=classes)
         return res
     fullarguments = property(_get_fullarguments)
 
@@ -143,6 +143,15 @@ class TestClassInfo(models.Model):
             return self.parent.is_scenario
         return False
     is_scenario = property(_get_is_scenario)
+
+    def __get_parentage(self):
+        if hasattr(self, "__cached_parentage"):
+            return self.__cached_parentage
+        res = [self.id]
+        if self.parent_id:
+            res.extend(self.parent.__get_parentage())
+        self.__cached_parentage = res
+        return res
 
     class Meta:
         db_table = 'testclassinfo'
@@ -350,7 +359,7 @@ class Test(models.Model):
         return bool(self.resultpercentage == 100.0)
     is_success = property(_is_success)
 
-    def _get_results_dict(self):
+    def _get_results_dict(self, checklist=None):
         """
         Returns an ordered list of check results as dictionnaries.
         dictionnary:
@@ -362,39 +371,51 @@ class Test(models.Model):
         the skipped check items.
         """
         res = []
-        for checktype in self.type.fullchecklist:
+        if checklist == None:
+            fcl = self.type.fullchecklist
+        else:
+            fcl = checklist
+        v = self.checklist.all().select_related(depth=1) # v.name == fcl.id
+        for checktype in fcl:
             d = {}
             d['type'] = checktype
-            try:
-                val = TestCheckListList.objects.get(containerid=self,
-                                                    name=checktype)
-                d['skipped'] = False
-            except:
-                val = None
+            val = None
+            for av in v:
+                if checktype == av.name:
+                    d['skipped'] = False
+                    val = av.value
+                    break
+            if val == None:
                 d['skipped'] = True
             d['value'] = val
             res.append(d)
         return res
     results = property(_get_results_dict)
 
-    def _get_full_arguments(self):
+    def _get_full_arguments(self, fullarguments=None):
         """
         Returns an ordered list of arguments
 
         This differs from test.arguments.all in the sense that it will also
         contains the arguments with defaults values
         """
+        if fullarguments == None:
+            fa = self.type.fullarguments
+        else:
+            fa = fullarguments
         res = []
-        for argtype in self.type.fullarguments:
+        v = self.arguments.all().select_related(depth=1)
+        for argtype in fa:
             d = {}
             d['type'] = argtype
-            try:
-                val = TestArgumentsDict.objects.get(containerid=self,
-                                                    name=argtype)
-                d['default'] = False
-            except:
-                val = argtype.defaultvalue
-                d['default'] = True
+            val = None
+            for av in v:
+                if argtype == av.name:
+                    d['skipped'] = False
+                    val = av.value
+                    break
+            if val == None:
+                d['skipped'] = True
             d['value'] = val
             res.append(d)
         return res
@@ -434,16 +455,15 @@ class Test(models.Model):
                     ret = "Process return code : %d" % retcode
             return ret
 
+        err = None
         try:
-            errs = self.extrainfo.get(name__name="errors")
-            err = stringify_gst_error(errs.value[0])
-        except:
-            try:
-                errs = self.extrainfo.get(name__name="subprocess-return-code")
+            errs = self.extrainfo.all().filter(name__name__in=["errors", "subprocess-return-code"]).select_related(depth=3)[0]
+            if errs.name.name == "errors":
+                err = stringify_gst_error(errs.value[0])
+            elif errs.name.name == "subprocess-return-code":
                 err = stringify_return_code(errs.value)
-            except:
-                err = None
-        return err
+        finally:
+            return err
     test_error = property(_test_error)
 
     class Meta:

@@ -145,12 +145,20 @@ def test_args_dict(test):
 
 
 @register.inclusion_tag('insanity/test_checklist_dict.html')
-def test_checklist_dict(test):
-    results = test.results
+def test_checklist_dict(test, fullchecklist=None):
+    results = test._get_results_dict(fullchecklist)
     return {'results':results}
 
 @register.inclusion_tag('insanity/test_extrainfo_dict.html')
 def test_extrainfo_dict(test):
     extrainfos = test.extrainfo.all()
     return {'extrainfos':extrainfos}
+
+@register.inclusion_tag('insanity/matrix_checklist_row.html')
+def matrix_checklist_row(test, fullchecklist, fullarguments):
+    arguments = test._get_full_arguments(fullarguments)
+    results = test._get_results_dict(fullchecklist)
+    return {'test':test,
+            'arguments':arguments,
+            'results':results}
 

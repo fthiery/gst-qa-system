@@ -1,0 +1,25 @@
+<tr class="{% cycle row1,row2 %}">
+  <td><a href={{test.get_absolute_url}}>{{test.id}}</a></td>
+  {% for arg in arguments %}
+  {% if arg.default %}
+  <td class="arg-default">{{ arg.value }}</td>
+  {% else %}
+  <td>{{ arg.value }}</td>
+  {% endif %}
+  {% endfor %}
+  <td class="{% if test.is_success %}result-OK{% else %}result-FAIL{% endif %}">{{test.resultpercentage|floatformat:1}}%</td>
+  {% for item in results %}
+  {% if item.skipped %}
+  <td class="result-skipped">
+    <span title="{{item.type.name}} : skipped/unavailable">?</span>
+  </td>
+  {% else %}
+  <td class="{%if item.value %}result-OK{% else %}result-FAIL{% endif %}">
+    <span title="{{item.type.name}} : {%if item.value %}OK{% else %}failed{% endif %}">{{ item.value }}</span>
+  </td>
+  {% endif %}
+  {% endfor %}
+  {% if test.test_error %}
+  <td> {{test.test_error}} </td>
+  {% endif %}
+</tr>
