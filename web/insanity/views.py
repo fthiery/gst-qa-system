@@ -30,26 +30,39 @@ def matrix_view(request, testrun_id):
     tr = get_object_or_404(TestRun, pk=testrun_id)
     onlyfailed = bool(int(request.GET.get("onlyfailed",False)))
     showscenario = bool(int(request.GET.get("showscenario",True)))
+    crashonly = bool(int(request.GET.get("crashonly", False)))
+    timedoutonly = bool(int(request.GET.get("timedoutonly", False)))
     limit = int(request.GET.get("limit", -1))
     offset = int(request.GET.get("offset", 0))
 
     # following returns a list of {"type" : testtypeid}
     testtypesid = tr.test_set.values("type").distinct()
 
-    # let's get the test instances
+    # let's get the test instances, correctly filtered
     testsinst = Test.objects.select_related(depth=1).filter(testrunid=tr)
     if onlyfailed:
         testsinst = testsinst.exclude(resultpercentage=100.0)
+
+    if crashonly:
+        testsinst = testsinst.filter(checklist__name__name="subprocess-exited-normally",
+                                     checklist__value=0)
+    elif timedoutonly:
+        testsinst = testsinst.filter(checklist__name__name="no-timeout",
+                                     checklist__value=0)
     if limit != -1:
         testsinst = testsinst[offset:offset+limit]
 
     tests = []
-
     for d in testtypesid:
         t = TestClassInfo.objects.select_related(depth=1).get(pk=d["type"])
-        if not showscenario and t.is_scenario:
-            continue
         query = testsinst.filter(type=t)
+        if t.is_scenario:
+            if (not showscenario):
+                continue
+
+        # skip empty sets early
+        if len(query) == 0:
+            continue
 
         # FIXME : find a way to filter out successful tests if onlyfailed
         tests.append({"type":t,

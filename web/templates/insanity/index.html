@@ -23,6 +23,8 @@ Insanity QA system (latest {{nbruns}} runs)
 	<td><a href="{{run.get_matrix_view_url}}?onlyfailed=1&showscenario=0">Failed Tests</a></td>
 	<td><a href="{{run.get_matrix_view_url}}">Tests+Scenarios</a></td>
 	<td><a href="{{run.get_matrix_view_url}}?onlyfailed=1">Failed Tests+Scenarios</a></td>
+	<td><a href="{{run.get_matrix_view_url}}?crashonly=1">Crashed Tests</a></td>
+	<td><a href="{{run.get_matrix_view_url}}?timedoutonly=1">Timed-out Tests</a></td>
       </tr>
       {% endfor %}
     </table>
