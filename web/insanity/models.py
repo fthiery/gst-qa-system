@@ -132,7 +132,7 @@ class TestClassInfo(models.Model):
         The list is ordered by classes and then by id.
         """
         classes = self.__get_parentage()
-        res = TestClassInfoArgumentsDict.objects.filter(containerid__in=classes)
+        res = TestClassInfoArgumentsDict.objects.filter(containerid__in=classes).select_related(depth=1)
         return res
     fullarguments = property(_get_fullarguments)
 

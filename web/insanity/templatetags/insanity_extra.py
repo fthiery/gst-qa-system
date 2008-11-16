@@ -139,8 +139,8 @@ class TestExtraInfoValueNode(template.Node):
         return res
 
 @register.inclusion_tag('insanity/test_args_dict.html')
-def test_args_dict(test):
-    args = test.arguments.all()
+def test_args_dict(test, fullarguments=None):
+    args = test.arguments.all().select_related(depth=1)
     return {'args':args}
 
 
@@ -151,7 +151,7 @@ def test_checklist_dict(test, fullchecklist=None):
 
 @register.inclusion_tag('insanity/test_extrainfo_dict.html')
 def test_extrainfo_dict(test):
-    extrainfos = test.extrainfo.all()
+    extrainfos = test.extrainfo.all().select_related(depth=1)
     return {'extrainfos':extrainfos}
 
 @register.inclusion_tag('insanity/matrix_checklist_row.html')
