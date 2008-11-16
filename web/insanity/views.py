@@ -1,4 +1,4 @@
-from web.insanity.models import TestRun, Test, TestClassInfo
+from web.insanity.models import TestRun, Test, TestClassInfo, TestCheckListList, TestArgumentsDict, TestExtraInfoDict
 from django.shortcuts import render_to_response, get_object_or_404
 from django.http import HttpResponse
 import time
@@ -32,28 +32,42 @@ def matrix_view(request, testrun_id):
     showscenario = bool(int(request.GET.get("showscenario",True)))
     limit = int(request.GET.get("limit", -1))
     offset = int(request.GET.get("offset", 0))
+
     # following returns a list of {"type" : testtypeid}
     testtypesid = tr.test_set.values("type").distinct()
+
+    # let's get the test instances
+    testsinst = Test.objects.select_related(depth=1).filter(testrunid=tr)
+    if onlyfailed:
+        testsinst = testsinst.exclude(resultpercentage=100.0)
+    if limit != -1:
+        testsinst = testsinst[offset:offset+limit]
+
     tests = []
+
     for d in testtypesid:
         t = TestClassInfo.objects.select_related(depth=1).get(pk=d["type"])
         if not showscenario and t.is_scenario:
             continue
-        query = Test.objects.filter(testrunid=int(testrun_id),
-                                    type=t).select_related(depth=1)
-        if onlyfailed:
-            query = query.exclude(resultpercentage=100.0)
-        if limit != -1:
-            query = query[offset:offset+limit]
+        query = testsinst.filter(type=t)
+
         # FIXME : find a way to filter out successful tests if onlyfailed
         tests.append({"type":t,
                       "tests":query,
                       "fullchecklist":t.fullchecklist,
                       "fullarguments":t.fullarguments})
+
+    checks = TestCheckListList.objects.select_related("containerid","name","value").filter(containerid__in=testsinst)
+    args = TestArgumentsDict.objects.select_related(depth=1).filter(containerid__in=testsinst)
+    extras = TestExtraInfoDict.objects.select_related("containerid", "name__name", "intvalue", "txtvalue", "blobvalue").filter(containerid__in=testsinst,
+                                                                                                                               name__name__in=["subprocess-return-code","errors"])
     return render_to_response('insanity/matrix_view.html',
                               {'testrun':tr,
                                'sortedtests':tests,
-                               'onlyfailed':onlyfailed})
+                               'onlyfailed':onlyfailed,
+                               "checks":checks,
+                               "args":args,
+                               "extras":extras})
 
 def handler404(request):
     return "Something went wrong !"

@@ -365,7 +365,7 @@ class Test(models.Model):
         return bool(self.resultpercentage == 100.0)
     is_success = property(_is_success)
 
-    def _get_results_dict(self, checklist=None):
+    def _get_results_dict(self, checklist=None, allchecks=None):
         """
         Returns an ordered list of check results as dictionnaries.
         dictionnary:
@@ -377,11 +377,19 @@ class Test(models.Model):
         the skipped check items.
         """
         res = []
+
+        # pre-computed fullchecklist
         if checklist == None:
             fcl = self.type.fullchecklist
         else:
             fcl = checklist
-        v = self.checklist.all().select_related(depth=1) # v.name == fcl.id
+
+        # pre-computer checklist
+        if allchecks:
+            v = [x for x in allchecks if x.containerid == self]
+        else:
+            v = self.checklist.all().select_related("name","value") # v.name == fcl.id
+
         for checktype in fcl:
             d = {}
             d['type'] = checktype
@@ -398,19 +406,27 @@ class Test(models.Model):
         return res
     results = property(_get_results_dict)
 
-    def _get_full_arguments(self, fullarguments=None):
+    def _get_full_arguments(self, fullarguments=None, allargs=None):
         """
         Returns an ordered list of arguments
 
         This differs from test.arguments.all in the sense that it will also
         contains the arguments with defaults values
         """
+        res = []
+
+        # pre-computed fullarguments
         if fullarguments == None:
             fa = self.type.fullarguments
         else:
             fa = fullarguments
-        res = []
-        v = self.arguments.all().select_related(depth=1)
+
+        # pre-computed arguments
+        if allargs:
+            v = [x for x in allargs if x.containerid == self]
+        else:
+            v = self.arguments.all().select_related(depth=1)
+
         for argtype in fa:
             d = {}
             d['type'] = argtype
@@ -427,7 +443,7 @@ class Test(models.Model):
         return res
     fullarguments = property(_get_full_arguments)
 
-    def _test_error(self):
+    def _test_error(self, allextras=None):
         """ Returns the error TestExtraInfoDict if available"""
 
         def stringify_gst_error(anerr):
@@ -462,14 +478,26 @@ class Test(models.Model):
             return ret
 
         err = None
-        try:
-            errs = self.extrainfo.all().filter(name__name__in=["errors", "subprocess-return-code"]).select_related(depth=3)[0]
-            if errs.name.name == "errors":
-                err = stringify_gst_error(errs.value[0])
-            elif errs.name.name == "subprocess-return-code":
-                err = stringify_return_code(errs.value)
-        finally:
-            return err
+
+        # pre-computed extras
+        if allextras != None:
+            errs = [x for x in allextras if x.containerid==self and x.name.name in ["subprocess-return-code","errors"]]
+        else:
+            try:
+                errs = self.extrainfo.all().select_related("name__name", "intvalue","txtvalue","blobvalue").filter(name__name__in=["errors", "subprocess-return-code"])
+            except:
+                errs = []
+
+        if len(errs) == 0:
+            return None
+
+        errs = errs[0]
+        if errs.name.name == "errors":
+            err = stringify_gst_error(errs.value[0])
+        else: # it can only be subprocess-return-code
+            err = stringify_return_code(errs.intvalue)
+
+        return err
     test_error = property(_test_error)
 
     class Meta:
