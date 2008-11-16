@@ -227,7 +227,13 @@ class TestClassInfoOutputFilesDict(models.Model):
     class Meta:
         db_table = 'testclassinfo_outputfiles_dict'
 
+
+class TestRunManager(models.Manager):
+    def withcounts(self):
+        return self.all().extra(select={'nbtests':"SELECT COUNT(*) FROM test WHERE test.testrunid = testrun.id"})
+
 class TestRun(models.Model, CustomSQLInterface):
+    objects = TestRunManager()
     id = models.IntegerField(null=True, primary_key=True, blank=True)
     clientid = models.ForeignKey(Client, db_column="clientid")
     starttime = DateTimeIntegerField(null=True, blank=True)

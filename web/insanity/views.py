@@ -5,7 +5,7 @@ import time
 
 def index(request):
     nbruns = request.GET.get("nbruns", 20)
-    latest_runs = TestRun.objects.all()[:int(nbruns)]
+    latest_runs = TestRun.objects.withcounts()[:int(nbruns)].reverse()
     return render_to_response("insanity/index.html", {"latest_runs":latest_runs,
                                                       "nbruns":nbruns})
 

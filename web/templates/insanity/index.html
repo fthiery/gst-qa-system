@@ -14,11 +14,11 @@ Insanity QA system (latest {{nbruns}} runs)
 	<th>Test(s)</th>
 	<th colspan="4">Views</th>
       </tr>
-      {% for run in latest_runs.reverse %}
+      {% for run in latest_runs %}
       <tr>
 	<th class="side">TestRun #{{ run.id }}</th>
         <td>{{ run.starttime|date:"Y-m-d H:i:s" }}</td>
-	<td class="numeric">{{ run.test_set.count }}</td>
+	<td class="numeric">{{ run.nbtests }}</td>
 	<td><a href="{{run.get_matrix_view_url}}?showscenario=0">Tests only</a></td>
 	<td><a href="{{run.get_matrix_view_url}}?onlyfailed=1&showscenario=0">Failed Tests</a></td>
 	<td><a href="{{run.get_matrix_view_url}}">Tests+Scenarios</a></td>
