@@ -7,17 +7,14 @@ Matrix View of Testrun #{{testrun.id}}
 
 {% block content %}
 
+    <h2>Results for Testrun #{{testrun.id}}</h2>
     <!-- We're supposing we only have one test type and we ignore scenarios -->
     Total results : {{ totalnb }}
     {% matrix_navigation %}
-    <table width="98%">
+    {% for sortedtest in sortedtests %}
+    <h3>{{ sortedtest.type.type }}</h3>
+    <table>
       <tr>
-	<th class="side">Test type</th>
-	<th>Results for Testrun #{{testrun.id}}</th>
-      </tr>
-      {% for sortedtest in sortedtests %}
-      <tr>
-	<th class="side">{{ sortedtest.type.type }}</th>
 	<td>
 	  <table>
 	    <tr>
@@ -31,15 +28,15 @@ Matrix View of Testrun #{{testrun.id}}
 	      {% endfor %}
 	      <th>Errors seen</th>
 	    </tr>
-	    
+
 	    {% for test in sortedtest.tests %}
 	      {% matrix_checklist_row test sortedtest.fullchecklist sortedtest.fullarguments sortedtest.allchecks sortedtest.allargs sortedtest.allextras %}
 	    {% endfor %}
-	
+
 	  </table>
-	</td>
-      </tr>
-      {% endfor %}
+	  </td>
+        </tr>
     </table>
+    {% endfor %}
 
 {% endblock %}
