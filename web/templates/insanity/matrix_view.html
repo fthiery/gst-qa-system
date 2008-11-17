@@ -8,6 +8,8 @@ Matrix View of Testrun #{{testrun.id}}
 {% block content %}
 
     <!-- We're supposing we only have one test type and we ignore scenarios -->
+    Total results : {{ totalnb }}
+    {% matrix_navigation %}
     <table width="98%">
       <tr>
 	<th class="side">Test type</th>

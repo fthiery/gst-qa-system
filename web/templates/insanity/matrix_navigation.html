@@ -1,0 +1,14 @@
+<div>
+<a href="{{testrun.get_matrix_view_url}}?onlyfailed={{onlyfailed}}&showscenario={{showscenario}}&crashonly={{crashonly}}&timedoutonly={{timedoutonly}}&offset={{prevoffset}}&limit={{limit}}"><<
+</a>
+[
+{% for page in pages %}
+{% if page.current %}
+<a href="{{testrun.get_matrix_view_url}}?onlyfailed={{onlyfailed}}&showscenario={{showscenario}}&crashonly={{crashonly}}&timedoutonly={{timedoutonly}}&offset={{page.offset}}&limit={{limit}}"><b>{{page.index}}</b></a>
+{% else %}
+<a href="{{testrun.get_matrix_view_url}}?onlyfailed={{onlyfailed}}&showscenario={{showscenario}}&crashonly={{crashonly}}&timedoutonly={{timedoutonly}}&offset={{page.offset}}&limit={{limit}}">{{page.index}}</a>
+{% endif %}
+{% endfor %}
+]
+<a href="{{testrun.get_matrix_view_url}}?onlyfailed={{onlyfailed}}&showscenario={{showscenario}}&crashonly={{crashonly}}&timedoutonly={{timedoutonly}}&offset={{nextoffset}}&limit={{limit}}">>></a>
+</div>

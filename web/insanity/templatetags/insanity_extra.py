@@ -165,3 +165,39 @@ def matrix_checklist_row(test, fullchecklist, fullarguments,
             'results':results,
             'test_error':test_error}
 
+@register.inclusion_tag('insanity/matrix_navigation.html', takes_context=True)
+def matrix_navigation(context, adjacent_pages=2):
+    testrun = context['testrun']
+    currentoffset = context.get('offset', 0)
+    limit = context.get('limit', 100)
+    onlyfailed = context.get('onlyfailed', 0)
+    showscenario = context.get('showscenario', 1)
+    crashonly = context.get('crashonly', 0)
+    timedoutonly = context.get('timedoutonly', 0)
+    totalnb = context["totalnb"]
+
+    # This creates a navigation <div> for the given page
+    # for the time being we just calculate the offset for the
+    # previous and next series
+    totalpages = totalnb / limit
+    pages = []
+    for i in range(totalpages):
+        d = {}
+        d["index"] = i
+        d["iscurrent"] = (currentoffset == limit * i)
+        d["offset"] = limit * i
+        pages.append(d)
+
+    poff = currentoffset - limit
+    noff = currentoffset + limit
+    return {'testrun':testrun,
+            'prevoffset':poff,
+            'limit':limit,
+            'currentoffset':currentoffset,
+            'nextoffset':noff,
+            'onlyfailed':onlyfailed,
+            'showscenario':showscenario,
+            'crashonly':crashonly,
+            'timedoutonly':timedoutonly,
+            'pages':pages
+            }
