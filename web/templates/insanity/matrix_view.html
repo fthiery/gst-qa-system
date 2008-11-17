@@ -31,7 +31,7 @@ Matrix View of Testrun #{{testrun.id}}
 	    </tr>
 	    
 	    {% for test in sortedtest.tests %}
-	      {% matrix_checklist_row test sortedtest.fullchecklist sortedtest.fullarguments checks args extras %}
+	      {% matrix_checklist_row test sortedtest.fullchecklist sortedtest.fullarguments sortedtest.allchecks sortedtest.allargs sortedtest.allextras %}
 	    {% endfor %}
 	
 	  </table>

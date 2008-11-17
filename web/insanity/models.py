@@ -101,7 +101,22 @@ class MonitorClassInfoOutputFilesDict(models.Model):
     class Meta:
         db_table = 'monitorclassinfo_outputfiles_dict'
 
+class TestClassInfoManager(models.Manager):
+    def scenarios(self):
+        """Returns all scenario TestClasses"""
+        sct = self.get(type="scenario")
+        v = self.all().select_related("id", "type", "parent")
+        def filter_subclass(ptype, avail):
+            res = [ptype]
+            for t in avail:
+                if ptype == t.parent:
+                    res.extend(filter_subclass(t, avail))
+            return res
+
+        return filter_subclass(sct, v)
+
 class TestClassInfo(models.Model):
+    objects = TestClassInfoManager()
     id = models.IntegerField(null=True, primary_key=True, blank=True)
     type = models.TextField(blank=True)
     parent = models.ForeignKey("self", to_field="type",
@@ -152,6 +167,9 @@ class TestClassInfo(models.Model):
             res.extend(self.parent.__get_parentage())
         self.__cached_parentage = res
         return res
+
+    def __repr__(self):
+        return "TestClassInfo:%s" % self.type
 
     class Meta:
         db_table = 'testclassinfo'
