@@ -55,38 +55,36 @@ def matrix_view(request, testrun_id):
         sctypes = TestClassInfo.objects.scenarios()
         testsinst = testsinst.exclude(type__in=sctypes)
 
+    tests = []
     # total number of potential results for this query
     # FIXME : This should be cached
     totalnb = testsinst.count()
-
     res = list(testsinst[offset:offset+limit])
 
-    v = Test.objects.values_list("type",flat=True).filter(id__in=(x.id for x in res)).distinct()
+    if totalnb != 0 and res != []:
+        v = Test.objects.values_list("type",flat=True).filter(id__in=(x.id for x in res)).distinct()
 
-    #v = testsinst[offset:offset+limit].values_list("type",flat=True).distinct()
+        # get the TestClassInfo for the available tests
+        testtypes = TestClassInfo.objects.select_related(depth=1).filter(id__in=v)
 
-    # get the TestClassInfo for the available tests
-    testtypes = TestClassInfo.objects.select_related(depth=1).filter(id__in=v)
+        for t in testtypes:
+            query = [x for x in res if x.type == t]
 
-    tests = []
-    for t in testtypes:
-        query = [x for x in res if x.type == t]
+            # skip empty sets early
+            if len(query) == 0:
+                continue
 
-        # skip empty sets early
-        if len(query) == 0:
-            continue
-
-        checks = TestCheckListList.objects.select_related("containerid","name","value").filter(containerid__in=query)
-        args = TestArgumentsDict.objects.select_related("containerid","name","intvalue","txtvalue","blobvalue").filter(containerid__in=query)
-        extras = TestExtraInfoDict.objects.select_related("containerid", "name__name", "intvalue", "txtvalue", "blobvalue").filter(containerid__in=query,
-                                                                                                                                   name__name__in=["subprocess-return-code","errors"])
-        tests.append({"type":t,
-                      "tests":query,
-                      "fullchecklist":t.fullchecklist,
-                      "fullarguments":t.fullarguments,
-                      "allchecks":checks,
-                      "allargs":args,
-                      "allextras":extras})
+            checks = TestCheckListList.objects.select_related("containerid", "name","value").filter(containerid__in=query)
+            args = TestArgumentsDict.objects.select_related("containerid", "name","intvalue","txtvalue","blobvalue").filter(containerid__in=query)
+            extras = TestExtraInfoDict.objects.select_related("containerid", "name__name", "intvalue", "txtvalue", "blobvalue").filter(containerid__in=query,
+                                                                                                                                       name__name__in=["subprocess-return-code","errors"])
+            tests.append({"type":t,
+                          "tests":query,
+                          "fullchecklist":t.fullchecklist,
+                          "fullarguments":t.fullarguments,
+                          "allchecks":checks,
+                          "allargs":args,
+                          "allextras":extras})
 
     return render_to_response('insanity/matrix_view.html',
                               {
