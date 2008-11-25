@@ -116,7 +116,10 @@ def _getGStreamerRegistry():
             date = 0
         version = p.get_version()
         features = [x.get_name() for x in reg.get_feature_list_by_plugin(name)]
-        d[name] = (filename, date, version, features)
+        d["gst-registry.%s.filename"%name] = filename
+        d["gst-registry.%s.date"%name] = date
+        d["gst-registry.%s.version"%name] = version
+        d["gst-registry.%s.features"%name] = ','.join(features)
     return d
 
 def _getGStreamerEnvironment():
@@ -126,7 +129,7 @@ def _getGStreamerEnvironment():
     d["pygst-path"] = gst.__path__[0]
     d["pygst-file"] = gst.__file__
     d["gst-version"] = _tupletostr(gst.get_gst_version())
-    d["gst-registry"] = _getGStreamerRegistry()
+    d.update(_getGStreamerRegistry())
     return d
 
 def _getGObjectEnvironment():
