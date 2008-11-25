@@ -94,7 +94,10 @@ def printTestInfo(db, testid):
 
 def printEnvironment(d):
     print "Environment"
-    for key,val in d.iteritems():
+    keys = d.keys()
+    keys.sort()
+    for key in keys:
+        val = d[key]
         if isinstance(val, dict):
             print "\t% -30s:" % (key)
             for dk,dv in val.iteritems():
