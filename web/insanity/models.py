@@ -7,7 +7,7 @@ from django.db import models
 from django.db.models import permalink
 from django.db import connection
 
-class DateTimeIntegerField(models.DateTimeField):
+class DateTimeIntegerField(models.IntegerField):
 
     """Like DateTimeField, but reads the value from an integer UNIX timestamp."""
 
@@ -16,7 +16,10 @@ class DateTimeIntegerField(models.DateTimeField):
     def to_python(self, value):
         if isinstance(value, int) or isinstance(value, long):
             value = datetime.datetime.fromtimestamp(value)
-        return models.DateTimeField.to_python(self, value)
+        return value
+
+    def get_db_prep_value(self, val):
+        return time.mktime(val.timetuple())
 
 class CustomSQLInterface:
 

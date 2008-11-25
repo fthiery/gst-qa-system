@@ -2,10 +2,11 @@ from web.insanity.models import TestRun, Test, TestClassInfo, TestCheckListList,
 from django.shortcuts import render_to_response, get_object_or_404
 from django.http import HttpResponse
 import time
+from datetime import date
 
 def index(request):
     nbruns = request.GET.get("nbruns", 20)
-    latest_runs = TestRun.objects.withcounts()[:int(nbruns)].reverse()
+    latest_runs = TestRun.objects.withcounts().order_by("-starttime")[:int(nbruns)]
     return render_to_response("insanity/index.html", {"latest_runs":latest_runs,
                                                       "nbruns":nbruns})
 
