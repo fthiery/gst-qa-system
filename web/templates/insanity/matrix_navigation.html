@@ -1,4 +1,5 @@
 <div>
+{% if pages %}
 <a href="{{testrun.get_matrix_view_url}}?onlyfailed={{onlyfailed}}&showscenario={{showscenario}}&crashonly={{crashonly}}&timedoutonly={{timedoutonly}}&offset={{prevoffset}}&limit={{limit}}"><<
 </a>
 [
@@ -12,3 +13,4 @@
 ]
 <a href="{{testrun.get_matrix_view_url}}?onlyfailed={{onlyfailed}}&showscenario={{showscenario}}&crashonly={{crashonly}}&timedoutonly={{timedoutonly}}&offset={{nextoffset}}&limit={{limit}}">>></a>
 </div>
+{% endif %}
