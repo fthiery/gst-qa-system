@@ -488,6 +488,7 @@ class Test(models.Model):
                 -8:"SIGFPE",
                 -9:"SIGKILL",
                 -11:"SIGSEGV",
+                -15:"SIGTERM",
                 }
             ret = None
             retcode = long(retcodestr)
