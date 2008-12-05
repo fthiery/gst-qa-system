@@ -778,18 +778,27 @@ class DBusTest(Test, dbus.service.Object):
                     # double check it hasn't actually exited
                     # give the test up to one second to exit
                     tries = 10
-                    while self._returncode == None and not tries == 0:
+                    while self._returncode is None and not tries == 0:
                         time.sleep(0.1)
                         self._returncode = self._process.poll()
                         tries -= 1
-                    while self._returncode == None:
-                        info("Process isn't done yet, killing it")
-                        os.kill(self._process.pid, signal.SIGKILL)
-                        time.sleep(0.1)
+                    if self._returncode is None:
+                        info("Process isn't done yet, terminating it")
+                        os.kill(self._process.pid, signal.SIGTERM)
+                        time.sleep(1)
                         self._returncode = self._process.poll()
-                    info("Process returned %d", self._returncode)
+                    if self._returncode is None:
+                        info("Process did not terminate, killing it")
+                        os.kill(self._process.pid, signal.SIGKILL)
+                        time.sleep(1)
+                        self._returncode = self._process.poll()
+                    if self._returncode is None:
+                        # Probably turned into zombie process, something is
+                        # really broken...
+                        info("Process did not exit after SIGKILL")
                     self._process = None
-                if not self._returncode == None:
+                if not self._returncode is None:
+                    info("Process returned %d", self._returncode)
                     self.validateStep("subprocess-exited-normally", self._returncode == 0)
                     self.extraInfo("subprocess-return-code", self._returncode)
         else:
