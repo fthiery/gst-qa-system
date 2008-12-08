@@ -188,6 +188,9 @@ def matrix_navigation(context, adjacent_pages=2):
         d["iscurrent"] = (currentoffset == limit * i)
         d["offset"] = limit * i
         pages.append(d)
+    if len(pages) == 1:
+        # Everything fits on one page, no pagination needed:
+        pages = []
 
     poff = currentoffset - limit
     noff = currentoffset + limit
