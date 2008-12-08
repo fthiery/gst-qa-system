@@ -1,4 +1,5 @@
 import os.path
+import math
 from django import template
 from django.utils.html import escape
 
@@ -179,7 +180,7 @@ def matrix_navigation(context, adjacent_pages=2):
     # This creates a navigation <div> for the given page
     # for the time being we just calculate the offset for the
     # previous and next series
-    totalpages = totalnb / limit
+    totalpages = int(math.ceil(float(totalnb) / limit))
     pages = []
     for i in range(totalpages):
         d = {}
