@@ -24,7 +24,7 @@ Full gnonlin scenario
 """
 
 from insanity.scenario import Scenario
-from tests.gnltest import GnlFileSourceTest
+from tests.gnltest import GnlFileSourceTest, GnlFullFileSourceTest
 from tests.typefind import TypeFindTest
 import gst
 
@@ -37,6 +37,8 @@ class FullGnlFileSourceScenario(Scenario):
     for each contained stream.
     """
     __test_name__ = "full-gnlfilesource-scenario"
+
+    _subtest_type = GnlFileSourceTest
 
     def setUp(self):
         if not Scenario.setUp(self):
@@ -88,7 +90,7 @@ class FullGnlFileSourceScenario(Scenario):
             args["caps-string"] = caps
             args["media-start"] = mstart
             args["duration"] = duration
-            self.addSubTest(GnlFileSourceTest, args)
+            self.addSubTest(self._subtest_type, args)
         self.__doneTypeFindTest = True
         return True
 
@@ -101,3 +103,8 @@ class FullGnlFileSourceScenario(Scenario):
             elif caps.startswith("video/x-raw-"):
                 res.append((padname, length, "video/x-raw-yuv;video/x-raw-rgb"))
         return res
+
+class TotalGnlFileSourceScenario(FullGnlFileSourceScenario):
+    __test_name__ = "complete-gnlfilesource-scenario"
+    __test_description__ = ""
+    _subtest_type = GnlFullFileSourceTest
