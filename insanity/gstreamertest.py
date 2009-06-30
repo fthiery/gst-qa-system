@@ -216,8 +216,13 @@ class GStreamerTestBase(PythonDBusTest):
     def _watchContainer(self, container):
         # add all elements currently preset
         for elt in container:
+            factory = elt.get_factory ()
+            if not factory is None:
+                factory_name = factory.get_name ()
+            else:
+                factory_name = "(no factory)"
             self._elements.append((elt.get_name(),
-                                   elt.get_factory().get_name(),
+                                   factory_name,
                                    container.get_name()))
             if isinstance(elt, gst.Bin):
                 self._watchContainer(elt)
