@@ -3,16 +3,11 @@ from django import VERSION
 from django.conf import settings
 import os
 
-if VERSION >= (1, 0, ''):
-    from django.contrib import admin
-    admin.autodiscover()
-    urlpatterns = patterns('',
+from django.contrib import admin
+admin.autodiscover()
+urlpatterns = patterns('',
                            (r'^insanity/', include('web.insanity.urls')),
                            (r'^admin/', admin.site.root))
-else:
-    urlpatterns = patterns('',
-                           (r'^insanity/', include('web.insanity.urls')),
-                           (r'^admin/', include('django.contrib.admin.urls')))
 if settings.DEBUG:
     # This is temporary
     # DO NOT USE IN PRODUCTION. See django documentation about serving
