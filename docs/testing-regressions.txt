@@ -1,0 +1,52 @@
+Testing regressions
+-------------------
+
+  This explains how to test regressions.
+
+  This assumes you have a properly setup gst-qa environment (i.e. that
+  PYTHONPATH is pointing to the proper location).
+
+1. Choosing what tests you want
+
+  If you have been modifyin a gst element used in standard playback
+  (like a decoder, demuxer, source), you will want to use these tests
+  (ranging from basic test to more advanced tests).
+
+  * typefind : checks that we can handle the various formats
+
+  * playbin-test : Tests playbin(2) on the given file
+
+  * full-gnlfilesource-scenario : checks the file with gnlfilesource
+  (you'll need GNonLin installed). The advantage of this test is that
+  due to how GNonLin works, it will be able to test seekability in
+  various location of the file on all streams.
+
+2. First run
+
+  You'll want to run gst-media-test with your reference system
+  (i.e. what you're comparing with).
+
+  Ex : gst-media-test -t typefind playbin-test -f /data/medias/
+
+     -t typefind playbin-test : run those two tests
+     -f /data/medias : on any file present in /data/medias
+
+3. Switch to code to test against
+
+  By changing env variables or whatever technique you use
+
+4. Second run
+
+ Do the same as in 2. First Run
+
+5. Comparing the runs
+
+ # insanity-compare testrun.db <first-testrun-id> <second-testrun-id> >
+ regressions
+
+ You will end up with a list of the regressions.
+
+ The test results will be paired by old and new test.
+
+ You can then read the information, results and debug logs to figure
+ out what went wrong.
