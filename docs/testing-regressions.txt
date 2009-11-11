@@ -12,7 +12,7 @@ Testing regressions
   (like a decoder, demuxer, source), you will want to use these tests
   (ranging from basic test to more advanced tests).
 
-  * typefind : checks that we can handle the various formats
+  * typefind-test : checks that we can handle the various formats
 
   * playbin-test : Tests playbin(2) on the given file
 
@@ -26,9 +26,9 @@ Testing regressions
   You'll want to run gst-media-test with your reference system
   (i.e. what you're comparing with).
 
-  Ex : gst-media-test -t typefind playbin-test -f /data/medias/
+  Ex : gst-media-test -t typefind-tes playbin-test -f /data/medias/
 
-     -t typefind playbin-test : run those two tests
+     -t typefind-test playbin-test : run those two tests
      -f /data/medias : on any file present in /data/medias
 
 3. Switch to code to test against
