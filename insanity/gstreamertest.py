@@ -202,6 +202,7 @@ class GStreamerTestBase(PythonDBusTest):
                         debug("Stopping test because we reached initial state")
                         gst.log("Stopping test because we reached initial state")
                         self.stop()
+        self.elementMessageHandlerCb(bus, message)
 
     def _waitingForStateChange(self):
         gst.debug("timeout waiting for initial state to be reached")
@@ -300,4 +301,26 @@ class GStreamerTestBase(PythonDBusTest):
         except:
             exception("error while creating pipeline")
             pip = None
+        self.pipelineCreatedCb(pip)
         return pip
+
+    def pipelineCreatedCb(self, pip):
+        """
+        Override this method if you want the pipeline instance
+        to be passed after creation.
+
+        Passed argument will be None if pipeline creation failed
+        """
+        pass
+
+    def elementMessageHandlerCb(self, bus, message):
+        """
+        Override this method if you want to handle all non-core gstreamer
+        bus messages yourself.
+
+        It will pass all gst.Element type messages
+
+        As an example, it will pass level's messages but not pipeline state
+        changes
+        """
+        pass
